@@ -1,107 +1,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getBaseUrl } from '@/lib/url';
-import dynamicImport from 'next/dynamic';
-import { Badge } from '@/components/ui/badge';
-import { Zap, ChevronRight, Gamepad2, Users, PackageCheck, AppWindow } from 'lucide-react';
+import { ChevronRight, Users, PackageCheck, AppWindow } from 'lucide-react';
 import { cache } from 'react';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { PremiumAppCategoryCard } from '@/components/PremiumAppCategoryCard';
-const FlashSaleCountdown = dynamicImport(() => import('@/components/FlashSaleCountdown'), { ssr: false });
 
 const getSite = cache(async () => {
   const base = getBaseUrl();
   const res = await fetch(`${base}/api/site`, { next: { revalidate: 120, tags: ['site'] } });
   return res.ok ? res.json() : { title: 'เติมเกม ง่าย รวดเร็ว', subtitle: 'เลือกเกมยอดนิยมและเริ่มสั่งซื้อได้ทันที', posters: [] };
-});
-
-const getProducts = cache(async () => {
-  const base = getBaseUrl();
-  const res = await fetch(`${base}/api/products`, { next: { revalidate: 120, tags: ['products'] } });
-  return res.ok ? (await res.json()).data : [];
-});
-
-const getHomepageCategories = cache(async () => {
-  try {
-    const sb = createServiceClient();
-    const { data, error } = await sb
-      .from('categories')
-      .select('id, name, slug')
-      .eq('is_published', true)
-      .eq('show_on_homepage', true)
-      .order('name');
-    
-    if (error) {
-      console.error('homepage categories fetch error:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('homepage categories fetch error:', error);
-    return [];
-  }
-});
-
-const getGameAccountsByCategory = cache(async () => {
-  try {
-    const sb = createServiceClient();
-    
-    // Get all published game categories
-    const { data: categories } = await sb
-      .from('game_categories')
-      .select('id, name, slug, image_url')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false });
-    
-    if (!categories || categories.length === 0) return [];
-    
-    // Get game accounts for each category
-    const categoriesWithAccounts = await Promise.all(
-      categories.map(async (category) => {
-        const { data } = await sb
-          .from('game_accounts')
-          .select('id, game_name, game_category_id, title, description, cover_image_url, additional_images, price, original_price, discount_percent, stock, created_at')
-          .eq('is_published', true)
-          .eq('game_category_id', category.id)
-          .is('sold_at', null)
-          .gt('stock', 0)
-          .order('created_at', { ascending: false })
-          .limit(12);
-        
-        if (!data || data.length === 0) return null;
-        
-        // Group by game_name and base title
-        const grouped = new Map<string, any>();
-        for (const acc of data) {
-          const baseTitle = (acc.title as string).split(' #')[0];
-          const key = `${acc.game_name}::${baseTitle}`;
-          if (!grouped.has(key)) {
-            grouped.set(key, {
-              ...acc,
-              title: baseTitle,
-              stock: 0,
-            });
-          }
-          grouped.get(key).stock += acc.stock || 0;
-        }
-        
-        const accounts = Array.from(grouped.values()).slice(0, 12);
-        
-        return {
-          category,
-          accounts,
-        };
-      })
-    );
-    
-    // Filter out categories with no accounts
-    return categoriesWithAccounts.filter((item): item is NonNullable<typeof item> => item !== null && item.accounts.length > 0);
-  } catch (error) {
-    console.error('game accounts by category fetch error:', error);
-    return [];
-  }
 });
 
 const getPremiumAppCategories = cache(async () => {
@@ -160,6 +69,29 @@ const getPremiumAppCategories = cache(async () => {
   }
 });
 
+const getPremiumAppProducts = cache(async () => {
+  try {
+    const sb = createServiceClient();
+    const { data: products, error } = await sb
+      .from('app_premium_products')
+      .select('id, name, display_name, image_url, icon_url, base_price, stock, is_published')
+      .eq('is_published', true)
+      .gt('stock', 0)
+      .order('created_at', { ascending: false })
+      .limit(12);
+
+    if (error) {
+      console.error('premium app products fetch error:', error);
+      return [];
+    }
+
+    return products || [];
+  } catch (error) {
+    console.error('premium app products fetch error:', error);
+    return [];
+  }
+});
+
 export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
@@ -170,17 +102,26 @@ export default function HomePage() {
 
 async function HomeServer() {
   const site = await getSite();
-  const allProducts = await getProducts();
-  const homepageCategories = await getHomepageCategories();
   const stats = await getHomeStats();
-  const gameAccountsByCategory = await getGameAccountsByCategory();
   const premiumAppCategories = await getPremiumAppCategories();
+  const premiumAppProducts = await getPremiumAppProducts();
+  const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
   
-  // Filter products to show only those from homepage categories
-  const homepageCategoryIds = new Set(homepageCategories.map(cat => cat.id));
-  const products = homepageCategoryIds.size > 0 
-    ? allProducts.filter((p: any) => homepageCategoryIds.has(p.category_id))
-    : allProducts;
+  // Calculate prices for premium app products
+  const premiumAppProductsWithPrice = premiumAppProducts.map((product: any) => {
+    const basePrice = Number(product.base_price || 0);
+    const finalPrice = computePrice(
+      basePrice,
+      0,
+      0,
+      globalPct,
+      globalFix
+    );
+    return {
+      ...product,
+      finalPrice,
+    };
+  });
   
   return (
     <div className="min-h-screen bg-black relative">
@@ -262,122 +203,42 @@ async function HomeServer() {
           })}
         </section>
 
-        {/* Flash Sale Section */}
-        {(() => {
-          const flash = (products || []).filter((p: any) => {
-            const text = p?.badge?.text && String(p.badge.text).trim().length > 0;
-            const pct = typeof p?.badge?.percent === 'number' && p.badge.percent > 0;
-            return text || pct;
-          });
-          if (!flash.length) return null;
-          return (
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src="https://img2.pic.in.th/pic/flashsale.webp" 
-                    alt="Flash Sale" 
-                    className="h-8 md:h-10 w-auto" 
-                  />
-                  <FlashSaleCountdown start={site.flashStart} end={site.flashEnd} />
+        {/* Premium App Products Section */}
+        {premiumAppProducts && premiumAppProducts.length > 0 && (
+          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
+                  <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">แอพพรีเมี่ยม</h2>
+                  <p className="text-sm text-gray-400">Premium Applications</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-                {flash.map((p: any, index: number) => {
-                  const manualText = p?.badge?.text?.trim?.();
-                  const manualPercent = typeof p?.badge?.percent === 'number' ? Math.round(Number(p.badge.percent)) : null;
-                  const badgeText = manualText && manualText.length
-                    ? manualText
-                    : manualPercent != null && manualPercent > 0
-                      ? `${manualPercent}% OFF`
-                      : null;
-                  return (
-                    <Link 
-                      key={p.id} 
-                      href={`/products/${p.key}`} 
-                      className="group block text-center"
-                      prefetch={index < 6}
-                    >
-                      <div className="relative">
-                        {p.image_url ? (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative">
-                            <Image 
-                              src={p.image_url} 
-                              alt={p.name} 
-                              fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-110" 
-                              sizes="(max-width: 640px) 160px, 176px"
-                              loading={index < 6 ? 'eager' : 'lazy'}
-                              priority={index < 3}
-                            />
-                          </div>
-                        ) : (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
-                            <Gamepad2 className="h-16 w-16 text-gray-600" />
-                          </div>
-                        )}
-                        {badgeText && (
-                          <div className="absolute -bottom-2 left-2">
-                            <Badge variant="destructive" className="shadow-lg gap-1">
-                              <Zap className="size-3" />
-                              <span className="font-semibold text-xs">{badgeText}</span>
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3 text-sm font-semibold text-white">{p.name}</div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* Popular Games Section */}
-        <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">เติมเกมออนไลน์</h2>
-                <p className="text-sm text-gray-400">Termgame Online</p>
-              </div>
+              <Link 
+                href="/premium-app" 
+                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+              >
+                ดูทั้งหมด
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
             </div>
-            <Link 
-              href="/products" 
-              className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-            >
-              ดูทั้งหมด
-              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-            {products.slice(0, 12).map((p: any, index: number) => {
-              const manualText = p?.badge?.text?.trim?.();
-              const manualPercent = typeof p?.badge?.percent === 'number' ? Math.round(Number(p.badge.percent)) : null;
-              const badgeText = manualText && manualText.length
-                ? manualText
-                : manualPercent != null && manualPercent > 0
-                  ? `${manualPercent}% OFF`
-                  : null;
-              return (
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+              {premiumAppProductsWithPrice.map((product: any, index: number) => (
                 <Link 
-                  key={p.id} 
-                  href={`/products/${p.key}`} 
+                  key={product.id} 
+                  href={`/premium-app/${product.id}`} 
                   className="group block text-center"
                   prefetch={index < 6}
                 >
                   <div className="relative">
-                    {p.image_url ? (
+                    {product.image_url || product.icon_url ? (
                       <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative">
                         <Image 
-                          src={p.image_url} 
-                          alt={p.name} 
+                          src={product.image_url || product.icon_url} 
+                          alt={product.display_name || product.name} 
                           fill
                           className="object-cover transition-transform duration-300 group-hover:scale-110" 
                           sizes="(max-width: 640px) 160px, 176px"
@@ -386,110 +247,27 @@ async function HomeServer() {
                         />
                       </div>
                     ) : (
-                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-100 flex items-center justify-center">
-                        <Gamepad2 className="h-16 w-16 text-gray-300" />
-                      </div>
-                    )}
-                    {badgeText && (
-                      <div className="absolute -bottom-2 left-2">
-                        <Badge variant="destructive" className="shadow-lg gap-1">
-                          <Zap className="size-3" />
-                          <span className="font-semibold text-xs">{badgeText}</span>
-                        </Badge>
+                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
+                        <AppWindow className="h-16 w-16 text-gray-600" />
                       </div>
                     )}
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-white">{p.name}</div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Game Accounts Section */}
-        {gameAccountsByCategory && gameAccountsByCategory.length > 0 && (() => {
-          // รวมไอดีเกมจากทุกหมวดหมู่
-          const allAccounts = gameAccountsByCategory.flatMap((categoryData: any) => categoryData.accounts);
-          if (allAccounts.length === 0) return null;
-          
-          return (
-            <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                    <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">สินค้า Roblox</h2>
-                    <p className="text-sm text-gray-400">Roblox Products</p>
-                  </div>
-                </div>
-                <Link 
-                  href="/accounts"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-                >
-                  ดูทั้งหมด
-                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-                {allAccounts.slice(0, 12).map((account: any, index: number) => {
-                  const discountPercent = account.discount_percent || 0;
-                  return (
-                    <Link 
-                      key={account.id} 
-                      href={`/accounts/${account.id}`} 
-                      className="group block text-center"
-                      prefetch={index < 6}
-                    >
-                      <div className="relative">
-                        {account.cover_image_url ? (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative">
-                            <Image 
-                              src={account.cover_image_url} 
-                              alt={account.title} 
-                              fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-110" 
-                              sizes="(max-width: 640px) 160px, 176px"
-                              loading={index < 6 ? 'eager' : 'lazy'}
-                              priority={index < 3}
-                            />
-                          </div>
-                        ) : (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
-                            <Gamepad2 className="h-16 w-16 text-gray-600" />
-                          </div>
-                        )}
-                        {discountPercent > 0 && (
-                          <div className="absolute -bottom-2 left-2">
-                            <Badge variant="destructive" className="shadow-lg gap-1">
-                              <Zap className="size-3" />
-                              <span className="font-semibold text-xs">-{discountPercent}%</span>
-                            </Badge>
-                          </div>
-                        )}
+                  <div className="mt-3">
+                    <div className="text-sm font-semibold text-white line-clamp-2">{product.display_name || product.name}</div>
+                    <div className="text-xs text-emerald-500 font-bold mt-1">
+                      {product.finalPrice.toFixed(0)} ฿
+                    </div>
+                    {product.stock > 0 && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        คงเหลือ {product.stock}
                       </div>
-                      <div className="mt-3">
-                        <div className="text-sm font-semibold text-white">{account.title}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {account.original_price && account.original_price > account.price ? (
-                            <>
-                              <span className="text-emerald-500 font-bold">{Number(account.price).toFixed(0)} ฿</span>
-                              <span className="line-through ml-1 text-gray-500">{Number(account.original_price).toFixed(0)} ฿</span>
-                            </>
-                          ) : (
-                            <span className="text-emerald-500 font-bold">{Number(account.price).toFixed(0)} ฿</span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Premium Apps Categories Section */}
         {premiumAppCategories && premiumAppCategories.length > 0 && (
