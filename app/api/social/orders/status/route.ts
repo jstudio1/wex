@@ -84,59 +84,59 @@ export async function POST(req: Request) {
 
       if (externalOrderIds.length === 0) continue;
 
-      const data = new URLSearchParams({
-        key: apiKey,
-        action: 'status',
+    const data = new URLSearchParams({
+      key: apiKey,
+      action: 'status',
         orders: externalOrderIds.join(',')
-      });
+    });
 
       try {
         const upstream = await fetch(provider.api_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: data
-        });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: data
+    });
 
-        const responseJson = await upstream.json();
+    const responseJson = await upstream.json();
 
-        if (!upstream.ok) {
+    if (!upstream.ok) {
           console.error(`Provider ${provider.name} status error:`, responseJson);
           continue;
-        }
+    }
 
         // รวม response เข้ากับ allResponses
         Object.assign(allResponses, responseJson);
 
-        // Update database with status
-        for (const [orderId, orderData] of Object.entries(responseJson)) {
-          if (typeof orderData === 'string') {
-            // Error message like "Incorrect order ID"
-            continue;
-          }
+    // Update database with status
+    for (const [orderId, orderData] of Object.entries(responseJson)) {
+      if (typeof orderData === 'string') {
+        // Error message like "Incorrect order ID"
+        continue;
+      }
 
-          const order = orderData as {
-            order: string;
-            status: string;
-            charge?: string;
-            start_count?: string;
-            remains?: string;
-          };
+      const order = orderData as {
+        order: string;
+        status: string;
+        charge?: string;
+        start_count?: string;
+        remains?: string;
+      };
 
           allUpdates.push(
-            (async () => {
-              await sb
-                .from('social_orders')
-                .update({
-                  status: order.status,
-                  charge: order.charge ? Number(order.charge) : null,
-                  start_count: order.start_count ? Number(order.start_count) : null,
-                  remains: order.remains ? Number(order.remains) : null,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('external_order_id', order.order)
-                .eq('user_id', user.id);
-            })()
-          );
+        (async () => {
+          await sb
+            .from('social_orders')
+            .update({
+              status: order.status,
+              charge: order.charge ? Number(order.charge) : null,
+              start_count: order.start_count ? Number(order.start_count) : null,
+              remains: order.remains ? Number(order.remains) : null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('external_order_id', order.order)
+            .eq('user_id', user.id);
+        })()
+      );
         }
       } catch (error) {
         console.error(`Error fetching status from provider ${provider.name}:`, error);

@@ -34,6 +34,7 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (error) {
+      console.error('Get slip settings DB error:', error);
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
@@ -56,7 +57,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     console.error('Get slip settings error:', error);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'unexpected', detail: errorMessage }, { status: 500 });
   }
 }
 
@@ -99,14 +101,19 @@ export async function POST(req: Request) {
       updateData.rdcw_endpoint = parsed.data.rdcw_endpoint || 'https://suba.rdcw.co.th/v2/inquiry';
     }
     if (parsed.data.minimum_topup_amount !== undefined) {
-      updateData.minimum_topup_amount = parsed.data.minimum_topup_amount;
+      updateData.minimum_topup_amount = Number(parsed.data.minimum_topup_amount);
     }
 
     // ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
-    const { data: existing } = await sb
+    const { data: existing, error: checkError } = await sb
       .from('slip_verification_settings')
       .select('id')
       .maybeSingle();
+
+    if (checkError) {
+      console.error('Check existing slip settings error:', checkError);
+      return NextResponse.json({ error: 'db_error', detail: checkError.message }, { status: 500 });
+    }
 
     let result;
     if (existing) {
@@ -119,6 +126,7 @@ export async function POST(req: Request) {
         .single();
 
       if (error) {
+        console.error('Update slip settings error:', error);
         return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
       }
 
@@ -135,6 +143,7 @@ export async function POST(req: Request) {
         .single();
 
       if (error) {
+        console.error('Insert slip settings error:', error);
         return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
       }
 
@@ -144,7 +153,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, data: result });
   } catch (error) {
     console.error('Update slip settings error:', error);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'unexpected', detail: errorMessage }, { status: 500 });
   }
 }
 

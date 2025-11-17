@@ -133,6 +133,47 @@ export async function POST(req: Request) {
           rankText: rankText
         }
       });
+    } else if (key_name === 'OTP24HR_API_KEY') {
+      // ดึง balance จาก OTP24HR API
+      const apiKey = await getApiKey('OTP24HR_API_KEY');
+      if (!apiKey) {
+        return NextResponse.json({ error: 'missing_api_key' }, { status: 500 });
+      }
+
+      const formData = new URLSearchParams();
+      formData.append('keyapi', apiKey);
+
+      const res = await fetch('https://otp24hr.com/api/v1?action=balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+      });
+
+      if (!res.ok) {
+        return NextResponse.json({ error: 'provider_error', detail: 'ไม่สามารถดึงข้อมูล balance ได้' }, { status: res.status });
+      }
+
+      const data = await res.json();
+      
+      if (data.status !== 'success') {
+        return NextResponse.json({ error: 'provider_error', detail: data.msg || 'ไม่สามารถดึงข้อมูล balance ได้' }, { status: 502 });
+      }
+
+      // Parse balance - ลบ "บาท" และ whitespace ออก
+      let balanceValue = data.balance || '0';
+      if (typeof balanceValue === 'string') {
+        balanceValue = balanceValue.replace(/บาท/g, '').replace(/\s/g, '').trim();
+      }
+      const balanceNum = Number(balanceValue) || 0;
+
+      return NextResponse.json({ 
+        ok: true, 
+        data: {
+          balance: String(balanceNum),
+          currency: 'THB',
+          status: data.status
+        }
+      });
     } else {
       return NextResponse.json({ error: 'unsupported_key', detail: 'API key นี้ยังไม่รองรับการดึง balance' }, { status: 400 });
     }

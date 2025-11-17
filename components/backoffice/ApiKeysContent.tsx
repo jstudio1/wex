@@ -156,7 +156,7 @@ export default function ApiKeysContent() {
   const fetchAllBalances = async () => {
     setLoadingAllBalances(true);
     const balanceKeys = apiKeys.filter(key => 
-      key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi'
+      key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi' || key.key_name === 'OTP24HR_API_KEY'
     );
     
     for (const apiKey of balanceKeys) {
@@ -247,9 +247,9 @@ export default function ApiKeysContent() {
     );
   }
 
-  const balanceKeys = apiKeys.filter(key => 
-    key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi'
-  );
+    const balanceKeys = apiKeys.filter(key => 
+      key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi' || key.key_name === 'OTP24HR_API_KEY'
+    );
 
   return (
     <div className="space-y-6">
@@ -322,7 +322,7 @@ export default function ApiKeysContent() {
             ) : (
               apiKeys.map((apiKey) => {
                 const isOpen = openDialog === apiKey.key_name;
-                const canFetchBalance = apiKey.key_name === 'SOCIAL_API_KEY' || apiKey.key_name === 'API_KEY_24PAY' || apiKey.key_name === 'peamsubapi';
+                const canFetchBalance = apiKey.key_name === 'SOCIAL_API_KEY' || apiKey.key_name === 'API_KEY_24PAY' || apiKey.key_name === 'peamsubapi' || apiKey.key_name === 'OTP24HR_API_KEY';
                 const balanceInfo = balances[apiKey.key_name];
 
                 return (

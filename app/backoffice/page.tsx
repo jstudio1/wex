@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, ShieldCheck, Receipt, Share } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,6 @@ import SocialServicesContent from '@/components/backoffice/SocialServicesContent
 import SocialProvidersContent from '@/components/backoffice/SocialProvidersContent';
 import AdminSiteForm from '@/components/AdminSiteForm';
 import ApiKeysContent from '@/components/backoffice/ApiKeysContent';
-import PermissionsContent from '@/components/backoffice/PermissionsContent';
 import GameAccountsContent from '@/components/backoffice/GameAccountsContent';
 import GameCategoriesContent from '@/components/backoffice/GameCategoriesContent';
 import GamesContent from '@/components/backoffice/GamesContent';
@@ -160,7 +159,6 @@ const menuSections: MenuSection[] = [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
       { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: Receipt },
-      { id: 'permissions', label: 'จัดการสิทธิ์', icon: ShieldCheck },
     ]
   },
 ];
@@ -465,8 +463,6 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <ApiKeysContent />;
     case 'slip-settings':
       return <SlipVerificationSettingsContent />;
-    case 'permissions':
-      return <PermissionsContent />;
     case 'game-categories':
       return <GameCategoriesContent />;
     case 'game-accounts':

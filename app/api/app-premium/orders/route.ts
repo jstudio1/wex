@@ -3,14 +3,10 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
+import { getApiKey } from '@/lib/api-keys';
 import { z } from 'zod';
 
 const API_URL = 'https://otp24hr.com/api/v1';
-
-function getOtp24hrApiKey(): string {
-  // ใช้ env variable หรือ fallback to empty string
-  return process.env.OTP24HR_API_KEY || '';
-}
 
 const createOrderSchema = z.object({
   product_id: z.number().min(1),
@@ -75,9 +71,9 @@ export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const apiKey = getOtp24hrApiKey();
+  const apiKey = await getApiKey('OTP24HR_API_KEY');
   if (!apiKey) {
-    return NextResponse.json({ error: 'missing_otp24hr_api_key' }, { status: 500 });
+    return NextResponse.json({ error: 'missing_otp24hr_api_key', detail: 'ไม่พบ API key สำหรับ OTP24HR กรุณาตั้งค่าในเมนู API Key Settings' }, { status: 500 });
   }
 
   try {
