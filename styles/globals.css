@@ -1,0 +1,370 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b0b0c;
+  --card: #121214;
+  --text: #e7e7ea;
+  
+  /* Sidebar variables */
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+html {
+  height: 100%;
+  scrollbar-gutter: stable;
+}
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.card {
+  @apply bg-card text-text rounded-lg border border-white/5 shadow-sm;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 active:opacity-100 disabled:opacity-50;
+}
+
+.input {
+  @apply w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm text-text placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-accent/50;
+}
+
+.compact-grid {
+  @apply grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
+}
+
+@keyframes slide {
+  0% { transform: translateX(0%); }
+  33% { transform: translateX(-100%); }
+  66% { transform: translateX(-200%); }
+  100% { transform: translateX(0%); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(200%) skewX(-12deg); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) rotate(-2deg); }
+  20%, 40%, 60%, 80% { transform: translateX(5px) rotate(2deg); }
+}
+
+@keyframes reveal {
+  0% { 
+    transform: scale(0.8) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  100% { 
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(400px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+.animate-reveal {
+  animation: reveal 0.6s ease-out;
+}
+
+.animate-confetti {
+  animation: confetti 3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0px); opacity: 1; }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  
+  /* Override default link styles in navbar */
+  header a,
+  header a:visited,
+  header a:hover,
+  header a:active {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@keyframes filterFade {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-filter { animation: filterFade .28s ease-out; }
+
+/* Dropdown menu smooth slide animations */
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownSlideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+@keyframes dropdownSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes dropdownSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Dropdown menu smooth slide animations - applied directly to content */
+[role="menu"][data-state="open"] {
+  animation: dropdownSlideDown 200ms ease-out;
+}
+
+[role="menu"][data-state="closed"] {
+  animation: dropdownSlideUp 150ms ease-in;
+}
+
+/* Side-specific animations */
+[role="menu"][data-side="left"][data-state="open"] {
+  animation: dropdownSlideLeft 200ms ease-out;
+}
+
+[role="menu"][data-side="right"][data-state="open"] {
+  animation: dropdownSlideRight 200ms ease-out;
+}
+
+[role="menu"][data-side="top"][data-state="open"] {
+  animation: dropdownSlideUp 200ms ease-out;
+}
+
+[role="menu"][data-side="top"][data-state="closed"] {
+  animation: dropdownSlideDown 150ms ease-in;
+}
+
+/* Fix autofill background for dark theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.05) inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Fix select and option contrast for dark theme */
+select.input {
+  color: var(--text);
+  background-color: transparent;
+}
+
+select.input option {
+  background-color: #121214;
+  color: #e7e7ea;
+  padding: 8px;
+}
+
+select.input:focus option:checked {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* For Chrome/Edge/Safari */
+select.input option:hover,
+select.input option:focus {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Custom number input spinner for dark theme */
+/* For Firefox - hide default spinner */
+input[type="number"] {
+  -moz-appearance: textfield;
+  position: relative;
+  padding-right: 2.5rem;
+}
+
+/* Style spinner buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button;
+  opacity: 1;
+  height: 100%;
+  width: 1.5rem;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: rgba(124, 58, 237, 0.1);
+  border-left: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+/* Custom arrow icons for spinner - using accent color */
+input[type="number"]::-webkit-inner-spin-button {
+  background-image: 
+    linear-gradient(to top, rgba(124, 58, 237, 0.8) 30%, transparent 30%, transparent 70%, rgba(124, 58, 237, 0.8) 70%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Hover state */
+input[type="number"]::-webkit-inner-spin-button:hover {
+  background-color: rgba(124, 58, 237, 0.15);
+  border-left-color: rgba(124, 58, 237, 0.3);
+}
+
+/* Active state */
+input[type="number"]::-webkit-inner-spin-button:active {
+  background-color: rgba(124, 58, 237, 0.2);
+  border-left-color: rgba(124, 58, 237, 0.4);
+}
+
+/* Focus state */
+input[type="number"]:focus::-webkit-inner-spin-button {
+  background-color: rgba(124, 58, 237, 0.12);
+  border-left-color: rgba(124, 58, 237, 0.25);
+}
+
+/* Ensure placeholder uses the same font family as the rest of the site */
+::placeholder,
+::-webkit-input-placeholder,
+:-moz-placeholder,
+::-moz-placeholder,
+:-ms-input-placeholder {
+  font-family: inherit !important;
+}
+
+/* Announcement Bar Marquee Animation */
+.marquee-wrapper {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-content {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marquee linear infinite;
+  will-change: transform;
+  /* animationDuration จะถูกกำหนดจาก inline style */
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Pause animation on hover */
+.marquee-wrapper:hover .marquee-content {
+  animation-play-state: paused;
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar for Backoffice */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+
