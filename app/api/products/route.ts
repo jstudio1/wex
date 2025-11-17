@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
     const { data: items, error: ierr } = await sb
       .from('product_items')
-      .select('id, product_id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended');
+      .select('id, product_id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended, icon_url');
     if (ierr) return NextResponse.json({ error: 'db_error', detail: ierr.message }, { status: 500 });
 
     // orders count per product (reduce on client for compatibility)
@@ -54,7 +54,8 @@ export async function GET(req: Request) {
         sku: it.sku,
         price: computed.toFixed(2),
         originalPrice: String(it.original_price),
-        is_recommended: Boolean((it as any).is_recommended)
+        is_recommended: Boolean((it as any).is_recommended),
+        icon_url: (it as any).icon_url || null
       });
       itemsByProduct.set(it.product_id as number, arr);
     }

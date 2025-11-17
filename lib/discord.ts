@@ -39,7 +39,7 @@ export interface TopupData {
   username: string;
   userId: number;
   amount: number;
-  method?: 'code' | 'bank-transfer' | 'redeem';
+  method?: 'code' | 'bank-transfer' | 'redeem' | 'slip' | 'truewallet';
   transactionId?: string;
   reference?: string;
 }
@@ -188,7 +188,7 @@ export function createOrderEmbed(data: OrderData): DiscordEmbed {
     fields: [],
     timestamp: new Date().toISOString(),
     footer: {
-      text: 'wexplus System',
+      text: 'WeXPlus System',
     },
   };
 
@@ -287,7 +287,7 @@ export function createTopupEmbed(data: TopupData): DiscordEmbed {
     ],
     timestamp: new Date().toISOString(),
     footer: {
-      text: 'wexplus System',
+      text: 'WeXPlus System',
     },
   };
 
@@ -339,7 +339,7 @@ export function createGamePlayEmbed(data: OrderData & { gameName?: string; prize
     ],
     timestamp: new Date().toISOString(),
     footer: {
-      text: 'wexplus System',
+      text: 'WeXPlus System',
     },
   };
 

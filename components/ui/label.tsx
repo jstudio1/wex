@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>>(
   ({ className, ...props }, ref) => (
-    <label ref={ref} className={clsx('text-xs text-[color:var(--text)]/70', className)} {...props} />
+    <label ref={ref} className={clsx('text-xs text-gray-300', className)} {...props} />
   )
 );
 Label.displayName = 'Label';

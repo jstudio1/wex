@@ -337,7 +337,7 @@ export default function RedeemCodesContent() {
       <div className="card p-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700/50">
+            <tr className="border-b border-border">
               <th className="text-left p-2">โค้ด</th>
               <th className="text-left p-2">พอยต์</th>
               <th className="text-left p-2">ใช้แล้ว</th>
@@ -356,7 +356,7 @@ export default function RedeemCodesContent() {
               </tr>
             ) : (
               codes.map((code) => (
-                <tr key={code.id} className="border-b border-gray-700/30 hover:bg-white/5">
+                <tr key={code.id} className="border-b border-border/50 hover:bg-muted/50">
                   <td className="p-2 font-medium font-mono">{code.code}</td>
                   <td className="p-2">{Number(code.points).toFixed(2)}</td>
                   <td className="p-2">

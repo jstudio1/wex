@@ -1,6 +1,8 @@
 import SocialOrderForm from '@/components/SocialOrderForm';
 import { getBaseUrl } from '@/lib/url';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchSocialServices() {
   try {
     const base = getBaseUrl();

@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       formData.append('key', apiKey);
       formData.append('action', 'balance');
 
-      const res = await fetch('https://socialtools24hr.com/api/v1', {
+      const res = await fetch('https://socialpanel24.com/api/v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData

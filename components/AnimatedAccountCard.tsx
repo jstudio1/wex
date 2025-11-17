@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Package, Info } from 'lucide-react';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { applyPermissionDiscount, type Permission } from '@/lib/pricing';
 
 type GameAccount = {
   id: number;
@@ -26,12 +28,134 @@ type GameAccount = {
 type Props = {
   account: GameAccount;
   index: number;
+  initialPermissionId?: number | null;
+  initialPermission?: { id: number; name: string } | null;
   onQuickBuy: (account: GameAccount) => void;
 };
 
-export default function AnimatedAccountCard({ account, index, onQuickBuy }: Props) {
+export default function AnimatedAccountCard({ account, index, initialPermissionId = null, initialPermission = null, onQuickBuy }: Props) {
   const { ref, isVisible } = useScrollAnimation();
   const router = useRouter();
+  const [permission, setPermission] = useState<Permission>(null);
+  const [permissionName, setPermissionName] = useState<string | null>(initialPermission?.name || null);
+  
+  // Use initialPermissionId from server or fetch from client
+  const [userPermissionId, setUserPermissionId] = useState<number | null>(initialPermissionId);
+  
+  useEffect(() => {
+    // If we already have permission from server, use it
+    if (initialPermission) {
+      setPermissionName(initialPermission.name);
+      // Permission type doesn't include id/name, so we don't set it here
+      // We'll fetch the full permission data if needed
+    } else if (initialPermissionId) {
+      // If we only have permission_id, fetch permission details
+      fetch('/api/wallet/balance')
+        .then(res => res.json())
+        .then(data => {
+          if (data.permission) {
+            setPermission(data.permission);
+            setPermissionName(data.permission.name || null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    } else {
+      // Otherwise fetch both permission and permission_id
+      fetch('/api/wallet/balance')
+        .then(res => res.json())
+        .then(data => {
+          if (data.permission) {
+            setPermission(data.permission);
+            setPermissionName(data.permission.name || null);
+            const permId = data.permission_id || (data.permission as any)?.id;
+            if (permId) {
+              setUserPermissionId(Number(permId));
+            }
+          } else {
+            setPermission(null);
+            setPermissionName(null);
+            setUserPermissionId(null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    }
+  }, [initialPermissionId, initialPermission]);
+  
+  // คำนวณราคาหลังส่วนลดจากสิทธิ์
+  // ถ้ามี initialPermissionId แสดงว่า server ได้ส่งราคาที่ถูกต้องมาแล้ว (account.price ถูกอัปเดตแล้ว)
+  // ถ้าไม่มี initialPermissionId ให้ fetch custom price ใน client-side
+  const [customPrice, setCustomPrice] = useState<number | null>(null);
+  
+  useEffect(() => {
+    // ถ้ามี initialPermissionId แสดงว่า server ได้ส่งราคาที่ถูกต้องมาแล้ว ไม่ต้อง fetch อีก
+    if (initialPermissionId) {
+      setCustomPrice(null); // ใช้ account.price จาก server เลย
+      return;
+    }
+    
+    // ถ้าไม่มี initialPermissionId ให้ fetch custom price ใน client-side
+    if (userPermissionId && account.id) {
+      fetch(`/api/game-accounts/${account.id}?permission_id=${userPermissionId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data && data.data.price !== undefined) {
+            const fetchedPrice = Number(data.data.price);
+            const basePrice = Number(account.price);
+            // ถ้าราคาที่ fetch มาไม่เท่ากับราคาปกติ แสดงว่ามี custom price
+            if (fetchedPrice !== basePrice) {
+              setCustomPrice(fetchedPrice);
+            } else {
+              setCustomPrice(null);
+            }
+          } else {
+            setCustomPrice(null);
+          }
+        })
+        .catch(() => {
+          setCustomPrice(null);
+        });
+    } else {
+      setCustomPrice(null);
+    }
+  }, [account.id, userPermissionId, initialPermissionId, account.price]);
+
+  // ถ้ามี initialPermissionId แสดงว่า server ได้ส่งราคาที่ถูกต้องมาแล้ว (account.price ถูกอัปเดตแล้ว)
+  // ถ้าไม่มี initialPermissionId แต่มี customPrice ให้ใช้ customPrice
+  // ถ้าไม่มีทั้งคู่ ให้คำนวณส่วนลดตามปกติ
+  const serverPrice = Number(account.price); // ราคาจาก server (อาจถูกอัปเดตแล้วถ้ามี permission_id)
+  const productPermissionId = (account as any).permission_id || null;
+  
+  let finalPrice: number;
+  let hasPermissionDiscount = false;
+  let isCustomPriceFromServer = false;
+  
+  // ถ้ามี initialPermissionId แสดงว่า server ได้ส่งราคาที่ถูกต้องมาแล้ว
+  // ใช้ราคาจาก server เลย (account.price ถูกอัปเดตแล้ว)
+  const originalPriceForPermission = (account as any).original_price_for_permission;
+  if (initialPermissionId && customPrice === null) {
+    // ถ้ามี original_price_for_permission แสดงว่าเป็น custom price จาก server
+    if (originalPriceForPermission !== null && originalPriceForPermission !== undefined) {
+      finalPrice = serverPrice; // ราคา custom จาก server
+      hasPermissionDiscount = true;
+      isCustomPriceFromServer = true;
+    } else {
+      // ไม่มี custom price แต่มี permission ให้คำนวณส่วนลด
+      finalPrice = applyPermissionDiscount(serverPrice, permission, productPermissionId, userPermissionId);
+      hasPermissionDiscount = !!(permission && (productPermissionId === null || productPermissionId === userPermissionId) && finalPrice < serverPrice);
+    }
+  } else if (customPrice !== null) {
+    // มีราคาที่ fetch จาก client-side
+    finalPrice = customPrice;
+    hasPermissionDiscount = customPrice !== serverPrice;
+  } else {
+    // ไม่มีราคาเฉพาะ ให้คำนวณส่วนลดตามปกติ
+    finalPrice = applyPermissionDiscount(serverPrice, permission, productPermissionId, userPermissionId);
+    hasPermissionDiscount = !!(permission && (productPermissionId === null || productPermissionId === userPermissionId) && finalPrice < serverPrice);
+  }
   
   let discountPercent: number | null = null;
   let originalPrice: number | null = null;
@@ -53,10 +177,10 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
   return (
     <div
       ref={ref}
-      className={`group relative flex flex-col bg-black/50 backdrop-blur-sm border rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1 ${
+      className={`group relative flex flex-col bg-white border rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
         isOutOfStock 
-          ? 'border-purple-500/10 opacity-60 cursor-not-allowed' 
-          : 'border-purple-500/20 hover:border-purple-500/50'
+          ? 'border-gray-200 opacity-60 cursor-not-allowed' 
+          : 'border-gray-200 hover:border-red-400 hover:shadow-red-100'
       } ${
         isVisible 
           ? 'opacity-100 translate-y-0' 
@@ -78,12 +202,13 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
     >
       {/* Gradient Overlay on Hover */}
       {!isOutOfStock && (
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 via-purple-600/0 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-red-50/0 via-red-50/0 to-red-50/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       )}
+      
       {/* Badge ส่วนลด */}
       {!isOutOfStock && discountPercent !== null && discountPercent > 0 && (
         <div className="absolute top-2 right-2 z-20">
-          <Badge className="bg-gradient-to-r from-red-600 to-orange-500 text-[color:var(--text)] border-2 border-orange-300/50 shadow-lg shadow-red-500/50 text-xs font-bold px-3 py-1.5 animate-pulse">
+          <Badge className="bg-gradient-to-r from-red-600 to-orange-500 text-white border-0 shadow-lg text-xs font-bold px-3 py-1.5">
             🔥 ลด {discountPercent}%
           </Badge>
         </div>
@@ -92,11 +217,11 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
       {/* Badge สถานะ */}
       <div className="absolute top-2 left-2 z-20">
         {account.stock > 0 ? (
-          <Badge className="bg-green-600/90 text-[color:var(--text)] border-green-500/30 text-xs">
+          <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
             พร้อมจำหน่าย
           </Badge>
         ) : (
-          <Badge variant="destructive" className="text-xs">
+          <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 text-xs">
             ไม่พร้อมจำหน่าย
           </Badge>
         )}
@@ -106,7 +231,7 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
       <div className="relative block overflow-hidden">
         {isOutOfStock && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 rounded-t-xl">
-            <Badge variant="destructive" className="text-base font-semibold px-4 py-2">
+            <Badge variant="destructive" className="text-base font-semibold px-4 py-2 bg-red-600">
               สินค้าหมด
             </Badge>
           </div>
@@ -123,7 +248,7 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
             }`}
           />
         ) : (
-          <div className={`w-full aspect-square bg-gradient-to-br from-white/10 to-white/5 ${
+          <div className={`w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 ${
             isOutOfStock ? 'grayscale opacity-30' : ''
           }`} />
         )}
@@ -134,61 +259,96 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
         {/* ชื่อสินค้า */}
         <h3 className={`text-sm font-semibold line-clamp-2 mb-3 ${
           isOutOfStock 
-            ? 'text-white/60' 
-            : 'text-white group-hover:text-purple-300 transition-colors'
+            ? 'text-gray-400' 
+            : 'text-gray-900 group-hover:text-red-600 transition-colors'
         }`}>
           {account.title}
         </h3>
 
         {/* ราคา */}
         <div className={`mb-4 ${isOutOfStock ? 'opacity-50' : ''}`}>
-          {discountPercent !== null && discountPercent > 0 && originalPrice !== null ? (
+          {hasPermissionDiscount ? (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+                  {finalPrice.toFixed(0)} พอยต์
+                </span>
+                {(() => {
+                  // แสดงราคาเดิมที่ขีดฆ่า
+                  let priceToShow: number | null = null;
+                  if (isCustomPriceFromServer && originalPriceForPermission) {
+                    // ถ้าเป็น custom price จาก server ให้แสดง original_price_for_permission
+                    priceToShow = Number(originalPriceForPermission);
+                  } else if (customPrice !== null) {
+                    // ถ้าเป็น custom price จาก client ให้แสดง serverPrice
+                    priceToShow = serverPrice;
+                  } else if (originalPrice !== null) {
+                    // ถ้ามี originalPrice จาก discount ให้แสดง
+                    priceToShow = originalPrice;
+                  }
+                  
+                  return priceToShow && priceToShow !== finalPrice ? (
+                    <span className="text-sm text-gray-400 line-through">
+                      {Number(priceToShow).toFixed(0)} พอยต์
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              {(permission || initialPermission) && (
+                <span className="text-xs text-green-600 font-medium">
+                  {isCustomPriceFromServer || customPrice !== null 
+                    ? `ราคาสิทธิ์ ${permissionName || initialPermission?.name || 'สิทธิ์ส่วนลด'}` 
+                    : `ส่วนลดสิทธิ์: ${permissionName || initialPermission?.name || 'สิทธิ์ส่วนลด'}`}
+                </span>
+              )}
+            </div>
+          ) : discountPercent !== null && discountPercent > 0 && originalPrice !== null ? (
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
+              <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
                 {Number(account.price).toFixed(0)} พอยต์
               </span>
-              <span className="text-sm text-white/50 line-through">
+              <span className="text-sm text-gray-400 line-through">
                 {originalPrice.toFixed(0)} พอยต์
               </span>
             </div>
           ) : (
-            <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
+            <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
               {Number(account.price).toFixed(0)} พอยต์
             </span>
           )}
         </div>
 
         {/* Divider */}
-        <div className="h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent mb-4"></div>
+        <div className="h-[1px] bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-4"></div>
 
         {/* ปุ่มซื้อ */}
         {isOutOfStock ? (
           <Button
-            className="w-full bg-gray-600 text-gray-300 font-medium gap-2 cursor-not-allowed mb-2"
+            className="w-full bg-gray-200 text-gray-500 font-medium gap-2 cursor-not-allowed mb-2"
             disabled
           >
-            <ShoppingCart className="size-4" />
+            <ShoppingCart className="h-4 w-4" />
             ซื้อสินค้านี้
           </Button>
         ) : (
           <>
             <Button
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium gap-2 mb-2"
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium gap-2 mb-2"
               onClick={(e) => {
                 e.stopPropagation();
                 onQuickBuy(account);
               }}
             >
-              <ShoppingCart className="size-4" />
+              <ShoppingCart className="h-4 w-4" />
               ซื้อสินค้านี้
             </Button>
             <Link href={`/accounts/${account.id}`} className="block">
               <Button
                 variant="outline"
-                className="w-full border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white"
+                className="w-full border-red-400 hover:bg-gray-50 hover:border-red-500 !text-red-600 hover:!text-red-700"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Info className="size-4 mr-2" />
+                <Info className="h-4 w-4 mr-2" />
                 รายละเอียด
               </Button>
             </Link>
@@ -197,13 +357,12 @@ export default function AnimatedAccountCard({ account, index, onQuickBuy }: Prop
 
         {/* ข้อมูลสต็อก */}
         <div className={`flex items-center gap-1.5 text-xs mt-4 ${
-          isOutOfStock ? 'text-white/40' : 'text-white/60'
+          isOutOfStock ? 'text-gray-400' : 'text-gray-600'
         }`}>
-          <Package className="size-3.5" />
+          <Package className="h-3.5 w-3.5" />
           <span>เหลือทั้งหมด {account.stock} ชิ้น</span>
         </div>
       </div>
     </div>
   );
 }
-

@@ -158,7 +158,7 @@ export default function PopupContent() {
               />
               <p className="text-xs text-[color:var(--text)]/50">ใส่ URL รูปภาพสี่เหลี่ยมที่จะแสดงใน popup</p>
               {imageUrl && (
-                <div className="mt-3 rounded-lg border border-white/10 overflow-hidden bg-white/5">
+                <div className="mt-3 rounded-lg border border-border overflow-hidden bg-muted/50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imageUrl} alt="Preview" className="w-full h-auto max-h-64 object-contain" />
                 </div>
@@ -196,13 +196,13 @@ export default function PopupContent() {
         ) : (
           <div className="space-y-4">
             {popups.map((popup) => (
-              <div key={popup.id} className="p-4 rounded-lg border border-white/10 bg-white/5 space-y-3">
+              <div key={popup.id} className="p-4 rounded-lg border border-border bg-muted/50 space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="text-sm text-[color:var(--text)]/50 mb-2">
                       สร้างเมื่อ: {new Date(popup.created_at).toLocaleString('th-TH')}
                     </div>
-                    <div className="rounded-lg border border-white/10 overflow-hidden bg-white/5 max-w-md">
+                    <div className="rounded-lg border border-border overflow-hidden bg-muted/50 max-w-md">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={popup.image_url} alt="Popup" className="w-full h-auto max-h-48 object-contain" />
                     </div>

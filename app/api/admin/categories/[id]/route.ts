@@ -8,6 +8,7 @@ const updateCategorySchema = z.object({
   name: z.string().min(1).max(100).optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9_-]+$/i).optional(),
   is_published: z.boolean().optional(),
+  show_on_homepage: z.boolean().optional(),
 });
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
@@ -23,6 +24,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (parsed.name !== undefined) updateData.name = parsed.name.trim();
     if (parsed.slug !== undefined) updateData.slug = parsed.slug.trim().toLowerCase();
     if (parsed.is_published !== undefined) updateData.is_published = parsed.is_published;
+    if (parsed.show_on_homepage !== undefined) updateData.show_on_homepage = parsed.show_on_homepage;
 
     const { data, error } = await sb
       .from('categories')

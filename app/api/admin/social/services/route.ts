@@ -9,7 +9,7 @@ export async function GET() {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('social_services')
-    .select('id, provider_service_id, name, display_name, type, category_id, rate_usd, base_rate_thb, min_quantity, max_quantity, refill, cancel, is_published, markup_percent, markup_fixed, exchange_rate, metadata, social_categories(id, name, slug)')
+    .select('id, provider_id, provider_service_id, name, display_name, type, category_id, rate_usd, base_rate_thb, min_quantity, max_quantity, refill, cancel, is_published, markup_percent, markup_fixed, exchange_rate, metadata, social_categories(id, name, slug), social_providers(id, name)')
     .order('name');
 
   if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });

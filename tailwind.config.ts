@@ -9,18 +9,18 @@ const config: Config = {
     extend: {
       colors: {
         bg: {
-          DEFAULT: '#0b0b0c',
-          light: '#f5f6f7'
+          DEFAULT: '#000000',
+          light: '#1a1a1a'
         },
         card: {
-          DEFAULT: '#121214',
-          light: '#ffffff'
+          DEFAULT: '#0a0a0a',
+          light: '#1a1a1a'
         },
         text: {
-          DEFAULT: '#e7e7ea',
-          light: '#0e0f10'
+          DEFAULT: '#ffffff',
+          light: '#ffffff'
         },
-        accent: '#7c3aed'
+        accent: '#dc2626'
       },
       spacing: {
         compact: '0.625rem' // 10px

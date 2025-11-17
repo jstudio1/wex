@@ -34,7 +34,7 @@ export function AlertDialogContent({ className, children }: HTMLAttributes<HTMLD
     <div className="fixed inset-0 z-[70]">
       <div className="absolute inset-0 bg-black/60" onClick={() => ctx.setOpen(false)} />
       <div 
-        className={clsx('absolute left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-white/10 bg-[color:var(--bg)] p-4 shadow-xl z-[75]', className)}
+        className={clsx('absolute left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-4 shadow-xl z-[75]', className)}
         onClick={(e) => {
           // Prevent closing dialog when clicking inside content
           e.stopPropagation();
@@ -57,10 +57,10 @@ export function AlertDialogFooter({ className, ...props }: HTMLAttributes<HTMLDi
   return <div className={clsx('mt-4 flex items-center justify-end gap-2', className)} {...props} />;
 }
 export function AlertDialogTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={clsx('text-base font-semibold', className)} {...props} />;
+  return <h3 className={clsx('text-base font-semibold text-white', className)} {...props} />;
 }
 export function AlertDialogDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={clsx('text-sm text-[color:var(--text)]/70', className)} {...props} />;
+  return <p className={clsx('text-sm text-gray-400', className)} {...props} />;
 }
 
 export function AlertDialogCancel(props: ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -69,7 +69,7 @@ export function AlertDialogCancel(props: ButtonHTMLAttributes<HTMLButtonElement>
     <button
       {...props}
       onClick={(e) => { props.onClick?.(e); ctx.setOpen(false); }}
-      className={clsx('inline-flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-sm hover:bg-white/10', props.className)}
+      className={clsx('inline-flex items-center justify-center rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800', props.className)}
     />
   );
 }

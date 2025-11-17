@@ -6,7 +6,7 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={clsx('rounded-lg border border-white/10 bg-black/40 backdrop-blur-sm', className)}
+      className={clsx('rounded-lg border border-border bg-card', className)}
       {...props}
     />
   )
@@ -28,7 +28,7 @@ export const CardTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHea
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={clsx('text-2xl font-semibold leading-none tracking-tight text-white', className)}
+      className={clsx('text-2xl font-semibold leading-none tracking-tight text-foreground', className)}
       {...props}
     />
   )
@@ -39,7 +39,7 @@ export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<H
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={clsx('text-sm text-white/60', className)}
+      className={clsx('text-sm text-muted-foreground', className)}
       {...props}
     />
   )

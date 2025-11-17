@@ -71,6 +71,7 @@ export default function GameAccountsContent() {
   const toast = useToast();
   const [accounts, setAccounts] = useState<GameAccount[]>([]);
   const [categories, setCategories] = useState<GameCategory[]>([]);
+  const [permissions, setPermissions] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState<'create' | 'edit' | null>(null);
   const [currentAccount, setCurrentAccount] = useState<GameAccount | null>(null);
@@ -86,11 +87,17 @@ export default function GameAccountsContent() {
     price: '',
     original_price: '',
     discount_percent: '',
+    permission_id: '',
     stock: '1',
     is_published: false
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [selectedAccountForPrice, setSelectedAccountForPrice] = useState<GameAccount | null>(null);
+  const [accountPrices, setAccountPrices] = useState<Array<{ id: number; permission_id: number; price: number; permission?: { id: number; name: string } }>>([]);
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [newPriceForm, setNewPriceForm] = useState({ permission_id: '', price: '' });
 
   useEffect(() => {
     fetchData();
@@ -99,9 +106,10 @@ export default function GameAccountsContent() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [accountsRes, categoriesRes] = await Promise.all([
+      const [accountsRes, categoriesRes, permissionsRes] = await Promise.all([
         fetch('/api/admin/game-accounts'),
-        fetch('/api/admin/game-categories')
+        fetch('/api/admin/game-categories'),
+        fetch('/api/admin/permissions')
       ]);
 
       if (!accountsRes.ok) throw new Error('ไม่สามารถโหลดไอดีเกมได้');
@@ -109,9 +117,11 @@ export default function GameAccountsContent() {
 
       const accountsJson = await accountsRes.json();
       const categoriesJson = await categoriesRes.json();
+      const permissionsJson = permissionsRes.ok ? await permissionsRes.json() : { data: [] };
 
       setAccounts(accountsJson.data || []);
       setCategories(categoriesJson.data || []);
+      setPermissions(permissionsJson.data || []);
     } catch (err) {
       toast.show({
         title: 'เกิดข้อผิดพลาด',
@@ -136,6 +146,7 @@ export default function GameAccountsContent() {
       price: '',
       original_price: '',
       discount_percent: '',
+      permission_id: '',
       stock: '1',
       is_published: false
     });
@@ -155,6 +166,7 @@ export default function GameAccountsContent() {
       price: account.price.toString(),
       original_price: account.original_price?.toString() || '',
       discount_percent: account.discount_percent?.toString() || '',
+      permission_id: (account as any).permission_id?.toString() || '',
       stock: account.stock.toString(),
       is_published: account.is_published
     });
@@ -164,6 +176,140 @@ export default function GameAccountsContent() {
   const closeDialog = () => {
     setOpenDialog(null);
     setCurrentAccount(null);
+  };
+
+  const openPriceDialog = async (account: GameAccount) => {
+    setSelectedAccountForPrice(account);
+    setPriceDialogOpen(true);
+    setNewPriceForm({ permission_id: '', price: '' });
+    await fetchAccountPrices(account.id);
+  };
+
+  const closePriceDialog = () => {
+    setPriceDialogOpen(false);
+    setSelectedAccountForPrice(null);
+    setAccountPrices([]);
+  };
+
+  const fetchAccountPrices = async (accountId: number) => {
+    setLoadingPrices(true);
+    try {
+      const res = await fetch(`/api/admin/game-accounts/${accountId}/prices`);
+      if (!res.ok) throw new Error('ไม่สามารถโหลดราคาได้');
+      const json = await res.json();
+      setAccountPrices(json.data || []);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
+
+  const handleAddPrice = async () => {
+    if (!selectedAccountForPrice) return;
+    
+    if (!newPriceForm.permission_id || !newPriceForm.price) {
+      toast.show({
+        title: 'กรุณากรอกข้อมูลให้ครบ',
+        description: 'กรุณาเลือกสิทธิ์และกรอกราคา',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const priceNum = parseFloat(newPriceForm.price);
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast.show({
+        title: 'ราคาไม่ถูกต้อง',
+        description: 'ราคาต้องเป็นตัวเลขที่มากกว่าหรือเท่ากับ 0',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/game-accounts/${selectedAccountForPrice.id}/prices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          permission_id: parseInt(newPriceForm.permission_id),
+          price: priceNum
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.error || 'ไม่สามารถเพิ่มราคาได้');
+      }
+
+      toast.show({ title: 'สำเร็จ', description: 'เพิ่มราคาเรียบร้อย' });
+      setNewPriceForm({ permission_id: '', price: '' });
+      await fetchAccountPrices(selectedAccountForPrice.id);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUpdatePrice = async (priceId: number, newPrice: number) => {
+    if (!selectedAccountForPrice) return;
+
+    try {
+      const res = await fetch(`/api/admin/game-accounts/${selectedAccountForPrice.id}/prices/${priceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price: newPrice })
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.error || 'ไม่สามารถอัปเดตราคาได้');
+      }
+
+      toast.show({ title: 'สำเร็จ', description: 'อัปเดตราคาเรียบร้อย' });
+      await fetchAccountPrices(selectedAccountForPrice.id);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeletePrice = async (priceId: number) => {
+    if (!selectedAccountForPrice) return;
+
+    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบราคานี้?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/game-accounts/${selectedAccountForPrice.id}/prices/${priceId}`, {
+        method: 'DELETE'
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.error || 'ไม่สามารถลบราคาได้');
+      }
+
+      toast.show({ title: 'สำเร็จ', description: 'ลบราคาเรียบร้อย' });
+      await fetchAccountPrices(selectedAccountForPrice.id);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,6 +414,7 @@ export default function GameAccountsContent() {
               price: priceNum,
               original_price: originalPriceNum,
               discount_percent: discountPercentNum,
+              permission_id: formData.permission_id ? parseInt(formData.permission_id) : null,
               stock: accountIds.length > 1 ? 1 : stockNum, // ถ้ามีหลายตัว ให้แต่ละตัวมี stock = 1
               is_published: formData.is_published
             })
@@ -302,6 +449,7 @@ export default function GameAccountsContent() {
             price: priceNum,
             original_price: originalPriceNum,
             discount_percent: discountPercentNum,
+            permission_id: formData.permission_id ? parseInt(formData.permission_id) : null,
             is_published: formData.is_published
           })
         });
@@ -448,13 +596,13 @@ export default function GameAccountsContent() {
         </div>
         <div className="card p-4 overflow-x-auto">
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-7 gap-2 pb-2 border-b border-gray-700/50">
+            <div className="grid grid-cols-7 gap-2 pb-2 border-b border-border">
               {Array.from({ length: 7 }).map((_, i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-7 gap-2 py-2 border-b border-gray-700/30">
+              <div key={i} className="grid grid-cols-7 gap-2 py-2 border-b border-border/50">
                 {Array.from({ length: 7 }).map((_, j) => (
                   <Skeleton key={j} className="h-6 w-full" />
                 ))}
@@ -471,27 +619,37 @@ export default function GameAccountsContent() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold mb-2">จัดการไอดีเกม</h2>
-          <p className="text-sm text-[color:var(--text)]/60">เพิ่ม แก้ไข และลบไอดีเกม</p>
+          <p className="text-sm text-gray-400">เพิ่ม แก้ไข และลบไอดีเกม</p>
         </div>
-        <Dialog open={openDialog !== null} onOpenChange={(open) => {
+        <Dialog
+          open={openDialog !== null}
+          onOpenChange={(open) => {
           if (!open) closeDialog();
-        }}>
-          <Button onClick={() => openCreateDialog()} className="gap-2">
+          }}
+        >
+          <Button
+            onClick={() => openCreateDialog()}
+            className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+          >
             <Plus className="size-4" />
             เพิ่มไอดีเกม
           </Button>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto bg-[#0a0a0a] text-white border-gray-800">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
-                <DialogTitle>{currentAccount ? 'แก้ไขไอดีเกม' : 'เพิ่มไอดีเกมใหม่'}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-white">
+                  {currentAccount ? 'แก้ไขไอดีเกม' : 'เพิ่มไอดีเกมใหม่'}
+                </DialogTitle>
+                <DialogDescription className="text-gray-400">
                   {currentAccount ? 'แก้ไขข้อมูลไอดีเกม' : 'เพิ่มไอดีเกมใหม่ (สามารถเพิ่มหลายตัวพร้อมกันโดยตั้งค่า Stock)'}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-3">
-                    <Label htmlFor="game_name">ชื่อเกม *</Label>
+                    <Label htmlFor="game_name" className="text-sm font-medium text-gray-300">
+                      ชื่อเกม *
+                    </Label>
                     <Input
                       id="game_name"
                       value={formData.game_name}
@@ -501,23 +659,29 @@ export default function GameAccountsContent() {
                     />
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="game_category_id">หมวดหมู่</Label>
+                    <Label htmlFor="game_category_id" className="text-sm font-medium text-gray-300">
+                      หมวดหมู่
+                    </Label>
                     <select
                       id="game_category_id"
                       value={formData.game_category_id}
                       onChange={(e) => setFormData(prev => ({ ...prev, game_category_id: e.target.value }))}
-                      className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-base text-[color:var(--text)] placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50"
                       style={{ fontSize: '16px' }}
                     >
-                      <option value="" className="bg-[color:var(--bg)] text-[color:var(--text)]">ไม่มีหมวดหมู่</option>
+                      <option value="" className="bg-[#1a1a1a] text-white">ไม่มีหมวดหมู่</option>
                       {categories.map(cat => (
-                        <option key={cat.id} value={cat.id} className="bg-[color:var(--bg)] text-[color:var(--text)]">{cat.name}</option>
+                        <option key={cat.id} value={cat.id} className="bg-[#1a1a1a] text-white">
+                          {cat.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
                 <div className="grid gap-3">
-                  <Label htmlFor="title">ชื่อ/หัวข้อไอดี *</Label>
+                    <Label htmlFor="title" className="text-sm font-medium text-gray-300">
+                    ชื่อ/หัวข้อไอดี *
+                  </Label>
                   <Input
                     id="title"
                     value={formData.title}
@@ -527,27 +691,34 @@ export default function GameAccountsContent() {
                   />
                 </div>
                 <div className="grid gap-3">
-                  <Label htmlFor="description">คำอธิบาย</Label>
+                    <Label htmlFor="description" className="text-sm font-medium text-gray-300">
+                    คำอธิบาย
+                  </Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="คำอธิบายไอดีเกม"
                     rows={3}
+                      className="border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-400"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-3">
-                    <Label htmlFor="cover_image_url">รูปภาพปก (URL)</Label>
-                    <Input
+                  <div className="grid gap-2">
+                    <Label htmlFor="cover_image_url" className="text-sm font-medium text-gray-300 mb-1">รูปภาพปก (URL)</Label>
+                    <Textarea
                       id="cover_image_url"
                       value={formData.cover_image_url}
                       onChange={(e) => setFormData(prev => ({ ...prev, cover_image_url: e.target.value }))}
                       placeholder="https://example.com/image.jpg"
+                      rows={3}
+                      className="border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-500 resize-none"
                     />
                   </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="additional_images">รูปภาพเพิ่มเติม (URL ต่อบรรทัด)</Label>
+                  <div className="grid gap-2">
+                    <Label htmlFor="additional_images" className="text-sm font-medium text-gray-300 mb-1">
+                      รูปภาพเพิ่มเติม (URL ต่อบรรทัด)
+                    </Label>
                     <Textarea
                       id="additional_images"
                       value={formData.additional_images}
@@ -559,7 +730,9 @@ export default function GameAccountsContent() {
                 </div>
                 <div className="grid gap-4">
                   <div className="grid gap-3">
-                    <Label htmlFor="accounts_text">Username / Password *</Label>
+                    <Label htmlFor="accounts_text" className="text-sm font-medium text-gray-300">
+                      Username / Password *
+                    </Label>
                     <Textarea
                       id="accounts_text"
                       value={formData.accounts_text || ''}
@@ -568,14 +741,16 @@ export default function GameAccountsContent() {
                       rows={6}
                       className="font-mono text-sm"
                     />
-                    <p className="text-xs text-[color:var(--text)]/60">
+                    <p className="text-xs text-gray-400">
                       กรอกรูปแบบ username:password ต่อบรรทัด (ถ้าจำนวนไอดีมากกว่า 1)
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-3">
-                    <Label htmlFor="price">ราคา (พอยต์) *</Label>
+                    <Label htmlFor="price" className="text-sm font-medium text-gray-300">
+                      ราคา (พอยต์) *
+                    </Label>
                     <input
                       id="price"
                       type="text"
@@ -590,12 +765,14 @@ export default function GameAccountsContent() {
                       }}
                       placeholder="0.00"
                       required
-                      className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-base text-[color:var(--text)] placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       style={{ fontSize: '16px' }}
                     />
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="stock">สต็อก *</Label>
+                    <Label htmlFor="stock" className="text-sm font-medium text-gray-300">
+                      สต็อก *
+                    </Label>
                     <input
                       id="stock"
                       type="text"
@@ -610,14 +787,18 @@ export default function GameAccountsContent() {
                       }}
                       placeholder="1"
                       required
-                      className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-base text-[color:var(--text)] placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <p className="text-xs text-[color:var(--text)]/60">จำนวนไอดีที่จะสร้าง (ควรตรงกับจำนวน username/password)</p>
                   </div>
                 </div>
+                <p className="text-xs text-gray-400 -mt-2">
+                  จำนวนไอดีที่จะสร้าง (ควรตรงกับจำนวน username/password)
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-3">
-                    <Label htmlFor="original_price">ราคาเดิม (พอยต์)</Label>
+                    <Label htmlFor="original_price" className="text-sm font-medium text-gray-300">
+                      ราคาเดิม (พอยต์)
+                    </Label>
                     <input
                       id="original_price"
                       type="text"
@@ -631,13 +812,15 @@ export default function GameAccountsContent() {
                         }
                       }}
                       placeholder="0.00"
-                      className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-base text-[color:var(--text)] placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       style={{ fontSize: '16px' }}
                     />
-                    <p className="text-xs text-[color:var(--text)]/60">สำหรับแสดงส่วนลด (ถ้าไม่กรอกจะไม่แสดง badge ส่วนลด)</p>
+                    <p className="text-xs text-gray-400">สำหรับแสดงส่วนลด (ถ้าไม่กรอกจะไม่แสดง badge ส่วนลด)</p>
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="discount_percent">เปอร์เซ็นต์ส่วนลด (%)</Label>
+                    <Label htmlFor="discount_percent" className="text-sm font-medium text-gray-300">
+                      เปอร์เซ็นต์ส่วนลด (%)
+                    </Label>
                     <input
                       id="discount_percent"
                       type="text"
@@ -654,11 +837,31 @@ export default function GameAccountsContent() {
                         }
                       }}
                       placeholder="0"
-                      className="w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-base text-[color:var(--text)] placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       style={{ fontSize: '16px' }}
                     />
-                    <p className="text-xs text-[color:var(--text)]/60">ถ้ากรอกจะคำนวณส่วนลดอัตโนมัติ (0-100)</p>
+                    <p className="text-xs text-gray-400">ถ้ากรอกจะคำนวณส่วนลดอัตโนมัติ (0-100)</p>
                   </div>
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="permission_id" className="text-sm font-medium text-gray-300">
+                    สิทธิ์ส่วนลด
+                  </Label>
+                  <select
+                    id="permission_id"
+                    value={formData.permission_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, permission_id: e.target.value }))}
+                    className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-base text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50"
+                    style={{ fontSize: '16px' }}
+                  >
+                    <option value="" className="bg-[#1a1a1a] text-white">ไม่มีสิทธิ์ส่วนลด</option>
+                    {permissions.map(perm => (
+                      <option key={perm.id} value={perm.id} className="bg-[#1a1a1a] text-white">
+                        {perm.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400">เลือกสิทธิ์ส่วนลดที่จะใช้กับสินค้านี้ (ถ้าเลือก ผู้ใช้ที่มีสิทธิ์นี้จะได้รับส่วนลด)</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -666,20 +869,29 @@ export default function GameAccountsContent() {
                     id="is_published"
                     checked={formData.is_published}
                     onChange={(e) => setFormData(prev => ({ ...prev, is_published: e.target.checked }))}
-                    className="h-4 w-4 rounded border border-white/20 bg-transparent text-accent focus:ring-2 focus:ring-accent-50 focus:ring-offset-0"
+                    className="h-4 w-4 rounded border border-gray-700 bg-[#1a1a1a] text-red-600 focus:ring-2 focus:ring-red-600/50 focus:ring-offset-0"
                   />
-                  <Label htmlFor="is_published" className="cursor-pointer">
+                  <Label htmlFor="is_published" className="cursor-pointer text-gray-300">
                     เผยแพร่
                   </Label>
                 </div>
               </div>
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" disabled={saving}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={saving}
+                    className="border-gray-700 text-gray-300 hover:bg-[#0a0a0a]"
+                  >
                     ยกเลิก
                   </Button>
                 </DialogClose>
-                <Button type="submit" disabled={saving} className="gap-2">
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                >
                   {saving ? (
                     <>
                       <SpinnerCustom className="size-4" />
@@ -696,6 +908,153 @@ export default function GameAccountsContent() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Price Management Dialog */}
+        <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-[#1a1a1a] text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white">
+                จัดการราคาตามสิทธิ์
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                {selectedAccountForPrice && (
+                  <div className="mt-2">
+                    <div className="font-semibold text-white">{selectedAccountForPrice.title}</div>
+                    <div className="text-sm text-gray-600">{selectedAccountForPrice.game_name}</div>
+                    <div className="text-sm text-gray-400 mt-1">ราคาปกติ: {Number(selectedAccountForPrice.price).toFixed(2)} พอยต์</div>
+                  </div>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Add New Price */}
+              <div className="border border-gray-800 rounded-lg p-4 bg-[#0a0a0a]">
+                <h3 className="font-semibold text-white mb-3">เพิ่มราคาใหม่</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="new_permission_id" className="text-sm font-medium text-gray-300">
+                      สิทธิ์
+                    </Label>
+                    <select
+                      id="new_permission_id"
+                      value={newPriceForm.permission_id}
+                      onChange={(e) => setNewPriceForm(prev => ({ ...prev, permission_id: e.target.value }))}
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-600/50"
+                    >
+                      <option value="" className="bg-[#1a1a1a] text-white">เลือกสิทธิ์</option>
+                      {permissions
+                        .filter(p => !accountPrices.find(ap => ap.permission_id === p.id))
+                        .map(perm => (
+                          <option key={perm.id} value={perm.id} className="bg-[#1a1a1a] text-white">
+                            {perm.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="new_price" className="text-sm font-medium text-gray-300">
+                      ราคา (พอยต์)
+                    </Label>
+                    <input
+                      id="new_price"
+                      type="text"
+                      inputMode="decimal"
+                      value={newPriceForm.price}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          setNewPriceForm(prev => ({ ...prev, price: val }));
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleAddPrice}
+                  disabled={!newPriceForm.permission_id || !newPriceForm.price || loadingPrices}
+                  className="mt-3 gap-2 bg-red-600 hover:bg-red-700 text-white"
+                  size="sm"
+                >
+                  <Plus className="size-4" />
+                  เพิ่มราคา
+                </Button>
+              </div>
+
+              {/* Existing Prices */}
+              <div>
+                <h3 className="font-semibold text-white mb-3">ราคาตามสิทธิ์</h3>
+                {loadingPrices ? (
+                  <div className="text-center py-8 text-gray-400">กำลังโหลด...</div>
+                ) : accountPrices.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 border border-gray-800 rounded-lg">
+                    ยังไม่มีราคาตามสิทธิ์
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {accountPrices.map((priceItem) => (
+                      <div
+                        key={priceItem.id}
+                        className="flex items-center justify-between p-3 border border-gray-800 rounded-lg bg-[#1a1a1a]"
+                      >
+                        <div className="flex-1">
+                          <div className="font-semibold text-white">
+                            {priceItem.permission?.name || `สิทธิ์ ID: ${priceItem.permission_id}`}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            ราคา: {Number(priceItem.price).toFixed(2)} พอยต์
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const newPrice = prompt('กรอกราคาใหม่:', priceItem.price.toString());
+                              if (newPrice !== null) {
+                                const priceNum = parseFloat(newPrice);
+                                if (!isNaN(priceNum) && priceNum >= 0) {
+                                  handleUpdatePrice(priceItem.id, priceNum);
+                                } else {
+                                  toast.show({
+                                    title: 'ราคาไม่ถูกต้อง',
+                                    description: 'กรุณากรอกตัวเลขที่มากกว่าหรือเท่ากับ 0',
+                                    variant: 'destructive'
+                                  });
+                                }
+                              }
+                            }}
+                            className="border-gray-700 text-gray-300 hover:bg-[#0a0a0a]"
+                          >
+                            <Edit className="size-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeletePrice(priceItem.id)}
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closePriceDialog}
+                className="border-gray-700 text-gray-300 hover:bg-[#0a0a0a]"
+              >
+                ปิด
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filter */}
@@ -704,11 +1063,14 @@ export default function GameAccountsContent() {
           placeholder="ค้นหาไอดีเกม..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
+          className="max-w-sm border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-500"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="justify-between gap-2 min-w-[180px]">
+            <Button
+              variant="outline"
+              className="justify-between gap-2 min-w-[180px] border-gray-700 text-gray-300 hover:bg-[#0a0a0a]"
+            >
               {selectedCategoryId === 'all' 
                 ? 'ทุกหมวดหมู่' 
                 : categories.find(c => c.id.toString() === selectedCategoryId)?.name || 'ทุกหมวดหมู่'}
@@ -738,24 +1100,24 @@ export default function GameAccountsContent() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="border-gray-700/50 hover:bg-white/5">
-              <TableHead className="w-[80px]">รูปภาพ</TableHead>
-              <TableHead>ชื่อเกม</TableHead>
-              <TableHead>ไอดี</TableHead>
-              <TableHead>หมวดหมู่</TableHead>
-              <TableHead className="w-[120px]">ราคา</TableHead>
-              <TableHead className="w-[100px]">สต็อก</TableHead>
-              <TableHead className="w-[100px]">สถานะ</TableHead>
-              <TableHead className="w-[150px] text-right">จัดการ</TableHead>
+            <TableRow className="border-gray-800 bg-gray-900/50 hover:bg-gray-900/50">
+              <TableHead className="w-[80px] text-white">รูปภาพ</TableHead>
+              <TableHead className="text-white">ชื่อเกม</TableHead>
+              <TableHead className="text-white">ไอดี</TableHead>
+              <TableHead className="text-white">หมวดหมู่</TableHead>
+              <TableHead className="w-[120px] text-white">ราคา</TableHead>
+              <TableHead className="w-[100px] text-white">สต็อก</TableHead>
+              <TableHead className="w-[100px] text-white">สถานะ</TableHead>
+              <TableHead className="w-[150px] text-right text-white">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAccounts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-12 text-[color:var(--text)]/60">
+                <TableCell colSpan={8} className="text-center py-12 text-gray-400">
                   ไม่พบไอดีเกม
                 </TableCell>
               </TableRow>
@@ -766,57 +1128,59 @@ export default function GameAccountsContent() {
                 const accountCount = accountIds.length;
                 
                 return (
-                  <TableRow key={account.id} className="border-white/10 hover:bg-white/5">
+                  <TableRow key={account.id} className="border-gray-800 hover:bg-gray-900/30">
                     <TableCell>
                       {account.cover_image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={account.cover_image_url}
                           alt={account.title}
-                          className="h-16 w-16 rounded object-cover"
+                          className="h-16 w-16 rounded object-cover border border-gray-800"
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded bg-white/10 flex items-center justify-center">
-                          <Image className="size-6 text-[color:var(--text)]/40" />
+                        <div className="h-16 w-16 rounded bg-gray-800 border border-gray-800 flex items-center justify-center">
+                          <Image className="size-6 text-gray-500" />
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="font-semibold text-[color:var(--text)]">{account.game_name}</div>
+                      <div className="font-semibold text-white">{account.game_name}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-[color:var(--text)]">{account.title}</div>
+                      <div className="font-medium text-white">{account.title}</div>
                       {account.description && (
-                        <div className="text-xs text-[color:var(--text)]/60 line-clamp-1 mt-1">
+                        <div className="text-xs text-gray-400 line-clamp-1 mt-1">
                           {account.description}
                         </div>
                       )}
                       {accountCount > 1 && (
-                        <div className="text-xs text-[color:var(--text)]/40 mt-1">
+                        <div className="text-xs text-gray-400 mt-1">
                           (มี {accountCount} ไอดี)
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       {account.game_categories ? (
-                        <Badge variant="outline" className="border-blue-500/30 text-blue-300 bg-blue-500/10">
+                        <Badge variant="outline" className="border-emerald-600 text-emerald-400 bg-emerald-900/30">
                           {account.game_categories.name}
                         </Badge>
                       ) : (
-                        <span className="text-sm text-[color:var(--text)]/40">-</span>
+                        <span className="text-sm text-gray-400">-</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="font-semibold text-[color:var(--text)]">{Number(account.price).toFixed(2)}</div>
-                      <div className="text-xs text-[color:var(--text)]/60">พอยต์</div>
+                      <div className="font-semibold text-white">{Number(account.price).toFixed(2)}</div>
+                      <div className="text-xs text-gray-400">พอยต์</div>
                     </TableCell>
                     <TableCell>
                       {totalStock > 0 ? (
-                        <Badge variant="outline" className="border-green-500/30 text-green-300 bg-green-500/10">
+                        <Badge variant="outline" className="border-emerald-600 text-emerald-400 bg-emerald-900/30">
                           {totalStock}
                         </Badge>
                       ) : (
-                        <Badge variant="destructive">ขายหมด</Badge>
+                        <Badge variant="destructive" className="border-red-800 bg-red-900/30 text-red-400">
+                          ขายหมด
+                        </Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -826,7 +1190,7 @@ export default function GameAccountsContent() {
                           checked={account.is_published}
                           onCheckedChange={() => handleTogglePublished(account)}
                         />
-                        <span className="text-xs text-[color:var(--text)]/60">
+                        <span className="text-xs text-gray-400">
                           {account.is_published ? 'เผยแพร่' : 'ไม่เผยแพร่'}
                         </span>
                       </div>
@@ -836,8 +1200,17 @@ export default function GameAccountsContent() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => openPriceDialog(account)}
+                          className="gap-2 border-emerald-600 text-emerald-400 hover:bg-emerald-900/30"
+                        >
+                          <Package className="size-4" />
+                          ราคา
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => openEditDialog(account)}
-                          className="gap-2"
+                          className="gap-2 border-gray-700 text-gray-300 hover:bg-gray-800"
                         >
                           <Edit className="size-4" />
                           แก้ไข
@@ -856,7 +1229,7 @@ export default function GameAccountsContent() {
                               handleDelete(account.id);
                             }
                           }}
-                          className="gap-2 text-red-300 hover:text-red-200"
+                          className="gap-2 border-red-200 text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="size-4" />
                           ลบ

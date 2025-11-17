@@ -10,6 +10,7 @@ const batchUpdateSchema = z.object({
     id: z.number(),
     name: z.string().min(1),
     image_url: z.string().nullable().optional(),
+    banner_url: z.string().nullable().optional(),
     icon_url: z.string().nullable().optional(),
     is_published: z.boolean(),
     badge_enabled: z.boolean(),
@@ -53,6 +54,7 @@ export async function PUT(req: Request) {
       const baseUpdateData = {
         name: updateData.name,
         image_url: updateData.image_url,
+        banner_url: product.banner_url?.trim() || null,
         is_published: updateData.is_published,
         badge_enabled: updateData.badge_enabled,
         badge_percent: updateData.badge_percent,

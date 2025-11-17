@@ -56,49 +56,70 @@ function ProductsBrowser({ products, categories, initialCategory, leftNode, flas
   }, []);
 
   return (
-    <div className="space-y-4">
-      {/* Top bar: search + divider + categories (like reference) */}
-      <div className="flex flex-wrap items-center gap-4">
-        {leftNode && <div className="shrink-0">{leftNode}</div>}
-        <div className="w-full max-w-md">
-          <ButtonGroup className="w-full">
-            <Input 
-              placeholder="Search..." 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              className="rounded-none border-0 border-r border-white/10 flex-1 focus:ring-0 focus:border-r focus:border-white/10" 
-            />
-            <Button 
-              variant="outline" 
-              aria-label="Search" 
-              className="rounded-none border-0 shrink-0"
-              type="button"
-            >
-              <SearchIcon className="size-4" />
-            </Button>
-          </ButtonGroup>
-        </div>
-        <div className="hidden h-6 w-px bg-white/10 md:block" />
-        {categories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <CategoryPill active={!selected} onClick={() => selectCategory(undefined)} icon={<ListIcon className="size-4" />} label="All" />
-            {categories.map((cat) => (
-              <CategoryPill key={cat.id} active={selected === cat.slug} onClick={() => selectCategory(cat.slug)} icon={resolveIcon(cat.slug)} label={cat.name} />
-            ))}
+    <div className="space-y-6">
+      {/* Search and Filter Bar */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          {leftNode && <div className="shrink-0">{leftNode}</div>}
+          
+          {/* Search Box */}
+          <div className="w-full max-w-md">
+            <ButtonGroup className="w-full overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm">
+              <Input 
+                placeholder="ค้นหาเกม..." 
+                value={query} 
+                onChange={(e) => setQuery(e.target.value)} 
+                className="rounded-none border-0 border-r border-gray-200 flex-1 focus:ring-0 focus:border-r focus:border-gray-200 text-gray-900 placeholder:text-gray-400" 
+              />
+              <Button 
+                variant="ghost" 
+                aria-label="Search" 
+                className="rounded-none border-0 shrink-0 hover:bg-gray-100"
+                type="button"
+              >
+                <SearchIcon className="h-5 w-5 text-gray-600" />
+              </Button>
+            </ButtonGroup>
           </div>
-        )}
+          
+          {/* Divider */}
+          <div className="hidden h-6 w-px bg-gray-300 md:block" />
+          
+          {/* Category Pills */}
+          {categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <CategoryPill 
+                active={!selected} 
+                onClick={() => selectCategory(undefined)} 
+                icon={<ListIcon className="h-4 w-4" />} 
+                label="ทั้งหมด" 
+              />
+              {categories.map((cat) => (
+                <CategoryPill 
+                  key={cat.id} 
+                  active={selected === cat.slug} 
+                  onClick={() => selectCategory(cat.slug)} 
+                  icon={resolveIcon(cat.slug)} 
+                  label={cat.name} 
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Products Grid */}
       <div className={hasInteracted ? 'animate-filter' : ''}>
         {isLoading ? (
           <PublicProductsSearch products={[]} controlledQuery={query} onQueryChange={setQuery} hideSearch flashStart={flashStart} flashEnd={flashEnd} isLoading={true} />
         ) : filtered.length === 0 ? (
-          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-8">
+          <Empty className="rounded-xl border border-gray-200 bg-gray-50 py-12">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <Package className="size-6" />
+                <Package className="h-12 w-12 text-gray-400" />
               </EmptyMedia>
-              <EmptyTitle>ไม่พบบริการตามหมวดหมู่</EmptyTitle>
-              <EmptyDescription>
+              <EmptyTitle className="text-gray-900">ไม่พบบริการตามหมวดหมู่</EmptyTitle>
+              <EmptyDescription className="text-gray-600">
                 ลองเลือกหมวดหมู่อื่นหรือดูรายการทั้งหมด
               </EmptyDescription>
             </EmptyHeader>
@@ -113,7 +134,14 @@ function ProductsBrowser({ products, categories, initialCategory, leftNode, flas
 
 const CategoryPill = memo(function CategoryPill({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <button onClick={onClick} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition ${active ? 'border-white/30 bg-white/10 text-[color:var(--text)]' : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/10'}`}>
+    <button 
+      onClick={onClick} 
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+        active 
+          ? 'border-[#dc2626] bg-[#dc2626] text-white shadow-sm' 
+          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+      }`}
+    >
       {icon}
       <span>{label}</span>
     </button>

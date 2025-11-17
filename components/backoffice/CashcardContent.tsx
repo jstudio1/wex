@@ -457,7 +457,7 @@ export default function CashcardContent() {
               <p className="text-xs text-[color:var(--text)]/50">กำไรคงที่ที่บวกเข้ากับราคาทุกสินค้า (บาท)</p>
             </div>
           </div>
-          <Button type="submit" disabled={savingGlobalMarkup} className="gap-2">
+          <Button type="submit" disabled={savingGlobalMarkup} className="gap-2 text-white">
             {savingGlobalMarkup ? (
               <>
                 <Spinner className="size-4" />
@@ -466,7 +466,7 @@ export default function CashcardContent() {
             ) : (
               <>
                 <Save className="size-4" />
-                บันทึกการตั้งค่ากำไร 
+                บันทึกการตั้งค่ากำไร
               </>
             )}
           </Button>
@@ -520,7 +520,7 @@ export default function CashcardContent() {
             <Button
               onClick={handleSaveSelected}
               disabled={savingProductIds.size > 0 || products.filter((prod) => prod.__dirty).length === 0}
-              className="gap-2"
+              className="gap-2 text-white"
             >
               {savingProductIds.size > 0 ? (
                 <>
@@ -552,13 +552,13 @@ export default function CashcardContent() {
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[calc(100vh-450px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}>
+        <div className="space-y-3 max-h-[calc(100vh-450px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}>
           {paginatedProducts.map((prod) => {
             const basePrice = currencyFormatter.format(prod.base_price || 0);
             const finalPrice = calculateFinalPrice(prod.base_price, prod.markup_percent, prod.markup_fixed);
             const finalPriceFormatted = currencyFormatter.format(finalPrice);
             return (
-              <div key={prod.id} className={`rounded-lg border p-4 space-y-4 transition-colors ${prod.__dirty ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-white/5'}`}>
+              <div key={prod.id} className={`rounded-lg border p-4 space-y-4 transition-colors ${prod.__dirty ? 'border-accent/50 bg-accent/5' : 'border-border bg-muted/50'}`}>
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -615,7 +615,7 @@ export default function CashcardContent() {
                         onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, markup_fixed: Number(e.target.value) }))}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-white/10 px-3">
+                    <div className="flex items-center justify-between rounded-lg border border-border px-3">
                       <div>
                         <Label className="text-xs text-[color:var(--text)]/60">เผยแพร่</Label>
                         <div className="text-sm font-medium">{prod.is_published ? 'เปิดขาย' : 'ซ่อนอยู่'}</div>
@@ -644,7 +644,7 @@ export default function CashcardContent() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border">
             <Button
               variant="outline"
               size="sm"
@@ -705,7 +705,7 @@ export default function CashcardContent() {
               </div>
               <div className="space-y-3">
                 {categories.map((category) => (
-                  <div key={category.id} className="space-y-3 p-4 rounded-lg border border-white/10">
+                  <div key={category.id} className="space-y-3 p-4 rounded-lg border border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-[color:var(--text)]">{category.display_name || category.category}</div>
@@ -750,7 +750,7 @@ export default function CashcardContent() {
                             <img 
                               src={category.image_url} 
                               alt="Preview" 
-                              className="w-20 h-20 object-cover rounded border border-white/10"
+                              className="w-20 h-20 object-cover rounded border border-border"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}

@@ -47,23 +47,23 @@ export function DialogContent({ className, children }: { className?: string; chi
   const content = (
     <div className="fixed inset-0 z-[9999] grid place-items-center p-4" style={{ isolation: 'isolate' }}>
       <div className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm" onClick={() => ctx.setOpen(false)} />
-      <div className={`relative z-10 w-[92vw] max-w-md rounded-lg border border-white/15 bg-[color:var(--bg)] p-4 shadow-xl ${className || ''}`}>{children}</div>
+      <div className={`relative z-10 w-[92vw] max-w-md rounded-2xl border border-gray-800 bg-[#0a0a0a] p-4 shadow-xl ${className || ''}`}>{children}</div>
     </div>
   );
 
   return createPortal(content, document.body);
 }
 
-export function DialogHeader({ children }: { children: React.ReactNode }) {
-  return <div className="mb-3 space-y-1">{children}</div>;
+export function DialogHeader({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn('mb-3 space-y-1', className)}>{children}</div>;
 }
 
 export function DialogTitle({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <h3 className={cn('text-lg font-semibold', className)}>{children}</h3>;
+  return <h3 className={cn('text-lg font-semibold text-white', className)}>{children}</h3>;
 }
 
 export function DialogDescription({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <p className={cn('text-sm text-white/70', className)}>{children}</p>;
+  return <p className={cn('text-sm text-gray-400', className)}>{children}</p>;
 }
 
 export function DialogFooter({ className, children }: { className?: string; children: React.ReactNode }) {

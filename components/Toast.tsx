@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type ToastItem = {
@@ -32,12 +33,38 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-16 z-[60] flex w-80 flex-col gap-2">
+      <div className="pointer-events-none fixed right-4 top-16 z-[60] flex w-full max-w-xs flex-col gap-3 sm:right-6 sm:top-20 sm:max-w-sm">
         {items.map((t) => (
-          <div key={t.id} className="pointer-events-auto animate-[slideIn_.3s_ease-out]">
-            <Alert variant={t.variant || 'default'}>
-              {t.title && <AlertTitle>{t.title}</AlertTitle>}
-              {t.description && <AlertDescription>{t.description}</AlertDescription>}
+          <div key={t.id} className="pointer-events-auto animate-[slideIn_.3s_ease-out] drop-shadow-xl">
+            <Alert
+              variant={t.variant || 'default'}
+              className={clsx(
+                'rounded-xl border-2 px-5 py-4 shadow-[0_20px_45px_rgba(15,23,42,0.12)] backdrop-blur-md transition-all',
+                t.variant === 'destructive'
+                  ? 'border-red-200 bg-gradient-to-br from-red-50 to-white text-red-900'
+                  : 'border-rose-100 bg-gradient-to-br from-white to-rose-50 text-slate-900'
+              )}
+            >
+              {t.title && (
+                <AlertTitle
+                  className={clsx(
+                    'text-base font-semibold',
+                    t.variant === 'destructive' ? 'text-red-900' : 'text-slate-900'
+                  )}
+                >
+                  {t.title}
+                </AlertTitle>
+              )}
+              {t.description && (
+                <AlertDescription
+                  className={clsx(
+                    'text-sm leading-relaxed',
+                    t.variant === 'destructive' ? 'text-red-700' : 'text-slate-600'
+                  )}
+                >
+                  {t.description}
+                </AlertDescription>
+              )}
             </Alert>
           </div>
         ))}

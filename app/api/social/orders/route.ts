@@ -6,8 +6,6 @@ import { createSocialOrderSchema } from '@/lib/validators';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
 
-const API_URL = 'https://socialtools24hr.com/api/v1';
-
 export async function GET(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -31,6 +29,10 @@ export async function GET(req: Request) {
         social_services (
           id,
           display_name,
+          name
+        ),
+        social_providers (
+          id,
           name
         )
       `)
@@ -65,9 +67,6 @@ export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const apiKey = await getApiKey('SOCIAL_API_KEY');
-  if (!apiKey) return NextResponse.json({ error: 'missing_social_api_key' }, { status: 500 });
-
   try {
     const body = await req.json();
     const parsed = createSocialOrderSchema.safeParse(body);
@@ -80,13 +79,39 @@ export async function POST(req: Request) {
     const sb = createServiceClient();
     const { data: service, error: serviceError } = await sb
       .from('social_services')
-      .select('*')
+      .select(`
+        *,
+        social_providers (
+          id,
+          name,
+          api_url,
+          api_key_name,
+          is_active
+        )
+      `)
       .eq('id', service_id)
       .eq('is_published', true)
       .maybeSingle();
 
     if (serviceError) return NextResponse.json({ error: 'db_error', detail: serviceError.message }, { status: 500 });
     if (!service) return NextResponse.json({ error: 'service_not_found' }, { status: 404 });
+
+    // ตรวจสอบ provider
+    const provider = service.social_providers;
+    if (!provider || Array.isArray(provider)) {
+      return NextResponse.json({ error: 'provider_not_found', detail: 'ไม่พบ provider สำหรับ service นี้' }, { status: 404 });
+    }
+    
+    if (!provider.is_active) {
+      return NextResponse.json({ error: 'provider_inactive', detail: 'Provider ถูกปิดใช้งาน' }, { status: 400 });
+    }
+
+    const apiKey = await getApiKey(provider.api_key_name);
+    if (!apiKey) {
+      return NextResponse.json({ error: 'missing_api_key', detail: `ไม่พบ API key สำหรับ ${provider.name}` }, { status: 500 });
+    }
+
+    const API_URL = provider.api_url;
 
     if (quantity < service.min_quantity || quantity > service.max_quantity) {
       return NextResponse.json({ error: 'quantity_out_of_range', detail: { min: service.min_quantity, max: service.max_quantity } }, { status: 400 });
@@ -146,8 +171,8 @@ export async function POST(req: Request) {
 
     const responseJson = await upstream.json();
 
-    // New API returns { status: "success", order: 32 }
-    if (!upstream.ok || responseJson.status !== 'success' || !responseJson.order) {
+    // socialpanel24.com API returns { order: 32 } or { error: "message" }
+    if (!upstream.ok || responseJson.error || !responseJson.order) {
       await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
       return NextResponse.json({ error: 'provider_error', detail: responseJson?.error || responseJson }, { status: 502 });
     }
@@ -158,6 +183,7 @@ export async function POST(req: Request) {
       external_order_id: externalId ? String(externalId) : null,
       user_id: user.id,
       social_service_id: service.id,
+      provider_id: provider.id,
       link,
       quantity,
       runs: runs ?? null,

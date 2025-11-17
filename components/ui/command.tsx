@@ -79,11 +79,11 @@ export function CommandList({ children, className }: { children: React.ReactNode
   );
 }
 
-export function CommandEmpty({ children }: { children: React.ReactNode }) {
+export function CommandEmpty({ children, className }: { children: React.ReactNode; className?: string }) {
   const { search, visibleItemsCount } = React.useContext(CommandContext);
   // แสดงเฉพาะเมื่อมีการค้นหา และไม่มีรายการใดที่ผ่านการกรอง
   if (search.trim() && visibleItemsCount === 0) {
-    return <div className="py-6 text-center text-sm text-[color:var(--text)]/50">{children}</div>;
+    return <div className={cn('py-6 text-center text-sm text-[color:var(--text)]/50', className)}>{children}</div>;
   }
   return null;
 }

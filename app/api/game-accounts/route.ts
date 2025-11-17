@@ -17,6 +17,7 @@ const createGameAccountSchema = z.object({
   price: z.number().min(0),
   original_price: z.number().min(0).optional().nullable(),
   discount_percent: z.number().int().min(0).max(100).optional().nullable(),
+  permission_id: z.number().int().positive().nullable().optional(),
   is_published: z.boolean().optional().default(false)
 });
 
@@ -26,11 +27,13 @@ export async function GET(req: Request) {
     const categoryId = searchParams.get('category_id');
     const search = searchParams.get('search');
     const categorySlug = searchParams.get('category_slug');
+    const permissionId = searchParams.get('permission_id');
 
     const sb = createServiceClient();
+    
     let query = sb
       .from('game_accounts')
-      .select('id, game_name, game_category_id, title, description, cover_image_url, additional_images, price, original_price, discount_percent, stock, sold_at, created_at')
+      .select('id, game_name, game_category_id, title, description, cover_image_url, additional_images, price, original_price, discount_percent, permission_id, stock, sold_at, created_at')
       .eq('is_published', true);
       // ไม่กรอง sold_at และ stock = 0 เพื่อให้แสดงสินค้าหมดเป็นสีเทา
 
@@ -63,6 +66,37 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
+    // ถ้ามี permission_id ให้ดึงราคาเฉพาะสำหรับ permission นี้
+    if (permissionId) {
+      const permId = parseInt(permissionId);
+      if (!isNaN(permId)) {
+        const accountIds = (allAccounts || []).map((acc: any) => acc.id);
+        if (accountIds.length > 0) {
+          const { data: customPrices } = await sb
+            .from('game_account_prices')
+            .select('game_account_id, price')
+            .in('game_account_id', accountIds)
+            .eq('permission_id', permId);
+          
+          const priceMap = new Map();
+          (customPrices || []).forEach((cp: any) => {
+            priceMap.set(cp.game_account_id, Number(cp.price));
+          });
+          
+          // อัปเดตราคาใน accounts และเก็บราคาเดิมไว้
+          (allAccounts || []).forEach((acc: any) => {
+            if (priceMap.has(acc.id)) {
+              // เก็บราคาเดิมไว้ใน original_price_for_permission
+              if (!acc.original_price_for_permission) {
+                acc.original_price_for_permission = acc.price;
+              }
+              acc.price = priceMap.get(acc.id);
+            }
+          });
+        }
+      }
+    }
+
     // Group by game_name and base title (without # suffix) only
     // รวม stock ของไอดีที่เหมือนกัน (ประเภทเดียวกัน) - ใช้ราคาและส่วนลดจากไอดีแรกที่เจอ
     const grouped = new Map<string, any>();
@@ -71,12 +105,22 @@ export async function GET(req: Request) {
       // ใช้แค่ game_name และ title เป็น key - รวม stock ทั้งหมด
       const key = `${acc.game_name}::${baseTitle}`;
       if (!grouped.has(key)) {
+        const accWithPrice = acc as any;
         grouped.set(key, {
           ...acc,
           title: baseTitle,
           stock: 0,
-          id: acc.id // เก็บ id แรกที่เจอ (ใช้สำหรับ detail page)
+          id: acc.id, // เก็บ id แรกที่เจอ (ใช้สำหรับ detail page)
+          original_price_for_permission: accWithPrice.original_price_for_permission || null
         });
+      } else {
+        // ถ้า account นี้มี custom price ให้ใช้ราคานี้แทน
+        const existing = grouped.get(key);
+        const accWithPrice = acc as any;
+        if (accWithPrice.original_price_for_permission && !existing.original_price_for_permission) {
+          existing.price = acc.price;
+          existing.original_price_for_permission = accWithPrice.original_price_for_permission;
+        }
       }
       // รวม stock เฉพาะไอดีที่ยังไม่ถูกขาย (sold_at == null)
       if (!acc.sold_at) {
@@ -141,6 +185,7 @@ export async function POST(req: Request) {
         price: validated.price,
         original_price: validated.original_price || null,
         discount_percent: validated.discount_percent || null,
+        permission_id: validated.permission_id || null,
         stock: 1, // Each account has stock of 1
         is_published: validated.is_published
       });

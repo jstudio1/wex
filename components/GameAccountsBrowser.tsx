@@ -36,6 +36,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { applyPermissionDiscount, type Permission } from '@/lib/pricing';
 
 type GameAccount = {
   id: number;
@@ -69,9 +70,11 @@ type Props = {
   initialCategory?: string;
   isLoading?: boolean;
   hideCategoryPills?: boolean;
+  initialPermissionId?: number | null;
+  initialPermission?: { id: number; name: string } | null;
 };
 
-function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading, hideCategoryPills = false }: Props) {
+function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading, hideCategoryPills = false, initialPermissionId = null, initialPermission = null }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +85,76 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
   const [quickBuyLoading, setQuickBuyLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
+  const [permission, setPermission] = useState<Permission>(null);
+  const [permissionName, setPermissionName] = useState<string | null>(initialPermission?.name || null);
+  const [quickBuyCustomPrice, setQuickBuyCustomPrice] = useState<number | null>(null);
   const itemsPerPage = 24;
+
+  // Use initialPermissionId from server or fetch from client
+  const [userPermissionId, setUserPermissionId] = useState<number | null>(initialPermissionId);
+  
+  useEffect(() => {
+    // If we already have permission from server, use it
+    if (initialPermission) {
+      setPermissionName(initialPermission.name);
+      // Permission type doesn't include id/name, so we don't set it here
+      // We'll fetch the full permission data if needed
+    } else if (initialPermissionId) {
+      // If we only have permission_id, fetch permission details
+      fetch('/api/wallet/balance')
+        .then(res => res.json())
+        .then(data => {
+          if (data.permission) {
+            setPermission(data.permission);
+            setPermissionName(data.permission.name || null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    } else {
+      // Otherwise fetch both permission and permission_id
+      fetch('/api/wallet/balance')
+        .then(res => res.json())
+        .then(data => {
+          if (data.permission) {
+            setPermission(data.permission);
+            setPermissionName(data.permission.name || null);
+            const permId = data.permission_id || (data.permission as any)?.id;
+            if (permId) {
+              setUserPermissionId(Number(permId));
+            }
+          } else {
+            setPermission(null);
+            setPermissionName(null);
+            setUserPermissionId(null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    }
+  }, [initialPermissionId, initialPermission]);
+
+  // Fetch custom price when quick buy account or permission changes
+  useEffect(() => {
+    if (userPermissionId && quickBuyAccount) {
+      fetch(`/api/game-accounts/${quickBuyAccount.id}?permission_id=${userPermissionId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data && data.data.price !== undefined) {
+            setQuickBuyCustomPrice(Number(data.data.price));
+          } else {
+            setQuickBuyCustomPrice(null);
+          }
+        })
+        .catch(() => {
+          setQuickBuyCustomPrice(null);
+        });
+    } else {
+      setQuickBuyCustomPrice(null);
+    }
+  }, [quickBuyAccount?.id, userPermissionId]);
 
   const filtered = useMemo(() => {
     let result = accounts;
@@ -146,7 +218,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
               <Skeleton className="h-10 w-10" />
             </ButtonGroup>
           </div>
-          <div className="hidden h-6 w-px bg-white/10 md:block" />
+          <div className="hidden h-6 w-px bg-gray-200 md:block" />
           <div className="flex flex-wrap items-center gap-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-8 w-24 rounded-lg" />
@@ -155,7 +227,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex flex-col bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+            <div key={i} className="flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <Skeleton className="w-full aspect-square" />
               <div className="p-4 space-y-3">
                 <Skeleton className="h-4 w-full" />
@@ -174,15 +246,15 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
     <div className="space-y-6">
       {/* Search Section */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <SearchIcon className="size-5 text-purple-400" />
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <SearchIcon className="h-5 w-5 text-red-600" />
           ค้นหาไอดีเกม
         </h2>
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
       </div>
 
-      {/* Top bar: search + divider + categories (like products page) */}
+      {/* Top bar: search + divider + categories */}
       <div className="flex flex-wrap items-center gap-4">
         <Popover open={searchOpen} onOpenChange={setSearchOpen}>
           <PopoverTrigger asChild>
@@ -190,24 +262,24 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
               variant="outline"
               role="combobox"
               aria-expanded={searchOpen}
-              className="w-full max-w-md justify-between border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white"
+              className="w-full max-w-md justify-between border-gray-300 hover:bg-gray-50 hover:border-red-400 text-gray-900"
             >
               {selectedAccount
                 ? accounts.find((account) => account.id === selectedAccount)?.title || 'ค้นหาไอดีเกม...'
                 : 'ค้นหาไอดีเกม...'}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-400" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full max-w-md p-0 bg-black/90 backdrop-blur-sm border-purple-500/20">
+          <PopoverContent className="w-full max-w-md p-0 bg-white border-gray-200">
             <Command className="bg-transparent">
               <CommandInput 
                 placeholder="ค้นหาไอดีเกม..." 
                 value={searchQuery}
                 onValueChange={setSearchQuery}
-                className="text-white"
+                className="text-gray-900"
               />
               <CommandList>
-                <CommandEmpty>ไม่พบไอดีเกมที่ค้นหา</CommandEmpty>
+                <CommandEmpty className="text-gray-600">ไม่พบไอดีเกมที่ค้นหา</CommandEmpty>
                 <CommandGroup>
                   {filtered.slice(0, 10).map((account) => (
                     <CommandItem
@@ -219,17 +291,17 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                         setSearchOpen(false);
                         router.push(`/accounts/${account.id}`);
                       }}
-                      className="text-white hover:bg-purple-500/10"
+                      className="text-gray-900 hover:bg-red-50"
                     >
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          selectedAccount === account.id ? "opacity-100 text-purple-400" : "opacity-0"
+                          selectedAccount === account.id ? "opacity-100 text-red-600" : "opacity-0"
                         )}
                       />
                       <div className="flex flex-col">
                         <span className="font-medium">{account.title}</span>
-                        <span className="text-xs text-white/60">{account.game_name}</span>
+                        <span className="text-xs text-gray-500">{account.game_name}</span>
                       </div>
                     </CommandItem>
                   ))}
@@ -238,7 +310,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
             </Command>
           </PopoverContent>
         </Popover>
-        <div className="hidden h-6 w-px bg-purple-500/30 md:block" />
+        <div className="hidden h-6 w-px bg-gray-300 md:block" />
         {!hideCategoryPills && categories.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <CategoryPill 
@@ -247,7 +319,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 setSelectedCategoryId('all');
                 router.push('/categories');
               }} 
-              icon={<ListIcon className="size-4" />} 
+              icon={<ListIcon className="h-4 w-4" />} 
               label="ทั้งหมด" 
             />
             {categories.map((category) => (
@@ -258,7 +330,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                   setSelectedCategoryId(category.id.toString());
                   router.push(`/categories/${category.slug}`);
                 }} 
-                icon={<ListIcon className="size-4" />} 
+                icon={<ListIcon className="h-4 w-4" />} 
                 label={category.name} 
               />
             ))}
@@ -268,27 +340,27 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
 
       {/* Accounts Grid Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Package className="size-5 text-purple-400" />
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Package className="h-5 w-5 text-red-600" />
           รายการไอดีเกม
         </h2>
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
       </div>
 
       {/* Accounts Grid */}
       {filtered.length === 0 ? (
-        <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-8">
+        <Empty className="py-12">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <Gamepad2 className="size-6" />
+              <Gamepad2 className="h-12 w-12 text-gray-400" />
             </EmptyMedia>
-            <EmptyTitle>
+            <EmptyTitle className="text-gray-900">
           {searchQuery || selectedCategoryId !== 'all' 
             ? 'ไม่พบไอดีเกมที่ค้นหา' 
             : 'ยังไม่มีไอดีเกม'}
             </EmptyTitle>
-            <EmptyDescription>
+            <EmptyDescription className="text-gray-600">
               {searchQuery || selectedCategoryId !== 'all'
                 ? 'ลองค้นหาด้วยคำอื่น หรือเลือกหมวดหมู่อื่น'
                 : 'ไอดีเกมจะแสดงที่นี่เมื่อมีการเพิ่มไอดีเกมใหม่'}
@@ -304,8 +376,9 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                   setSelectedCategoryId('all');
                   router.push('/categories');
                 }}
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
               >
-                <RefreshCcw className="size-4" />
+                <RefreshCcw className="h-4 w-4" />
                 ล้างการค้นหา
               </Button>
             </EmptyContent>
@@ -319,6 +392,8 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 key={account.id}
                 account={account}
                 index={index}
+                initialPermissionId={userPermissionId}
+                initialPermission={initialPermission}
                 onQuickBuy={(acc) => {
                   setQuickBuyAccount(acc);
                   setQuickBuyQuantity(1);
@@ -327,7 +402,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
             ))}
           </div>
 
-          {/* Quick Buy Dialog - Outside of card loop */}
+          {/* Quick Buy Dialog */}
           {quickBuyAccount && (
             <Dialog open={!!quickBuyAccount} onOpenChange={(open) => {
               if (!open) {
@@ -335,28 +410,28 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 setQuickBuyQuantity(1);
               }
             }}>
-              <DialogContent className="max-w-md bg-black/90 backdrop-blur-sm border-purple-500/20">
+              <DialogContent className="max-w-md bg-white">
                 <DialogHeader>
-                  <DialogTitle className="text-xl text-white">ซื้อไอดีเกม</DialogTitle>
+                  <DialogTitle className="text-xl text-gray-900">ซื้อไอดีเกม</DialogTitle>
                   <DialogDescription className="pt-4">
                     <div className="space-y-4">
                       {/* Product Info */}
-                      <div className="space-y-2 pb-3 border-b border-purple-500/20">
-                        <div className="font-semibold text-white">{quickBuyAccount.title}</div>
-                        <div className="text-sm text-white/60">{quickBuyAccount.game_name}</div>
+                      <div className="space-y-2 pb-3 border-b border-gray-200">
+                        <div className="font-semibold text-gray-900">{quickBuyAccount.title}</div>
+                        <div className="text-sm text-gray-600">{quickBuyAccount.game_name}</div>
                       </div>
 
                       {/* Quantity Selector */}
                       <div className="space-y-3">
-                        <Label htmlFor="quick-quantity" className="text-base">จำนวน</Label>
+                        <Label htmlFor="quick-quantity" className="text-base text-gray-900">จำนวน</Label>
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 border border-purple-500/30 rounded-lg overflow-hidden">
+                          <div className="flex items-center gap-2 border-2 border-gray-300 rounded-lg overflow-hidden">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setQuickBuyQuantity(Math.max(1, quickBuyQuantity - 1))}
                               disabled={quickBuyQuantity <= 1}
-                              className="rounded-none h-10 w-10 hover:bg-purple-500/10 text-white"
+                              className="rounded-none h-10 w-10 hover:bg-gray-100 text-[color:var(--text)] disabled:text-gray-300 disabled:opacity-100"
                             >
                               <span className="text-lg">−</span>
                             </Button>
@@ -378,14 +453,14 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                                   setQuickBuyQuantity(quickBuyAccount.stock);
                                 }
                               }}
-                              className="w-16 text-center text-base font-semibold border-0 focus-visible:ring-0 rounded-none h-10 bg-transparent text-white"
+                              className="w-16 text-center text-base font-semibold border-0 focus-visible:ring-0 rounded-none h-10 bg-gray-100 text-gray-900"
                             />
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setQuickBuyQuantity(Math.min(quickBuyAccount.stock, quickBuyQuantity + 1))}
                               disabled={quickBuyQuantity >= quickBuyAccount.stock}
-                              className="rounded-none h-10 w-10 hover:bg-purple-500/10 text-white"
+                              className="rounded-none h-10 w-10 hover:bg-gray-100 text-[color:var(--text)] disabled:text-gray-300 disabled:opacity-100"
                             >
                               <span className="text-lg">+</span>
                             </Button>
@@ -393,23 +468,58 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                         </div>
 
                         {/* Summary */}
-                        <div className="space-y-2 p-4 rounded-lg border border-purple-500/20 bg-purple-600/10">
+                        {(() => {
+                          const basePrice = quickBuyCustomPrice !== null ? quickBuyCustomPrice : Number(quickBuyAccount.price);
+                          const productPermissionId = (quickBuyAccount as any).permission_id || null;
+                          const userPermissionId = permission ? (permission as any).id : null;
+                          const discountedPrice = applyPermissionDiscount(basePrice, permission, productPermissionId, userPermissionId);
+                          const hasDiscount = (quickBuyCustomPrice !== null || (permission && (productPermissionId === null || productPermissionId === userPermissionId))) && discountedPrice < Number(quickBuyAccount.price);
+                          const totalPrice = discountedPrice * quickBuyQuantity;
+                          const totalBasePrice = Number(quickBuyAccount.price) * quickBuyQuantity;
+                          
+                          return (
+                        <div className="space-y-2 p-4 rounded-lg border border-red-200 bg-red-50">
                           <div className="flex justify-between text-sm">
-                            <span className="text-white/60">ราคาต่อชิ้น:</span>
-                            <span className="text-white">{Number(quickBuyAccount.price).toFixed(2)} พอยต์</span>
+                            <span className="text-gray-600">ราคาต่อชิ้น:</span>
+                                {hasDiscount ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-gray-900 font-semibold">{discountedPrice.toFixed(2)} พอยต์</span>
+                                    <span className="text-gray-400 line-through text-xs">{basePrice.toFixed(2)}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-900">{basePrice.toFixed(2)} พอยต์</span>
+                                )}
+                              </div>
+                              {hasDiscount && permission && (
+                                <div className="text-xs text-green-600 font-medium">
+                                  ส่วนลดสิทธิ์: {permissionName || 'สิทธิ์ส่วนลด'}
                           </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-purple-500/20">
-                            <span className="font-semibold text-white">ราคารวม:</span>
-                            <span className="text-xl font-bold text-purple-400">
-                              {(Number(quickBuyAccount.price) * quickBuyQuantity).toFixed(2)} พอยต์
+                              )}
+                          <div className="flex justify-between items-center pt-2 border-t border-red-200">
+                            <span className="font-semibold text-gray-900">ราคารวม:</span>
+                                {hasDiscount ? (
+                                  <div className="flex flex-col items-end gap-1">
+                            <span className="text-xl font-bold text-red-600">
+                                      {totalPrice.toFixed(2)} พอยต์
+                                    </span>
+                                    <span className="text-sm text-gray-400 line-through">
+                                      {totalBasePrice.toFixed(2)} พอยต์
                             </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xl font-bold text-red-600">
+                                    {totalPrice.toFixed(2)} พอยต์
+                                  </span>
+                                )}
                           </div>
                           {quickBuyAccount.stock > 0 && (
-                            <div className="text-xs text-white/40 pt-1">
+                            <div className="text-xs text-gray-600 pt-1">
                               สต็อกคงเหลือ: {quickBuyAccount.stock} ชิ้น
                             </div>
                           )}
                         </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </DialogDescription>
@@ -422,7 +532,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                       setQuickBuyQuantity(1);
                     }}
                     disabled={quickBuyLoading}
-                    className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white"
+                    className="border-gray-200 hover:bg-gray-50 text-gray-700"
                   >
                     ยกเลิก
                   </Button>
@@ -481,11 +591,11 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                       }
                     }}
                     disabled={quickBuyLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     {quickBuyLoading ? (
                       <>
-                        <Spinner className="mr-2 size-4" />
+                        <Spinner className="mr-2 h-4 w-4" />
                         กำลังซื้อ...
                       </>
                     ) : (
@@ -505,11 +615,11 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white disabled:opacity-50"
+                className="border-gray-200 hover:bg-gray-50 text-gray-700 disabled:opacity-50"
               >
                 ก่อนหน้า
               </Button>
-              <span className="text-sm text-white/70">
+              <span className="text-sm text-gray-600">
                 หน้า {currentPage} / {totalPages}
               </span>
               <Button
@@ -517,7 +627,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white disabled:opacity-50"
+                className="border-gray-200 hover:bg-gray-50 text-gray-700 disabled:opacity-50"
               >
                 ถัดไป
               </Button>
@@ -535,8 +645,8 @@ const CategoryPill = memo(function CategoryPill({ active, onClick, icon, label }
       onClick={onClick} 
       className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition ${
         active 
-          ? 'border-purple-500/50 bg-purple-600/20 text-white' 
-          : 'border-purple-500/30 text-white/70 hover:bg-purple-500/10 hover:border-purple-500/50'
+          ? 'border-red-500 bg-red-50 text-red-700 font-medium' 
+          : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-red-400'
       }`}
     >
       {icon}
@@ -546,4 +656,3 @@ const CategoryPill = memo(function CategoryPill({ active, onClick, icon, label }
 });
 
 export default memo(GameAccountsBrowser);
-

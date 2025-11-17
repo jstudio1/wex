@@ -249,7 +249,7 @@ export default function CouponsContent() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">จัดการคูปองส่วนลด</h2>
+        <h2 className="text-xl font-semibold text-white">จัดการคูปองส่วนลด</h2>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="flex items-center gap-2">
           <Plus className="size-4" />
           สร้างคูปองใหม่
@@ -259,7 +259,7 @@ export default function CouponsContent() {
       {showForm && (
         <div className="card p-6 space-y-4 border-2 border-accent/50">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{editingId ? 'แก้ไขคูปอง' : 'สร้างคูปองใหม่'}</h2>
+            <h2 className="text-lg font-semibold text-white">{editingId ? 'แก้ไขคูปอง' : 'สร้างคูปองใหม่'}</h2>
             <Button variant="ghost" size="icon" onClick={resetForm}>
               <X className="size-4" />
             </Button>
@@ -428,46 +428,46 @@ export default function CouponsContent() {
       <div className="card p-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700/50">
-              <th className="text-left p-2">โค้ด</th>
-              <th className="text-left p-2">ประเภท</th>
-              <th className="text-left p-2">ส่วนลด</th>
-              <th className="text-left p-2">ยอดซื้อขั้นต่ำ</th>
-              <th className="text-left p-2">วันที่เริ่ม</th>
-              <th className="text-left p-2">วันที่หมดอายุ</th>
-              <th className="text-left p-2">ใช้แล้ว</th>
-              <th className="text-left p-2">สถานะ</th>
-              <th className="text-right p-2">จัดการ</th>
+            <tr className="border-b border-gray-800 bg-gray-900/50">
+              <th className="text-left p-2 text-white">โค้ด</th>
+              <th className="text-left p-2 text-white">ประเภท</th>
+              <th className="text-left p-2 text-white">ส่วนลด</th>
+              <th className="text-left p-2 text-white">ยอดซื้อขั้นต่ำ</th>
+              <th className="text-left p-2 text-white">วันที่เริ่ม</th>
+              <th className="text-left p-2 text-white">วันที่หมดอายุ</th>
+              <th className="text-left p-2 text-white">ใช้แล้ว</th>
+              <th className="text-left p-2 text-white">สถานะ</th>
+              <th className="text-right p-2 text-white">จัดการ</th>
             </tr>
           </thead>
           <tbody>
             {coupons.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center p-8 text-[color:var(--text)]/60">
+                <td colSpan={9} className="text-center p-8 text-gray-400">
                   ยังไม่มีคูปอง
                 </td>
               </tr>
             ) : (
               coupons.map((coupon) => (
-                <tr key={coupon.id} className="border-b border-gray-700/30 hover:bg-white/5">
-                  <td className="p-2 font-medium">{coupon.code}</td>
-                  <td className="p-2">
+                <tr key={coupon.id} className="border-b border-gray-800 hover:bg-gray-900/30">
+                  <td className="p-2 font-medium text-white">{coupon.code}</td>
+                  <td className="p-2 text-gray-300">
                     {coupon.discount_type === 'percent' ? 'เปอร์เซ็นต์' : 'จำนวนเงิน'}
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 text-white">
                     {coupon.discount_type === 'percent'
                       ? `${Number(coupon.discount_value)}%`
                       : `${Number(coupon.discount_value).toFixed(2)} ฿`}
                     {coupon.min_discount && (
-                      <span className="text-xs text-[color:var(--text)]/60 block">ขั้นต่ำ {Number(coupon.min_discount).toFixed(2)} ฿</span>
+                      <span className="text-xs text-gray-400 block">ขั้นต่ำ {Number(coupon.min_discount).toFixed(2)} ฿</span>
                     )}
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 text-gray-300">
                     {coupon.min_purchase ? `${Number(coupon.min_purchase).toFixed(2)} ฿` : '-'}
                   </td>
-                  <td className="p-2 text-[color:var(--text)]/70">{formatDate(coupon.valid_from)}</td>
-                  <td className="p-2 text-[color:var(--text)]/70">{formatDate(coupon.valid_until)}</td>
-                  <td className="p-2">
+                  <td className="p-2 text-gray-400">{formatDate(coupon.valid_from)}</td>
+                  <td className="p-2 text-gray-400">{formatDate(coupon.valid_until)}</td>
+                  <td className="p-2 text-gray-300">
                     {coupon.used_count} / {coupon.usage_limit ?? '∞'}
                   </td>
                   <td className="p-2">

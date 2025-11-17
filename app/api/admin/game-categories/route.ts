@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 import { z } from 'zod';
@@ -33,8 +33,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Invalidate cached game-categories immediately so UI updates
-    try { revalidateTag('game-categories'); } catch {}
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     console.error('Game categories GET error:', err);
@@ -69,8 +67,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Invalidate cached game-categories immediately so UI updates
-    try { revalidateTag('game-categories'); } catch {}
+    // Revalidate categories page so UI updates
+    try { revalidatePath('/categories'); } catch {}
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -117,6 +115,8 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
 
+    // Revalidate categories page so UI updates
+    try { revalidatePath('/categories'); } catch {}
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -149,8 +149,8 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Invalidate cached game-categories immediately so UI updates
-    try { revalidateTag('game-categories'); } catch {}
+    // Revalidate categories page so UI updates
+    try { revalidatePath('/categories'); } catch {}
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Game categories DELETE error:', err);

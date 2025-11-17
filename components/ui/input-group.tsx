@@ -11,7 +11,7 @@ export const InputGroupInput = forwardRef<HTMLInputElement, InputHTMLAttributes<
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
-      className={clsx('w-full rounded-md border border-white/10 bg-transparent px-3 py-2 pr-10 text-base text-text placeholder:text-[color:var(--text)]/40 focus:outline-none focus:ring-2 focus:ring-accent-50', className)}
+      className={clsx('w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 pr-10 text-base text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600/50', className)}
       style={{ fontSize: '16px' }}
       {...props}
     />
@@ -24,7 +24,7 @@ export function InputGroupAddon({ className, align, ...props }: HTMLAttributes<H
   return (
     <div
       className={clsx(
-        'absolute inset-y-0 flex items-center gap-1 px-2 text-[color:var(--text)]/70',
+        'absolute inset-y-0 flex items-center gap-1 px-2 text-gray-400',
         isEnd ? 'right-0 justify-end' : 'left-0 justify-start',
         className
       )}

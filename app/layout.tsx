@@ -1,41 +1,39 @@
 import type { Metadata, Viewport } from 'next';
 import '../styles/globals.css';
-import { Kanit } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import dynamic from 'next/dynamic';
 const BackgroundParticles = dynamic(() => import('@/components/BackgroundParticles'), { ssr: false });
-
-const kanit = Kanit({ subsets: ['latin', 'thai'], weight: ['300', '400', '500', '600', '700'] });
+const ContactAdminButton = dynamic(() => import('@/components/ContactAdminButton'), { ssr: false });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  applicationName: 'wexplus',
+  applicationName: 'WeXPlus',
   title: {
-    default: 'wexplus - เติมเกม ราคาถูก เว็บตรง รวดเร็ว ปลอดภัย 24 ชั่วโมง',
-    template: '%s — wexplus',
+    default: 'WeXPlus - เติมเกม ราคาถูก เว็บตรง รวดเร็ว ปลอดภัย 24 ชั่วโมง',
+    template: '%s — WeXPlus',
   },
   description: 'เว็บเติมเกมอันดับ 1 ราคาถูกที่สุด เติมเร็ว ปลอดภัย บริการตลอด 24 ชั่วโมง รองรับทุกเกมดัง พร้อมโปรโมชั่นสุดคุ้ม',
   keywords: [
     'เติมเกม', 'บัตรเกม', 'ไอเท็มเกม', 'โค้ดเกม', 'ราคาถูก', 'โปร', 'ส่วนลด',
-    'ซื้อไอเท็ม', 'เพชร', 'คูปอง', 'เกมมือถือ', 'Game Topup', 'wexplus', 'ร้านเติมเกม'
+    'ซื้อไอเท็ม', 'เพชร', 'คูปอง', 'เกมมือถือ', 'Game Topup', 'WeXPlus', 'ร้านเติมเกม'
   ],
   alternates: {
     canonical: '/',
   },
   openGraph: {
     type: 'website',
-    siteName: 'wexplus',
-    title: 'wexplus - เติมเกม ราคาถูก เว็บตรง รวดเร็ว ปลอดภัย 24 ชั่วโมง',
+    siteName: 'WeXPlus',
+    title: 'WeXPlus - เติมเกม ราคาถูก เว็บตรง รวดเร็ว ปลอดภัย 24 ชั่วโมง',
     description: 'เว็บเติมเกมอันดับ 1 ราคาถูกที่สุด เติมเร็ว ปลอดภัย บริการตลอด 24 ชั่วโมง รองรับทุกเกมดัง พร้อมโปรโมชั่นสุดคุ้ม',
     locale: 'th_TH',
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@wexplus',
-    creator: '@wexplus',
+    site: '@WeXPlus',
+    creator: '@WeXPlus',
   },
   robots: {
     index: true,
@@ -60,13 +58,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <body className={`${kanit.className} antialiased`}>
+      <body className="antialiased">
         {/* background particles */}
         <BackgroundParticles />
         <Toaster>
           {children}
         </Toaster>
-        <SonnerToaster position="top-right" richColors className="top-20 md:top-24" />
+        <SonnerToaster position="top-right" richColors className="top-24" />
+        <ContactAdminButton />
       </body>
     </html>
   );

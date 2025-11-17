@@ -6,11 +6,14 @@ import { z } from 'zod';
 
 const updateItemSchema = z.object({
   id: z.number(),
+  name: z.string().min(1).optional(),
+  sku: z.string().min(1).optional(),
   is_recommended: z.boolean().optional(),
   price: z.number().optional(),
   original_price: z.number().optional().nullable(),
   markup_percent: z.number().optional(),
   markup_fixed: z.number().optional(),
+  icon_url: z.string().nullable().optional(),
 });
 
 const updateItemsSchema = z.object({
@@ -46,7 +49,7 @@ export async function GET(
     // Get items with recommended flag
     const { data: items, error: itemsError } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended')
+      .select('id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended, icon_url')
       .eq('product_id', productId)
       .order('price', { ascending: true });
 
@@ -113,11 +116,20 @@ export async function PUT(
       if (itemUpdate.original_price !== undefined) {
         updateData.original_price = itemUpdate.original_price;
       }
+      if (itemUpdate.name !== undefined) {
+        updateData.name = itemUpdate.name;
+      }
+      if (itemUpdate.sku !== undefined) {
+        updateData.sku = itemUpdate.sku;
+      }
       if (itemUpdate.markup_percent !== undefined) {
         updateData.markup_percent = itemUpdate.markup_percent;
       }
       if (itemUpdate.markup_fixed !== undefined) {
         updateData.markup_fixed = itemUpdate.markup_fixed;
+      }
+      if (itemUpdate.icon_url !== undefined) {
+        updateData.icon_url = itemUpdate.icon_url;
       }
 
       const { data, error } = await sb
@@ -136,7 +148,12 @@ export async function PUT(
     });
 
     const updatedItems = await Promise.all(updatePromises);
-    try { revalidateTag('products'); } catch {}
+    
+    // Revalidate cache tags
+    try { 
+      revalidateTag('products'); 
+      revalidateTag(`product-${productId}`);
+    } catch {}
 
     return NextResponse.json({
       ok: true,

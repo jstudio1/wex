@@ -29,6 +29,7 @@ interface Product {
   key: string;
   is_published: boolean;
   image_url: string | null;
+  banner_url: string | null;
   icon_url: string | null;
   badge_enabled: boolean;
   badge_percent: number | null;
@@ -45,6 +46,7 @@ interface Category {
 export default function ProductsContent() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,23 +64,34 @@ export default function ProductsContent() {
 
   const fetchData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
+      // เพิ่ม timeout 30 วินาที
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
       const [productsRes, categoriesRes, pcRes] = await Promise.all([
-        fetch(`/api/admin/products?filter=${filter}`),
-        fetch('/api/admin/categories'),
-        fetch('/api/admin/products/categories'),
+        fetch(`/api/admin/products?filter=${filter}`, { signal: controller.signal }),
+        fetch('/api/admin/categories', { signal: controller.signal }),
+        fetch('/api/admin/products/categories', { signal: controller.signal }),
       ]);
 
-      if (!productsRes.ok) throw new Error('ไม่สามารถโหลดบริการได้');
-      if (!categoriesRes.ok) throw new Error('ไม่สามารถโหลดหมวดหมู่ได้');
+      clearTimeout(timeoutId);
+
+      if (!productsRes.ok) {
+        const errorData = await productsRes.json().catch(() => ({}));
+        throw new Error(errorData.error || 'ไม่สามารถโหลดบริการได้');
+      }
+      if (!categoriesRes.ok) {
+        const errorData = await categoriesRes.json().catch(() => ({}));
+        throw new Error(errorData.error || 'ไม่สามารถโหลดหมวดหมู่ได้');
+      }
 
       const productsJson = await productsRes.json();
       const categoriesJson = await categoriesRes.json();
       const pcJson = pcRes.ok ? await pcRes.json() : { data: [] };
 
       setProducts(productsJson.data || []);
-
-      // ใช้หมวดหมู่ทั้งหมด (filter ใน server ถ้าต้องการ)
       setCategories(categoriesJson.data || []);
 
       // สร้าง map สำหรับ product_categories
@@ -91,32 +104,85 @@ export default function ProductsContent() {
         pcMap.set(pid, arr);
       }
       setProductCategories(pcMap);
+      setLoadError(null);
     } catch (err) {
+      console.error('Fetch data error:', err);
+      let errorMsg = 'ไม่สามารถโหลดข้อมูลได้';
+      
+      if ((err as Error).name === 'AbortError') {
+        errorMsg = 'การโหลดข้อมูลใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง หรือตรวจสอบการเชื่อมต่อ';
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+      
+      setLoadError(errorMsg);
       toast.show({
         title: 'เกิดข้อผิดพลาด',
-        description: (err as Error).message,
+        description: errorMsg,
         variant: 'destructive',
       });
+      
+      // ตั้งค่าเป็น empty arrays เพื่อให้ UI แสดงปกติ
+      setProducts([]);
+      setCategories([]);
+      setProductCategories(new Map());
     } finally {
       setLoading(false);
     }
   };
 
   const handleSync = async () => {
+    // แสดงคำเตือนก่อน Sync
+    const confirmed = confirm(
+      '⚠️ คำเตือน: การ Sync จะรีเซ็ตการตั้งค่ากำไรทั้งหมดเป็น 0\n\n' +
+      '- กำไรพื้นฐานทั้งเว็บ → 0%\n' +
+      '- กำไรต่อรายการสินค้า → 0%\n' +
+      '- ราคาที่แสดงจะเป็นราคาต้นทุนจากผู้ให้บริการ\n\n' +
+      'คุณแน่ใจหรือไม่ที่จะ Sync?'
+    );
+    
+    if (!confirmed) return;
+    
     setSyncing(true);
     try {
+      // เพิ่ม timeout 2 นาที (120,000 ms)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      
       const res = await fetch('/api/admin/products/sync', {
         method: 'POST',
+        signal: controller.signal,
       });
-      if (!res.ok) throw new Error('Sync ไม่สำเร็จ');
-      toast.show({ title: 'สำเร็จ', description: 'Sync เรียบร้อย' });
+      
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Sync ไม่สำเร็จ');
+      }
+      
+      const data = await res.json();
+      toast.show({ 
+        title: 'Sync สำเร็จ', 
+        description: data.counts ? 
+          `Sync เรียบร้อย: ${data.counts.products} สินค้า, ${data.counts.items} รายการ\nรีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว` :
+          'Sync เรียบร้อย และรีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว'
+      });
       await fetchData();
     } catch (err) {
-      toast.show({
-        title: 'เกิดข้อผิดพลาด',
-        description: (err as Error).message,
-        variant: 'destructive',
-      });
+      if ((err as Error).name === 'AbortError') {
+        toast.show({
+          title: 'Timeout',
+          description: 'การ Sync ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง',
+          variant: 'destructive',
+        });
+      } else {
+        toast.show({
+          title: 'เกิดข้อผิดพลาด',
+          description: (err as Error).message,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setSyncing(false);
     }
@@ -177,10 +243,14 @@ export default function ProductsContent() {
         const badgeApply = formData.get(`badge_apply_price_${pid}`) != null;
         const selected = formData.getAll(`cat_${pid}`).map((v) => Number(String(v)));
 
+        const bannerRaw = formData.get(`banner_${pid}`);
+        const banner = bannerRaw ? String(bannerRaw).trim() : '';
+
         const update = {
           id: pid,
           name,
           image_url: image || null,
+          banner_url: banner || null,
           icon_url: icon || null,
           is_published: publish,
           badge_enabled: badgeEnabled,
@@ -270,11 +340,31 @@ export default function ProductsContent() {
 
   const filterLabel = filter === 'published' ? 'ที่เผยแพร่' : filter === 'unpublished' ? 'ที่ไม่เผยแพร่' : 'ทั้งหมด';
 
+  // แสดง Error UI พร้อมปุ่ม Retry
+  if (loadError && !loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <h2 className="text-xl font-semibold">จัดการเติมเกม</h2>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold text-destructive">เกิดข้อผิดพลาด</h3>
+            <p className="text-muted-foreground max-w-md">{loadError}</p>
+          </div>
+          <Button onClick={() => fetchData()} variant="default">
+            ลองใหม่อีกครั้ง
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-xl font-semibold">จัดการเติมเกม</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             type="button" 
             variant="default" 
@@ -291,12 +381,12 @@ export default function ProductsContent() {
               'เผยแพร่ทุกเกม'
             )}
           </Button>
-          <form onSubmit={(e) => { e.preventDefault(); handleSync(); }}>
+          <form onSubmit={(e) => { e.preventDefault(); handleSync(); }} className="inline-block">
             <Button type="submit" variant="outline" size="sm" disabled={syncing}>
               {syncing ? (
                 <span className="inline-flex items-center gap-2">
                   <Spinner />
-                  กำลังซิงก์...
+                  กำลังซิงก์... (อาจใช้เวลา 1-2 นาที)
                 </span>
               ) : (
                 'Sync จากผู้ให้บริการ'
@@ -365,10 +455,10 @@ export default function ProductsContent() {
       )}
 
       <div className="flex justify-between items-center flex-wrap gap-2 -mt-2">
-        <Link href="/admin/pricing" className="px-3 py-2 text-xs rounded border border-white/10 hover:bg-white/5">
+        <Link href="/admin/pricing" className="px-3 py-2 text-xs rounded border border-border hover:bg-muted/50">
           ควบคุมราคา (ทั้งเว็บ)
         </Link>
-        <Button type="submit" form="products-form" disabled={saving}>
+        <Button type="submit" form="products-form" disabled={saving} className="text-white">
           {saving ? (
             <span className="inline-flex items-center gap-2">
               <Spinner />
@@ -384,7 +474,7 @@ export default function ProductsContent() {
       </div>
 
       <form id="products-form" onSubmit={handleSubmit} className="space-y-2">
-        <div className="max-h-[calc(100vh-400px)] overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}>
+        <div className="max-h-[calc(100vh-400px)] overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}>
           {filteredProducts.map((p) => {
           const catsForProduct = productCategories.get(p.id) || [];
           return (
@@ -397,36 +487,41 @@ export default function ProductsContent() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded object-cover shrink-0" />
                     ) : (
-                      <div className="h-10 w-10 rounded bg-white/10 shrink-0" />
+                      <div className="h-10 w-10 rounded bg-muted shrink-0" />
                     )}
                     <div className="min-w-0">
                       <input type="hidden" name="product_ids" value={String(p.id)} />
                       <div className="flex items-center gap-2">
                         <Input name={`name_${p.id}`} key={`name_${p.id}_${p.name}`} defaultValue={p.name} className="w-[240px]" />
                       </div>
-                      <div className="text-xs text-[color:var(--text)]/60 truncate mt-1">key: {p.key}</div>
+                      <div className="text-xs text-muted-foreground truncate mt-1">key: {p.key}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Input className="w-full" name={`image_${p.id}`} key={`image_${p.id}_${p.image_url || ''}`} defaultValue={p.image_url || ''} placeholder="รูปไอคอน (Product Icon)..." />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input className="w-full" name={`banner_${p.id}`} key={`banner_${p.id}_${p.banner_url || ''}`} defaultValue={p.banner_url || ''} placeholder="รูป Banner (สำหรับหน้า Detail)..." />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input className="w-full" name={`icon_${p.id}`} key={`icon_${p.id}_${p.icon_url || ''}`} defaultValue={p.icon_url || ''} placeholder="รูป Icon เหรียญ (แสดงในรายการราคา)..." />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 md:justify-end flex-1 md:flex-none min-w-[200px] md:min-w-[288px]">
-                      <Input className="w-full md:w-72" name={`image_${p.id}`} key={`image_${p.id}_${p.image_url || ''}`} defaultValue={p.image_url || ''} placeholder="วางลิงก์รูป..." />
-                    </div>
-                    <div className="flex items-center gap-2 md:justify-end flex-1 md:flex-none min-w-[200px] md:min-w-[288px]">
-                      <Input className="w-full md:w-72" name={`icon_${p.id}`} key={`icon_${p.id}_${p.icon_url || ''}`} defaultValue={p.icon_url || ''} placeholder="วางลิงก์ Icon (สำหรับแสดงในรายการราคา)..." />
-                    </div>
                     <button
                       onClick={() => {
                         setSelectedProductId(p.id);
                         setPricingDialogOpen(true);
                       }}
-                      className="inline-flex items-center justify-center rounded-md border border-white/20 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
+                      className="inline-flex items-center justify-center rounded-md border border-border bg-secondary/50 hover:bg-secondary px-3 py-2 text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
                     >
                       กำหนดราคา
                     </button>
                     <div className="flex items-center gap-2 shrink-0">
                       <span
-                        className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                          p.is_published ? 'bg-emerald-600/30 text-emerald-300' : 'bg-white/10 text-[color:var(--text)]/60'
+                        className={`text-xs px-2 py-1 rounded whitespace-nowrap font-medium ${
+                          p.is_published ? 'bg-emerald-500 text-white' : 'bg-secondary text-muted-foreground'
                         }`}
                       >
                         {p.is_published ? 'เผยแพร่' : 'ยังไม่เผยแพร่'}
@@ -444,11 +539,11 @@ export default function ProductsContent() {
                 {/* บรรทัดที่ 2: หมวดหมู่ */}
                 {categories && categories.length > 0 && (
                   <div className="card p-3 flex flex-wrap items-center gap-3">
-                    <div className="text-xs text-[color:var(--text)]/70 mr-2 shrink-0">หมวดหมู่:</div>
+                    <div className="text-xs text-muted-foreground mr-2 shrink-0">หมวดหมู่:</div>
                     {categories.map((c) => {
                       const checked = catsForProduct.includes(c.id);
                       return (
-                        <div key={c.id} className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-2 py-1">
+                        <div key={c.id} className="inline-flex items-center gap-2 rounded-lg border border-border px-2 py-1">
                           <Switch
                             id={`p${p.id}-c${c.id}`}
                             name={`cat_${p.id}`}
@@ -477,7 +572,7 @@ export default function ProductsContent() {
                       แสดง Badge โปรโมชั่น
                     </Label>
                     {p.badge_enabled && ((p.badge_text && p.badge_text.trim().length) || p.badge_percent != null) && (
-                      <span className="text-xs text-[color:var(--text)]/60">
+                      <span className="text-xs text-muted-foreground">
                         ตัวอย่าง: {p.badge_text || `${p.badge_percent}% OFF`}
                       </span>
                     )}
@@ -511,7 +606,7 @@ export default function ProductsContent() {
                       className="flex-1 min-w-[200px]"
                     />
                   </div>
-                  <p className="text-xs text-[color:var(--text)]/50">
+                  <p className="text-xs text-muted-foreground/70">
                     ถ้าปล่อยว่างข้อความ ระบบจะแสดงตามเปอร์เซ็นต์ เช่น 10% OFF
                   </p>
                 </div>

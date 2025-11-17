@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase';
+﻿import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -7,6 +7,7 @@ import AdminBackButton from '@/components/AdminBackButton';
 import { Input } from '@/components/ui/input';
 import { FormSubmit } from '@/components/ui/form-submit';
 import dynamic from 'next/dynamic';
+import { getGlobalMarkup } from '@/lib/pricing';
 const AdminSyncSubmit = dynamic(() => import('@/components/AdminSyncSubmit'));
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -37,6 +38,7 @@ async function batchUpdateAction(formData: FormData) {
   for (const pid of productIds) {
     const name = String(formData.get(`name_${pid}`) || '').trim();
     const image = String(formData.get(`image_${pid}`) || '').trim();
+    const banner = String(formData.get(`banner_${pid}`) || '').trim();
     const publish = formData.get(`publish_${pid}`) != null;
     const badgeEnabled = formData.get(`badge_enabled_${pid}`) != null;
     const badgePercentRaw = formData.get(`badge_percent_${pid}`);
@@ -55,6 +57,7 @@ async function batchUpdateAction(formData: FormData) {
       .update({
         name,
         image_url: image || null,
+        banner_url: banner || null,
         is_published: publish,
         badge_enabled: badgeEnabled,
         badge_percent: badgePercent,
@@ -77,9 +80,10 @@ export default async function AdminProductsManagePage({ searchParams }: { search
   const admin = await requireAdmin();
   if (!admin) return <main className="mx-auto max-w-6xl px-4 py-6">Unauthorized</main>;
 
+  const globalMarkup = await getGlobalMarkup();
   const sb = createServiceClient();
   const filter = typeof searchParams?.filter === 'string' ? searchParams.filter : 'all';
-  let q = sb.from('products').select('id, name, key, is_published, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price');
+  let q = sb.from('products').select('id, name, key, is_published, image_url, banner_url, badge_enabled, badge_percent, badge_text, badge_apply_price');
   if (filter === 'published') q = q.eq('is_published', true);
   if (filter === 'unpublished') q = q.eq('is_published', false);
   const { data: products } = await q.order('is_published', { ascending: false }).order('name');
@@ -101,7 +105,11 @@ export default async function AdminProductsManagePage({ searchParams }: { search
           <AdminBackButton />
           <h1 className="text-xl font-semibold">จัดการบริการ</h1>
         </div>
-        <form action={syncAction}><AdminSyncSubmit /></form>
+        <div className="flex items-center gap-3">
+          <form action={syncAction}>
+            <AdminSyncSubmit />
+          </form>
+        </div>
       </div>
       <div className="flex justify-between items-center -mt-2">
         <div />
@@ -136,8 +144,9 @@ export default async function AdminProductsManagePage({ searchParams }: { search
               </div>
             </div>
             <div className="grid w-full grid-cols-1 gap-2 md:w-auto md:grid-cols-[1fr_auto_auto] md:items-center">
-              <div className="flex items-center gap-2 md:justify-end">
-                <input className="input w-full md:w-72" name={`image_${p.id}`} placeholder="วางลิงก์รูป..." defaultValue={p.image_url || ''} />
+              <div className="flex flex-col gap-2">
+                <input className="input w-full md:w-72" name={`image_${p.id}`} placeholder="วางลิงก์รูป (Product Icon)..." defaultValue={p.image_url || ''} />
+                <input className="input w-full md:w-72" name={`banner_${p.id}`} placeholder="วางลิงก์รูป Banner..." defaultValue={(p as any).banner_url || ''} />
               </div>
               <a href={`/admin/products/${p.id}/pricing`} className="inline-flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-xs hover:bg-white/10 shrink-0">กำหนดราคา</a>
               <div className="flex items-center gap-2">
@@ -186,5 +195,3 @@ export default async function AdminProductsManagePage({ searchParams }: { search
     </main>
   );
 }
-
-

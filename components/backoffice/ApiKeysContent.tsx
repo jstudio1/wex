@@ -280,10 +280,10 @@ export default function ApiKeysContent() {
         )}
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="border-gray-700/50 hover:bg-white/5">
+            <TableRow className="border-border hover:bg-muted/50">
               <TableHead className="w-[250px]">
                 <div className="flex items-center gap-2">
                   <Key className="size-4 text-accent" />
@@ -326,7 +326,7 @@ export default function ApiKeysContent() {
                 const balanceInfo = balances[apiKey.key_name];
 
                 return (
-                  <TableRow key={apiKey.id} className="border-white/10 hover:bg-white/5">
+                  <TableRow key={apiKey.id} className="border-border hover:bg-muted/50">
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="grid size-8 place-items-center rounded-lg bg-accent/10">

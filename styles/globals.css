@@ -1,21 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #0b0b0c;
-  --card: #121214;
-  --text: #e7e7ea;
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 3%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 3%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 70%;
+  --accent: 142 76% 36%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 20%;
+  --input: 0 0% 20%;
+  --ring: 142 76% 36%;
+  --radius: 0.6rem;
+
+  --bg: #000000;
+  --card-elevated: #1a1a1a;
+  --card: #0a0a0a;
+  --text: #ffffff;
   
-  /* Sidebar variables */
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Sidebar variables - Dark Theme */
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: rgba(16, 185, 129, 0.45);
 }
 
 html {
@@ -31,7 +55,7 @@ body {
 }
 
 .card {
-  @apply bg-card text-text rounded-lg border border-white/5 shadow-sm;
+  @apply bg-[#0a0a0a] text-white rounded-lg border border-gray-800 shadow-sm;
 }
 
 .btn-primary {
@@ -39,7 +63,7 @@ body {
 }
 
 .input {
-  @apply w-full rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm text-text placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-accent/50;
+  @apply w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50;
 }
 
 .compact-grid {
@@ -208,32 +232,32 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.05) inset !important;
-  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0 30px #1a1a1a inset !important;
+  -webkit-text-fill-color: #ffffff !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Fix select and option contrast for dark theme */
 select.input {
   color: var(--text);
-  background-color: transparent;
+  background-color: #1a1a1a;
 }
 
 select.input option {
-  background-color: #121214;
-  color: #e7e7ea;
+  background-color: #1a1a1a;
+  color: #ffffff;
   padding: 8px;
 }
 
 select.input:focus option:checked {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: #10b981;
   color: #ffffff;
 }
 
 /* For Chrome/Edge/Safari */
 select.input option:hover,
 select.input option:focus {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: #2a2a2a;
   color: #ffffff;
 }
 
@@ -256,14 +280,14 @@ input[type="number"]::-webkit-outer-spin-button {
   position: absolute;
   right: 0;
   top: 0;
-  background: rgba(124, 58, 237, 0.1);
-  border-left: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 /* Custom arrow icons for spinner - using accent color */
 input[type="number"]::-webkit-inner-spin-button {
   background-image: 
-    linear-gradient(to top, rgba(124, 58, 237, 0.8) 30%, transparent 30%, transparent 70%, rgba(124, 58, 237, 0.8) 70%);
+    linear-gradient(to top, rgba(16, 185, 129, 0.8) 30%, transparent 30%, transparent 70%, rgba(16, 185, 129, 0.8) 70%);
   background-size: 50% 100%;
   background-repeat: no-repeat;
   background-position: center;
@@ -271,20 +295,20 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* Hover state */
 input[type="number"]::-webkit-inner-spin-button:hover {
-  background-color: rgba(124, 58, 237, 0.15);
-  border-left-color: rgba(124, 58, 237, 0.3);
+  background-color: rgba(16, 185, 129, 0.12);
+  border-left-color: rgba(16, 185, 129, 0.28);
 }
 
 /* Active state */
 input[type="number"]::-webkit-inner-spin-button:active {
-  background-color: rgba(124, 58, 237, 0.2);
-  border-left-color: rgba(124, 58, 237, 0.4);
+  background-color: rgba(16, 185, 129, 0.18);
+  border-left-color: rgba(16, 185, 129, 0.35);
 }
 
 /* Focus state */
 input[type="number"]:focus::-webkit-inner-spin-button {
-  background-color: rgba(124, 58, 237, 0.12);
-  border-left-color: rgba(124, 58, 237, 0.25);
+  background-color: rgba(16, 185, 129, 0.1);
+  border-left-color: rgba(16, 185, 129, 0.3);
 }
 
 /* Ensure placeholder uses the same font family as the rest of the site */
@@ -294,6 +318,40 @@ input[type="number"]:focus::-webkit-inner-spin-button {
 ::-moz-placeholder,
 :-ms-input-placeholder {
   font-family: inherit !important;
+}
+
+/* Force Noto Sans Thai for all elements */
+html,
+body,
+body * {
+  font-family: "Noto Sans Thai", sans-serif !important;
+}
+
+/* Sidebar background fix */
+@layer components {
+  .bg-sidebar {
+    background-color: #000000;
+  }
+  
+  .text-sidebar-foreground {
+    color: #ffffff;
+  }
+  
+  .bg-sidebar-accent {
+    background-color: #1a1a1a;
+  }
+  
+  .text-sidebar-accent-foreground {
+    color: #ffffff;
+  }
+  
+  .border-sidebar-border {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .ring-sidebar-ring {
+    --tw-ring-color: rgba(16, 185, 129, 0.45);
+  }
 }
 
 /* Announcement Bar Marquee Animation */
@@ -342,7 +400,7 @@ main {
   }
 }
 
-/* Custom Scrollbar for Backoffice */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -353,18 +411,45 @@ main {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(16, 185, 129, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(16, 185, 129, 0.5);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
+}
+
+/* Navbar Animations */
+@keyframes gradient-x {
+  0%, 100% {
+    transform: translateX(0%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 8s ease infinite;
+}
+
+.animate-shine {
+  animation: shine 3s ease-in-out infinite;
 }
 
 

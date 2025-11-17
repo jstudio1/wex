@@ -31,6 +31,10 @@ type SocialOrder = {
     display_name: string | null;
     name: string;
   } | null;
+  social_providers: {
+    id: number;
+    name: string;
+  } | null;
 };
 
 function translateStatus(status: string | null): string {
@@ -65,6 +69,7 @@ export default function SocialOrdersList() {
   const [orders, setOrders] = useState<SocialOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -117,11 +122,10 @@ export default function SocialOrdersList() {
       
       // 2. รอสักครู่ให้ orders state อัพเดทแล้วค่อยดึงสถานะ
       setTimeout(async () => {
-        // ใช้ closure เพื่อดึง orders ล่าสุด
         const res = await fetch('/api/social/orders');
         const json = await res.json();
         
-        if (json.ok && json.data && json.data.length > 0) {
+        if (json.ok && json.data && json.data.length > 0 && !hasAutoRefreshed) {
           const orderIds = json.data
             .filter((o: SocialOrder) => o.external_order_id)
             .map((o: SocialOrder) => o.external_order_id!);
@@ -135,6 +139,7 @@ export default function SocialOrdersList() {
               });
               // ดึง orders ใหม่หลังจากอัพเดทสถานะ
               await fetchOrders();
+              setHasAutoRefreshed(true);
             } catch (err) {
               console.error('Auto-refresh status failed', err);
             }
@@ -144,7 +149,7 @@ export default function SocialOrdersList() {
     };
     
     loadAndRefresh();
-  }, []); // Run once when component mounts (เมื่อ user เปิดดูประวัติ)
+  }, []); // Run once when component mounts
 
   if (loading) {
     return (

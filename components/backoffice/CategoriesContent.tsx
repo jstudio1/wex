@@ -13,6 +13,7 @@ interface Category {
   name: string;
   slug: string;
   is_published: boolean;
+  show_on_homepage: boolean;
 }
 
 export default function CategoriesContent() {
@@ -93,6 +94,27 @@ export default function CategoriesContent() {
       if (!res.ok) throw new Error('อัปเดตไม่สำเร็จ');
 
       toast.show({ title: 'สำเร็จ', description: 'อัปเดตเรียบร้อย' });
+      await fetchCategories();
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleHomepage = async (id: number, currentValue: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_on_homepage: !currentValue }),
+      });
+
+      if (!res.ok) throw new Error('อัปเดตไม่สำเร็จ');
+
+      toast.show({ title: 'สำเร็จ', description: 'อัปเดตการแสดงหน้าแรกเรียบร้อย' });
       await fetchCategories();
     } catch (err) {
       toast.show({
@@ -191,12 +213,12 @@ export default function CategoriesContent() {
               <div className="font-medium">{cat.name}</div>
               <div className="text-sm text-[color:var(--text)]/60">slug: {cat.slug}</div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span
                 className={`text-xs px-2 py-1 rounded ${
                   cat.is_published
-                    ? 'bg-emerald-600/30 text-emerald-300'
-                    : 'bg-white/10 text-[color:var(--text)]/60'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-secondary text-muted-foreground'
                 }`}
               >
                 {cat.is_published ? 'เผยแพร่' : 'ซ่อน'}
@@ -205,6 +227,22 @@ export default function CategoriesContent() {
                 size="sm"
                 variant="outline"
                 onClick={() => handleTogglePublish(cat.id, cat.is_published)}
+              >
+                สลับ
+              </Button>
+              <span
+                className={`text-xs px-2 py-1 rounded ${
+                  cat.show_on_homepage
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-secondary text-muted-foreground'
+                }`}
+              >
+                {cat.show_on_homepage ? 'แสดงหน้าแรก' : 'ไม่แสดง'}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleToggleHomepage(cat.id, cat.show_on_homepage)}
               >
                 สลับ
               </Button>

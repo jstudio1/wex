@@ -41,7 +41,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
         className="peer sr-only"
           {...props}
       />
-      <div className="relative h-6 w-12 rounded-full border border-white/15 bg-white/10 transition-colors peer-checked:bg-emerald-600/80 peer-checked:[&>span]:translate-x-6">
+      <div className="relative h-6 w-12 rounded-full border border-gray-700 bg-gray-800 transition-colors peer-checked:bg-emerald-600 peer-checked:border-emerald-600 peer-checked:[&>span]:translate-x-6">
         <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transform transition-transform" />
       </div>
     </label>

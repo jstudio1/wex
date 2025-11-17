@@ -18,7 +18,7 @@ export async function GET() {
     // ดึง items ของทุกบริการ
     const { data: items, error: ierr } = await sb
       .from('product_items')
-      .select('id, product_id, name, sku, price, original_price, markup_percent, markup_fixed');
+      .select('id, product_id, name, sku, price, original_price, markup_percent, markup_fixed, icon_url');
     if (ierr) return NextResponse.json({ error: 'db_error', detail: ierr.message }, { status: 500 });
 
     // ดึง inputs ของทุกบริการ
@@ -57,7 +57,8 @@ export async function GET() {
         name: it.name,
         sku: it.sku,
         price: computed.toFixed(2),
-        originalPrice: String(it.original_price || computed.toFixed(2))
+        originalPrice: String(it.original_price || computed.toFixed(2)),
+        icon_url: (it as any).icon_url || null
       });
       itemsByProduct.set(it.product_id as number, arr);
     }

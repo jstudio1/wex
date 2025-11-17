@@ -24,12 +24,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size === 'icon' && 'size-9',
       size === 'icon-sm' && 'size-8',
       size === 'icon-lg' && 'size-10',
-      variant === 'default' && 'bg-accent text-white hover:opacity-90',
-      variant === 'secondary' && 'bg-white/10 text-white hover:bg-white/15',
-      variant === 'outline' && 'border border-white/20 text-white hover:bg-white/10',
-      variant === 'ghost' && 'text-white hover:bg-white/10',
-      variant === 'destructive' && 'bg-red-500 text-white hover:opacity-90',
-      variant === 'link' && 'text-accent underline-offset-4 hover:underline',
+      variant === 'default' && 'bg-emerald-600 text-white hover:bg-emerald-700',
+      variant === 'secondary' && 'bg-gray-800 text-white hover:bg-gray-700',
+      variant === 'outline' && 'border border-gray-700 text-white hover:bg-gray-800',
+      variant === 'ghost' &&
+        'text-white hover:bg-gray-800',
+      variant === 'destructive' && 'bg-red-600 text-white hover:bg-red-700',
+      variant === 'link' && 'text-emerald-600 underline-offset-4 hover:underline',
       className
     );
 

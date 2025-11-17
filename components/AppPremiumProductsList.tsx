@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
-import { Search, ShoppingCart, Info, Package, RefreshCcw } from 'lucide-react';
+import { Search, ShoppingCart, Info, Package, RefreshCcw, Sparkles, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   Empty,
   EmptyContent,
@@ -28,7 +29,10 @@ type AppPremiumProduct = {
   base_price: number;
   stock: number;
   image_url: string | null;
+  icon_url: string | null;
   description: string | null;
+  app_category: string | null;
+  sub_category: string | null;
 };
 
 type Props = {
@@ -48,66 +52,121 @@ function ProductCard({
   onQuickBuy: (product: AppPremiumProduct) => void;
 }) {
   const { ref, isVisible } = useScrollAnimation();
-  const canBuy = product.stock === null || product.stock > 0;
+  const [mounted, setMounted] = useState(false);
+  // Use mounted state to prevent hydration mismatch
+  const canBuy = mounted ? (product.stock === null || product.stock > 0) : true;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div
       ref={ref}
-      className={`group relative bg-black/50 backdrop-blur-sm border border-purple-500/20 rounded-xl p-5 hover:border-purple-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1 ${
-        isVisible 
+      className={`group relative bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] border border-gray-800/50 rounded-2xl overflow-hidden hover:border-emerald-500/50 transition-all duration-500 flex flex-col h-full backdrop-blur-sm ${
+        mounted && isVisible 
           ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-8'
-      } ${!canBuy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          : mounted
+          ? 'opacity-0 translate-y-8'
+          : 'opacity-100 translate-y-0'
+      } ${!canBuy ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
       style={{
-        transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-        transitionDelay: isVisible ? `${index * 20}ms` : '0ms',
+        transition: 'opacity 0.4s ease-out, transform 0.4s ease-out, box-shadow 0.4s ease-out',
+        transitionDelay: mounted && isVisible ? `${index * 30}ms` : '0ms',
       }}
     >
-      {/* Gradient Overlay on Hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 via-purple-600/0 to-purple-600/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+      {/* Animated Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
       
-      <div className="relative space-y-4">
+      {/* Shine Effect on Hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+      </div>
+      
+      {/* Stock Badge */}
+      {mounted && product.stock !== null && product.stock > 0 && product.stock <= 5 && (
+        <div className="absolute top-3 right-3 z-20">
+          <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white shadow-lg backdrop-blur-sm border-0">
+            <Sparkles className="size-3 mr-1" />
+            เหลือน้อย
+          </Badge>
+        </div>
+      )}
+      
+      {!canBuy && (
+        <div className="absolute top-3 right-3 z-20">
+          <Badge variant="secondary" className="bg-gray-700/90 text-gray-300 backdrop-blur-sm border-0">
+            สินค้าหมด
+          </Badge>
+        </div>
+      )}
+      
+      <div className="relative flex flex-col h-full p-5 z-10">
+        {/* Image Section with Overlay */}
         {product.image_url && (
-          <div className="aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-purple-600/20 to-purple-500/10 border border-purple-500/30">
+          <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-4 group/image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src={product.image_url} 
               alt={product.display_name} 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              suppressHydrationWarning
             />
+            {/* Image Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            {/* Shimmer Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/image:translate-x-full transition-transform duration-1000"></div>
           </div>
         )}
         
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-purple-300 transition-colors">
-            {product.display_name}
-          </h3>
-          {product.description && (
-            <p className="text-sm text-white/60 mb-3 line-clamp-2">
-              {product.description}
-            </p>
-          )}
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-2xl font-bold text-white group-hover:text-purple-300 transition-colors">
+        {/* Content Section */}
+        <div className="flex flex-col flex-grow space-y-3 mb-4">
+          {/* Title */}
+          <h3
+            className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors duration-300 line-clamp-2 min-h-[3.5rem] leading-tight"
+            dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+            suppressHydrationWarning
+          />
+          
+          {/* Description */}
+          <p
+            className="text-sm text-gray-400/80 line-clamp-2 min-h-[2.5rem] leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: product.description || '&#x00A0;' }}
+            suppressHydrationWarning
+          />
+          
+          {/* Price and Stock Section */}
+          <div className="flex items-end justify-between gap-3 pt-2">
+            <div className="flex-1">
+              <div className="flex items-baseline gap-2">
+                <div className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors duration-300">
                 {currencyFormatter.format(product.price)}
+                </div>
+                <span className="text-xs text-gray-500">พอยต์</span>
               </div>
-              {product.stock !== null && (
-                <div className="text-xs text-white/50 mt-1">
-                  คงเหลือ: <span className="font-medium">{product.stock}</span> ชิ้น
+              {mounted && product.stock !== null && (
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+                  <TrendingUp className="size-3" />
+                  <span>คงเหลือ: <span className="font-semibold text-emerald-400">{product.stock}</span> ชิ้น</span>
+                </div>
+              )}
+              {!mounted && product.stock !== null && (
+                <div className="text-xs text-gray-500 mt-2 min-h-[1.25rem]">
+                  &nbsp;
                 </div>
               )}
             </div>
           </div>
         </div>
         
-        {/* Divider */}
-        <div className="h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+        {/* Divider with Gradient */}
+        <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent mb-4 flex-shrink-0"></div>
         
-        {/* Quick Buy Buttons */}
-        <div className="flex flex-col gap-2">
+        {/* Action Buttons */}
+        {mounted ? (
+          <div className="flex flex-col gap-2.5 mt-auto flex-shrink-0">
           <Button
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium gap-2"
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-semibold gap-2 shadow-lg hover:shadow-emerald-500/50 transition-all duration-300 h-11"
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -120,16 +179,22 @@ function ProductCard({
             <ShoppingCart className="size-4" />
             ซื้อสินค้านี้
           </Button>
-          <Link href={`/premium-app/${product.id}`} onClick={(e) => e.stopPropagation()}>
+            <Link href={`/premium-app/${product.id}`} onClick={(e) => e.stopPropagation()} className="w-full">
             <Button
               variant="outline"
-              className="w-full border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white"
+                className="w-full border-gray-700/50 hover:bg-gray-800/50 hover:border-emerald-500/50 text-white transition-all duration-300 h-11 backdrop-blur-sm"
             >
               <Info className="size-4 mr-2" />
               รายละเอียด
             </Button>
           </Link>
         </div>
+        ) : (
+          <div className="flex flex-col gap-2.5 mt-auto flex-shrink-0">
+            <div className="w-full h-11 bg-gray-800/50 rounded-lg animate-pulse"></div>
+            <div className="w-full h-11 bg-gray-800/50 rounded-lg animate-pulse"></div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -146,20 +211,57 @@ type Category = {
 
 export default function AppPremiumProductsList({ products }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubCategory, setFilterSubCategory] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [quickBuyProduct, setQuickBuyProduct] = useState<AppPremiumProduct | null>(null);
   const [quickBuyLoading, setQuickBuyLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const handledInvalidCategoryRef = useRef(false);
   const itemsPerPage = 25;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const currencyFormatter = new Intl.NumberFormat('th-TH', {
     style: 'currency',
     currency: 'THB'
   });
+
+  // Read category from URL query parameter after categories are loaded
+  useEffect(() => {
+    if (loadingCategories || !searchParams) return;
+    
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      // Verify that the category exists in the categories list
+      const categoryExists = categories.some(cat => cat.category === categoryParam);
+      if (categoryExists) {
+        setFilterCategory(categoryParam);
+        handledInvalidCategoryRef.current = false;
+      } else if (!handledInvalidCategoryRef.current) {
+        handledInvalidCategoryRef.current = true;
+        toast.show({
+          title: 'ไม่พบหมวดหมู่',
+          description: 'หมวดหมู่ที่คุณเลือกถูกปิดการเผยแพร่หรือไม่มีอยู่แล้ว',
+          variant: 'destructive'
+        });
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('category');
+        const queryString = params.toString();
+        router.replace(queryString ? `/premium-app?${queryString}` : '/premium-app', { scroll: false });
+        setFilterCategory('all');
+      }
+    } else {
+      handledInvalidCategoryRef.current = false;
+    }
+  }, [searchParams, categories, loadingCategories, router, toast]);
 
   // Fetch categories
   useEffect(() => {
@@ -169,8 +271,9 @@ export default function AppPremiumProductsList({ products }: Props) {
         const res = await fetch('/api/app-premium/categories?' + Date.now(), { 
           cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
+            'Expires': '0',
           }
         });
         if (res.ok) {
@@ -301,30 +404,58 @@ export default function AppPremiumProductsList({ products }: Props) {
     };
   }, []);
 
+  // Get sub categories for current main category with icon from products
+  const subCategoriesWithIcon = useMemo(() => {
+    if (filterCategory === 'all') return [];
+    
+    const categoryProducts = products.filter((product: any) => {
+      const productAppCategory = (product.app_category || '').toLowerCase();
+      return productAppCategory === filterCategory.toLowerCase();
+    });
+    
+    // Group by sub_category and get icon from first product in each group
+    const subCatMap = new Map<string, string | null>();
+    categoryProducts.forEach((product: any) => {
+      if (product.sub_category && product.sub_category.trim()) {
+        const subCat = product.sub_category.trim();
+        // Use icon_url from product if not already set
+        if (!subCatMap.has(subCat)) {
+          subCatMap.set(subCat, product.icon_url || null);
+        }
+      }
+    });
+    
+    return Array.from(subCatMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, iconUrl]) => ({
+        name,
+        iconUrl
+      }));
+  }, [products, filterCategory]);
+
+  // Reset sub category when main category changes
+  useEffect(() => {
+    setFilterSubCategory('all');
+  }, [filterCategory]);
+
   // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = products;
 
-    // Filter by category
+    // Filter by category - ใช้ app_category ตรงๆ
     if (filterCategory !== 'all') {
-      const selectedCategory = categories.find(cat => cat.category === filterCategory);
-      if (selectedCategory && selectedCategory.filter_keywords && selectedCategory.filter_keywords.length > 0) {
-        filtered = filtered.filter(product => {
-          const displayName = (product.display_name || '').toLowerCase();
-          const name = (product.name || '').toLowerCase();
-          
-          // Check if product name matches any keyword
-          return selectedCategory.filter_keywords.some(keyword => {
-            const keywordLower = keyword.toLowerCase();
-            return displayName.includes(keywordLower) || 
-                   name.includes(keywordLower) ||
-                   displayName.startsWith(keywordLower + ' ') ||
-                   displayName.endsWith(' ' + keywordLower) ||
-                   name.startsWith(keywordLower + ' ') ||
-                   name.endsWith(' ' + keywordLower);
+      filtered = filtered.filter((product: any) => {
+        const productAppCategory = (product.app_category || '').toLowerCase();
+        return productAppCategory === filterCategory.toLowerCase();
+      });
+    }
+
+    // Filter by sub category
+    if (filterSubCategory !== 'all') {
+      filtered = filtered.filter((product: any) => {
+        const productSubCategory = (product.sub_category || '').trim();
+        return productSubCategory === filterSubCategory;
           });
-        });
-      }
     }
 
     // Filter by search query
@@ -345,7 +476,7 @@ export default function AppPremiumProductsList({ products }: Props) {
     });
 
     return filtered;
-  }, [products, filterCategory, searchQuery, categories]);
+  }, [products, filterCategory, filterSubCategory, searchQuery, categories]);
 
   // Paginate products
   const paginatedProducts = useMemo(() => {
@@ -358,7 +489,7 @@ export default function AppPremiumProductsList({ products }: Props) {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterCategory, categories]);
+  }, [searchQuery, filterCategory, filterSubCategory, categories]);
 
   // Adjust current page if it exceeds total pages
   useEffect(() => {
@@ -380,75 +511,125 @@ export default function AppPremiumProductsList({ products }: Props) {
   }, [categories]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" suppressHydrationWarning>
       {/* Products Section Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-600 to-transparent"></div>
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <ShoppingCart className="size-5 text-purple-400" />
+          <ShoppingCart className="size-5 text-emerald-600" />
           รายการสินค้า
         </h2>
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-600 to-transparent"></div>
       </div>
 
       {/* Search Controls */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4" suppressHydrationWarning>
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
           <Input
             type="text"
             placeholder="ค้นหาสินค้า..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-black/50 border-purple-500/20 text-white placeholder:text-white/40 focus:border-purple-500/50"
+            className="pl-10 bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-600 hover:border-emerald-600"
           />
         </div>
       </div>
 
-      {/* Filter Buttons */}
+      {/* Filter Buttons - Main Categories */}
       {loadingCategories ? (
-        <div className="flex flex-wrap gap-2">
-          <div className="h-9 w-20 bg-white/10 rounded-md animate-pulse"></div>
-          <div className="h-9 w-24 bg-white/10 rounded-md animate-pulse"></div>
-          <div className="h-9 w-20 bg-white/10 rounded-md animate-pulse"></div>
+        <div className="flex flex-wrap gap-3">
+          <div className="h-11 w-24 bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="h-11 w-28 bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="h-11 w-24 bg-gray-800 rounded-lg animate-pulse"></div>
         </div>
       ) : filterButtons.length > 1 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3" suppressHydrationWarning>
           {filterButtons.map((button) => (
             <Button
               key={button.value}
               variant={filterCategory === button.value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterCategory(button.value)}
+              size="default"
+              onClick={() => {
+                setFilterCategory(button.value);
+                // Update URL without page reload
+                const params = new URLSearchParams(searchParams?.toString() || '');
+                if (button.value === 'all') {
+                  params.delete('category');
+                } else {
+                  params.set('category', button.value);
+                }
+                router.push(`/premium-app?${params.toString()}`, { scroll: false });
+              }}
               className={
                 filterCategory === button.value
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 text-base font-semibold shadow-md'
+                  : 'border-2 border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white px-6 py-2.5 text-base font-medium'
               }
             >
-              {button.iconUrl && (
-                <span className="mr-1.5 flex-shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={button.iconUrl} 
-                    alt={button.label}
-                    className="w-4 h-4 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </span>
-              )}
               {button.label}
             </Button>
           ))}
         </div>
       ) : (
-        <div className="text-sm text-white/50 italic">กำลังโหลดหมวดหมู่...</div>
+        <div className="text-sm text-gray-400 italic">กำลังโหลดหมวดหมู่...</div>
+      )}
+
+      {/* Sub Categories - Show when main category is selected */}
+      {filterCategory !== 'all' && subCategoriesWithIcon.length > 0 && (
+        <div className="space-y-2" suppressHydrationWarning>
+          <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
+            <Package className="size-4 text-emerald-600" />
+            หมวดหมู่ย่อย:
+          </div>
+          <div className="flex flex-wrap gap-1.5" suppressHydrationWarning>
+            <Button
+              variant={filterSubCategory === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterSubCategory('all')}
+              className={
+                filterSubCategory === 'all'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 h-7'
+                  : 'border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white text-xs px-3 py-1.5 h-7'
+              }
+            >
+              ทั้งหมด
+            </Button>
+            {subCategoriesWithIcon.map((subCat) => (
+              <Button
+                key={subCat.name}
+                variant={filterSubCategory === subCat.name ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterSubCategory(subCat.name)}
+                className={
+                  filterSubCategory === subCat.name
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 h-7'
+                    : 'border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white text-xs px-3 py-1.5 h-7'
+                }
+              >
+                {subCat.iconUrl && (
+                  <span className="mr-1.5 flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={subCat.iconUrl} 
+                      alt={subCat.name}
+                      className="w-3.5 h-3.5 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                      suppressHydrationWarning
+                    />
+                  </span>
+                )}
+                {subCat.name}
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Results count */}
-      <div className="text-sm text-white/70">
+      <div className="text-sm text-white" suppressHydrationWarning>
         {filterCategory === 'all' && !searchQuery 
           ? `พบสินค้า ${filteredProducts.length} รายการ`
           : `พบ ${filteredProducts.length} รายการ`}
@@ -481,7 +662,7 @@ export default function AppPremiumProductsList({ products }: Props) {
         </Empty>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" suppressHydrationWarning>
             {paginatedProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
@@ -500,38 +681,45 @@ export default function AppPremiumProductsList({ products }: Props) {
                 setQuickBuyProduct(null);
               }
             }}>
-              <DialogContent className="max-w-md bg-black/90 backdrop-blur-sm border-purple-500/20">
+              <DialogContent className="max-w-md bg-[#0a0a0a] border-gray-800">
                 <DialogHeader>
                   <DialogTitle className="text-xl text-white">ซื้อแอพพรีเมี่ยม</DialogTitle>
                   <DialogDescription className="pt-4">
                     <div className="space-y-4">
                       {/* Product Info */}
-                      <div className="space-y-2 pb-3 border-b border-purple-500/20">
-                        <div className="font-semibold text-white">{quickBuyProduct.display_name}</div>
+                      <div className="space-y-2 pb-3 border-b border-gray-800">
+                        <div 
+                          className="font-semibold text-white"
+                          dangerouslySetInnerHTML={{ __html: quickBuyProduct.display_name || '' }}
+                          suppressHydrationWarning
+                        />
                         {quickBuyProduct.description && (
-                          <div className="text-sm text-white/60 line-clamp-2">
-                            {quickBuyProduct.description}
-                          </div>
+                          <div 
+                            className="text-sm text-gray-400 max-h-96 overflow-y-auto"
+                            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}
+                            dangerouslySetInnerHTML={{ __html: quickBuyProduct.description }}
+                            suppressHydrationWarning
+                          />
                         )}
                       </div>
 
                       {/* Summary */}
-                      <div className="space-y-2 p-4 rounded-lg border border-purple-500/20 bg-purple-600/10">
-                        <div className="flex justify-between items-center pt-2 border-t border-purple-500/20">
+                      <div className="space-y-2 p-4 rounded-lg border border-emerald-800 bg-emerald-900/20">
+                        <div className="flex justify-between items-center pt-2 border-t border-emerald-800">
                           <span className="font-semibold text-white">ราคารวม:</span>
-                          <span className="text-xl font-bold text-purple-400">
+                          <span className="text-xl font-bold text-emerald-600">
                             {currencyFormatter.format(quickBuyProduct.price)}
                           </span>
                         </div>
                         {quickBuyProduct.stock !== null && quickBuyProduct.stock > 0 && (
-                          <div className="text-xs text-white/40 pt-1">
+                          <div className="text-xs text-gray-400 pt-1" suppressHydrationWarning>
                             สต็อกคงเหลือ: {quickBuyProduct.stock} ชิ้น
                           </div>
                         )}
                       </div>
                       
-                      <div className="mt-4 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                        <p className="text-sm text-purple-300">
+                      <div className="mt-4 p-3 rounded-lg bg-emerald-900/20 border border-emerald-800">
+                        <p className="text-sm text-emerald-400">
                           หลังจากซื้อ คุณจะได้รับข้อมูลสินค้าที่หน้าประวัติ
                         </p>
                       </div>
@@ -545,7 +733,7 @@ export default function AppPremiumProductsList({ products }: Props) {
                       setQuickBuyProduct(null);
                     }}
                     disabled={quickBuyLoading}
-                    className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white"
+                    className="border-gray-700 hover:bg-gray-800 text-gray-300"
                   >
                     ยกเลิก
                   </Button>
@@ -608,7 +796,7 @@ export default function AppPremiumProductsList({ products }: Props) {
                       }
                     }}
                     disabled={quickBuyLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {quickBuyLoading ? (
                       <>
@@ -626,17 +814,17 @@ export default function AppPremiumProductsList({ products }: Props) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
+            <div className="flex items-center justify-center gap-2 mt-8" suppressHydrationWarning>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white disabled:opacity-50"
+                className="border-gray-700 hover:bg-gray-800 text-white disabled:opacity-50"
               >
                 ก่อนหน้า
               </Button>
-              <span className="text-sm text-white/70">
+              <span className="text-sm text-white" suppressHydrationWarning>
                 หน้า {currentPage} / {totalPages}
               </span>
               <Button
@@ -644,7 +832,7 @@ export default function AppPremiumProductsList({ products }: Props) {
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 text-white disabled:opacity-50"
+                className="border-gray-700 hover:bg-gray-800 text-white disabled:opacity-50"
               >
                 ถัดไป
               </Button>

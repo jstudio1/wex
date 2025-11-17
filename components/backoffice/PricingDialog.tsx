@@ -203,7 +203,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
           </Empty>
         ) : (
           <div className="space-y-4">
-            <Card className="bg-black/40 backdrop-blur-sm border-white/10">
+            <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle>ตั้งค่าราคาแนะนำ</CardTitle>
                 <CardDescription>
@@ -211,11 +211,11 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-gray-700/50 hover:bg-white/5">
+                        <TableRow className="border-border hover:bg-muted/50">
                           <TableHead className="w-[100px]">สถานะ</TableHead>
                           <TableHead>แพ็กเกจ</TableHead>
                           <TableHead className="w-[120px]">SKU</TableHead>
@@ -228,7 +228,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                       </TableHeader>
                       <TableBody>
                         {items.map((item) => (
-                          <TableRow key={item.id} className="border-white/10 hover:bg-white/5">
+                          <TableRow key={item.id} className="border-border hover:bg-muted/50">
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Switch

@@ -138,7 +138,7 @@ export default function PremiumAppDetailPage() {
       <Button 
         variant="ghost" 
         onClick={() => router.back()} 
-        className="mb-6 gap-2 text-white/70 hover:text-white hover:bg-white/10"
+        className="mb-6 gap-2 text-gray-300 hover:text-white hover:bg-gray-800"
       >
         <ArrowLeft className="size-4" />
         กลับ
@@ -148,7 +148,7 @@ export default function PremiumAppDetailPage() {
         {/* Left Column - Image and Description */}
         <div className="space-y-6">
           {/* Image */}
-          <div className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-sm group">
+          <div className="relative aspect-square rounded-xl overflow-hidden border border-gray-800 bg-[#0a0a0a] shadow-sm group">
             {product.image_url ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -166,8 +166,8 @@ export default function PremiumAppDetailPage() {
                 )}
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/5 to-white/10">
-                <Package className="size-16 text-white/20" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+                <Package className="size-16 text-gray-600" />
               </div>
             )}
           </div>
@@ -178,13 +178,15 @@ export default function PremiumAppDetailPage() {
         <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           {/* Header Section */}
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-3">
-              {product.display_name}
-            </h1>
+            <h1
+              className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-3"
+              dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+              suppressHydrationWarning
+            />
             
             <div className="flex items-center gap-3 flex-wrap mb-4">
               {canBuy ? (
-                <Badge className="bg-green-600/90 text-white border-green-500/30">
+                <Badge className="bg-green-600 text-white border-green-500">
                   พร้อมจำหน่าย
                 </Badge>
               ) : (
@@ -195,18 +197,18 @@ export default function PremiumAppDetailPage() {
             </div>
           </div>
 
-          {/* Description - Scrollable Textarea */}
+          {/* Description - Scrollable Div */}
           {product.description && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Info className="size-4 text-white/60" />
-                <h3 className="text-sm font-semibold text-white/80">รายละเอียดสินค้า</h3>
+                <Info className="size-4 text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-300">รายละเอียดสินค้า</h3>
               </div>
-              <textarea
-                readOnly
-                value={product.description}
-                className="w-full h-48 p-4 rounded-lg border border-white/10 bg-black/40 backdrop-blur-sm text-white/80 text-sm leading-relaxed resize-none overflow-y-auto"
+              <div
+                className="w-full h-48 p-4 rounded-lg border border-gray-800 bg-[#0a0a0a] text-gray-300 text-sm leading-relaxed overflow-y-auto prose prose-sm max-w-none"
                 style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}
+                dangerouslySetInnerHTML={{ __html: product.description }}
+                suppressHydrationWarning
               />
             </div>
           )}
@@ -214,13 +216,13 @@ export default function PremiumAppDetailPage() {
           {/* Price Section */}
           <div className="space-y-3">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-accent">
+              <span className="text-3xl font-bold text-emerald-600">
                 {currencyFormatter.format(product.price)}
               </span>
             </div>
             
             {product.stock !== null && (
-              <div className="flex items-center gap-2 text-sm text-white/60">
+              <div className="flex items-center gap-2 text-sm text-gray-400" suppressHydrationWarning>
                 <Package className="size-4" />
                 <span>สต็อกคงเหลือ: <span className="text-white font-semibold">{product.stock}</span> ชิ้น</span>
               </div>
@@ -232,7 +234,7 @@ export default function PremiumAppDetailPage() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button 
-                  className="w-full bg-accent hover:opacity-90 shadow-lg shadow-accent/20" 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 text-white" 
                   size="default"
                   disabled={!canBuy || buying}
                 >
@@ -251,21 +253,25 @@ export default function PremiumAppDetailPage() {
                   )}
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="max-w-md">
+              <AlertDialogContent className="max-w-md bg-[#0a0a0a] border-gray-800">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-xl">ยืนยันการซื้อสินค้าแอพพรีเมี่ยม</AlertDialogTitle>
+                  <AlertDialogTitle className="text-xl text-white">ยืนยันการซื้อสินค้าแอพพรีเมี่ยม</AlertDialogTitle>
                   <AlertDialogDescription className="pt-4">
-                    <div className="space-y-3 text-white/80">
-                      <div className="flex justify-between py-2 border-b border-white/10">
-                        <span className="text-white/60">สินค้า:</span>
-                        <span className="font-medium">{product.display_name}</span>
+                    <div className="space-y-3 text-gray-300">
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">สินค้า:</span>
+                        <span 
+                          className="font-medium text-white"
+                          dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+                          suppressHydrationWarning
+                        />
                       </div>
-                      <div className="flex justify-between items-center py-3 pt-4 border-t border-white/20">
-                        <span className="text-lg font-semibold">ราคารวม:</span>
-                        <span className="text-2xl font-bold text-accent">{currencyFormatter.format(product.price)}</span>
+                      <div className="flex justify-between items-center py-3 pt-4 border-t border-gray-700">
+                        <span className="text-lg font-semibold text-white">ราคารวม:</span>
+                        <span className="text-2xl font-bold text-emerald-600">{currencyFormatter.format(product.price)}</span>
                       </div>
-                      <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                        <p className="text-sm text-blue-300">
+                      <div className="mt-4 p-3 rounded-lg bg-emerald-900/20 border border-emerald-800">
+                        <p className="text-sm text-emerald-400">
                           หลังจากซื้อ คุณจะได้รับข้อมูลสินค้าที่หน้าประวัติ
                         </p>
                       </div>
@@ -273,11 +279,11 @@ export default function PremiumAppDetailPage() {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-2">
-                  <AlertDialogCancel disabled={buying} className="mt-2">ยกเลิก</AlertDialogCancel>
+                  <AlertDialogCancel disabled={buying} className="mt-2 border-gray-700 hover:bg-gray-800 text-gray-300">ยกเลิก</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={handleBuy} 
                     disabled={buying || !canBuy}
-                    className="bg-accent hover:opacity-90"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {buying ? (
                       <>

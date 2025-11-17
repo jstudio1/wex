@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
 
@@ -26,7 +27,7 @@ export async function PATCH(req: Request) {
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { id, display_name, filter_keywords, is_published, display_order, icon_url } = body;
+  const { id, display_name, filter_keywords, is_published, display_order, icon_url, card_image_url } = body;
 
   if (!id || typeof id !== 'number') {
     return NextResponse.json({ error: 'Invalid category ID' }, { status: 400 });
@@ -49,6 +50,7 @@ export async function PATCH(req: Request) {
   if (is_published !== undefined) updateData.is_published = is_published;
   if (display_order !== undefined) updateData.display_order = display_order;
   if (icon_url !== undefined) updateData.icon_url = icon_url === '' || icon_url === null ? null : icon_url;
+  if (card_image_url !== undefined) updateData.card_image_url = card_image_url === '' || card_image_url === null ? null : card_image_url;
 
   const { data, error } = await sb
     .from('app_premium_categories')
@@ -62,6 +64,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
   }
 
+  // Revalidate premium-app page so UI updates
+  try { revalidatePath('/premium-app'); } catch {}
+  try { revalidatePath('/api/app-premium/categories'); } catch {}
+
   return NextResponse.json(data);
 }
 
@@ -70,7 +76,7 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { category, display_name, filter_keywords, is_published, display_order, icon_url } = body;
+  const { category, display_name, filter_keywords, is_published, display_order, icon_url, card_image_url } = body;
 
   if (!category || typeof category !== 'string') {
     return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
@@ -84,6 +90,7 @@ export async function POST(req: Request) {
     is_published: is_published !== false,
     display_order: display_order || 0,
     icon_url: icon_url || null,
+    card_image_url: card_image_url || null,
   };
 
   const { data, error } = await sb
@@ -99,6 +106,10 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }
+
+  // Revalidate premium-app page so UI updates
+  try { revalidatePath('/premium-app'); } catch {}
+  try { revalidatePath('/api/app-premium/categories'); } catch {}
 
   return NextResponse.json(data, { status: 201 });
 }
@@ -124,6 +135,10 @@ export async function DELETE(req: Request) {
     console.error('Error deleting app premium category:', error);
     return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
   }
+
+  // Revalidate premium-app page so UI updates
+  try { revalidatePath('/premium-app'); } catch {}
+  try { revalidatePath('/api/app-premium/categories'); } catch {}
 
   return NextResponse.json({ ok: true });
 }

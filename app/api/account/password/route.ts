@@ -11,6 +11,10 @@ const changePasswordSchema = z.object({
   new_password: z.string().min(6),
 });
 
+export async function GET() {
+  return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 });
+}
+
 export async function PUT(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

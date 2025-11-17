@@ -36,6 +36,7 @@ export async function GET(req: Request) {
     key: p.key,
     is_published: p.is_published,
     image_url: p.image_url || null,
+    banner_url: p.banner_url || null,
     icon_url: p.icon_url || null,
     badge_enabled: p.badge_enabled || false,
     badge_percent: p.badge_percent,

@@ -281,7 +281,7 @@ export default function GamePrizesContent() {
               setPrizes([]);
               resetForm();
             }}
-            className="px-3 py-2 bg-black/40 border border-white/10 rounded-md text-[color:var(--text)]"
+            className="px-3 py-2 bg-card border border-border rounded-md text-[color:var(--text)]"
           >
             <option value="">-- เลือกเกม --</option>
             {games.map((game) => (
@@ -337,7 +337,7 @@ export default function GamePrizesContent() {
                           id="type"
                           value={formData.type}
                           onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                          className="px-3 py-2 bg-black/40 border border-white/10 rounded-md text-[color:var(--text)]"
+                          className="px-3 py-2 bg-card border border-border rounded-md text-[color:var(--text)]"
                         >
                           <option value="points">พอยต์</option>
                           <option value="coupon">โค้ดส่วนลด</option>

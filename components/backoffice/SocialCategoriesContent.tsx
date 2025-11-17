@@ -191,9 +191,9 @@ export default function SocialCategoriesContent() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}>
+        <div className="grid gap-3 md:grid-cols-2 max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}>
           {paginatedCategories.map((cat) => (
-            <div key={cat.id} className="rounded-lg border border-white/10 p-3 space-y-3 bg-white/5">
+            <div key={cat.id} className="rounded-lg border border-border p-3 space-y-3 bg-muted/50">
               <div className="space-y-1">
                 <Label>ชื่อหมวดหมู่</Label>
                 <Input value={cat.name} onChange={(e) => markCategoryDirty(cat.id, (prev) => ({ ...prev, name: e.target.value }))} />
@@ -229,7 +229,7 @@ export default function SocialCategoriesContent() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border">
             <Button
               variant="outline"
               size="sm"

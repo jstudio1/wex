@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard } from 'lucide-react';
+import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import dynamic from 'next/dynamic';
-const PointsBadge = dynamic(() => import('@/components/PointsBadge'), { ssr: false });
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 
 type NavbarMenus = {
+  home: boolean;
   products: boolean;
   social: boolean;
   categories: boolean;
@@ -30,6 +33,47 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
   const [mounted, setMounted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
+  const [points, setPoints] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
+
+  const fetchBalance = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      setLoading(true);
+      const res = await fetch('/api/wallet/balance', { 
+        cache: 'default',
+        headers: { 'Cache-Control': 'max-age=10' }
+      });
+      if (!res.ok) throw new Error('balance');
+      const json = await res.json();
+      setPoints(Number(json.points) || 0);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchBalance();
+      const onChanged = () => fetchBalance();
+      const onFocus = () => fetchBalance();
+      window.addEventListener('wallet:changed', onChanged);
+      window.addEventListener('focus', onFocus);
+      const iv = setInterval(fetchBalance, 15000);
+      return () => {
+        clearInterval(iv);
+        window.removeEventListener('wallet:changed', onChanged);
+        window.removeEventListener('focus', onFocus);
+      };
+    }
+  }, [fetchBalance, isLoggedIn]);
+  
+  // Get first letter of username for avatar
+  const avatarLetter = username?.charAt(0).toUpperCase() || 'U';
 
   useEffect(() => {
     setMounted(true);
@@ -88,50 +132,76 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
         }`}
         onClick={() => setOpen(false)}
       />
-      <aside className={`absolute right-0 top-0 h-full w-80 bg-[color:var(--bg)] shadow-xl border-l border-white/10 overflow-y-auto transition-transform duration-300 ease-out ${
+      <aside className={`absolute right-0 top-0 h-full w-80 border-l border-gray-800 bg-[#0a0a0a] text-white shadow-xl overflow-y-auto transition-transform duration-300 ease-out ${
         isOpening ? 'translate-x-0' : 'translate-x-full'
       }`}>
-            <div className="flex items-center justify-between px-4 h-16 border-b border-white/10 bg-gradient-to-br from-white/5 to-transparent">
-              <span className="text-base font-semibold text-white">เมนู</span>
+            <div className="flex h-20 items-center justify-between border-b border-gray-800 bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-950 px-4 text-white">
+              <span className="text-xl font-bold text-white">เมนู</span>
             </div>
             
             {isLoggedIn && username && (
-              <div className="px-4 py-4 border-b border-white/10 bg-gradient-to-br from-white/5 to-transparent">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="grid size-12 place-items-center rounded-full bg-white/15 ring-1 ring-white/20">
-                    <UserCircle className="size-7 text-white/90" />
+              <div className="border-b border-gray-800 bg-[#1a1a1a] px-4 py-5">
+                <div className="flex items-center gap-3">
+                  {/* Avatar Circle with Gradient */}
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg">
+                    <span className="text-xl font-bold text-white">{avatarLetter}</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-base font-semibold text-white">{username}</div>
-                    <div className="text-xs text-white/60">โปรไฟล์ของฉัน</div>
+                    <div className="text-sm text-gray-400">
+                      เครดิต: {loading && points === null ? '—' : (points ?? 0).toFixed(2)} บาท
+                    </div>
                   </div>
                 </div>
-                <Link 
-                  href="/wallet/topup" 
-                  onClick={() => setOpen(false)}
-                  className="block w-full"
-                >
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-                    <PointsBadge />
-                  </div>
-                </Link>
               </div>
             )}
 
-            <nav className="p-4 space-y-1">
-              <div className="text-xs font-semibold text-white/60 uppercase tracking-wider px-2 mb-2">เมนูหลัก</div>
+            <nav className="space-y-1.5 px-4 py-5">
+              {isLoggedIn && (
+                <>
+                  <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">บัญชี</div>
+                  <Link 
+                    onClick={() => setOpen(false)} 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    href="/account"
+                  >
+                    <UserCircle className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                    ตั้งค่าโปรไฟล์
+                  </Link>
+                  <Link 
+                    onClick={() => setOpen(false)} 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    href="/wallet/topup"
+                  >
+                    <Wallet className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                    เติมเงิน
+                  </Link>
+                  <Link 
+                    onClick={() => setOpen(false)} 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    href="/orders"
+                  >
+                    <Receipt className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                    ประวัติ
+                  </Link>
+                  <div className="my-4 h-px bg-gray-800" />
+                </>
+              )}
+
+              <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เมนูหลัก</div>
               {(() => {
                 const allItemsMap: Record<string, { href: string; label: string; icon: typeof Gamepad2; key: keyof NavbarMenus; requireAuth?: boolean }> = {
+                  home: { href: '/', label: 'หน้าแรก', icon: Home, key: 'home' },
                   products: { href: '/products', label: 'เติมเกม', icon: Gamepad2, key: 'products' },
-                  social: { href: '/social', label: 'ปั้มโซเชียล', icon: Share2, key: 'social' },
-                  categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Package, key: 'categories' },
-                  games: { href: '/games', label: 'สุ่มรางวัล', icon: Trophy, key: 'games', requireAuth: true },
                   premiumApp: { href: '/premium-app', label: 'แอพพรีเมี่ยม', icon: Smartphone, key: 'premiumApp' },
+                  categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Package, key: 'categories' },
+                  social: { href: '/social', label: 'ปั้มโซเชียล', icon: Share2, key: 'social' },
+                  games: { href: '/games', label: 'สุ่มรางวัล', icon: Trophy, key: 'games', requireAuth: true },
                   cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' }
                 };
 
-                const defaultOrder = ['products', 'social', 'categories', 'games', 'premiumApp', 'cashcard'];
-                const order = navbarMenuOrder || defaultOrder;
+                const desiredOrder = ['home', 'products', 'premiumApp', 'categories', 'social', 'games', 'cashcard'] as const;
+                const order = desiredOrder;
 
                 const items = order
                   .map(key => allItemsMap[key])
@@ -150,10 +220,10 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
               <Link 
                       key={item.href}
                 onClick={() => setOpen(false)} 
-                className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors font-medium text-base" 
+                className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
                       href={item.href}
               >
-                      <Icon className="size-5 text-white/80" />
+                      <Icon className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
                       {item.label}
               </Link>
                   );
@@ -162,85 +232,56 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
 
               {isLoggedIn && (
                 <>
-                  <div className="h-px bg-white/10 my-3" />
-                  <div className="text-xs font-semibold text-white/60 uppercase tracking-wider px-2 mb-2">บัญชี</div>
-                  <Link 
-                    onClick={() => setOpen(false)} 
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors font-medium text-base" 
-                    href="/orders"
-                  >
-                    <Receipt className="size-5 text-white/80" />
-                    ประวัติ
-                  </Link>
-                  <Link 
-                    onClick={() => setOpen(false)} 
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors font-medium text-base" 
-                    href="/wallet/topup"
-                  >
-                    <Wallet className="size-5 text-white/80" />
-                    เติมพอยต์
-                  </Link>
-                  <Link 
-                    onClick={() => setOpen(false)} 
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors font-medium text-base" 
-                    href="/account"
-                  >
-                    <UserCircle className="size-5 text-white/80" />
-                    ตั้งค่าโปรไฟล์
-                  </Link>
                   {isAdmin && (
-                    <Link 
-                      onClick={() => setOpen(false)} 
-                      className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-white/10 transition-colors font-medium text-base" 
-                      href="/backoffice"
-                    >
-                      <Settings className="size-5 text-white/80" />
-                      หลังบ้าน
-                    </Link>
+                    <>
+                      <div className="my-4 h-px bg-gray-800" />
+                      <Link 
+                        onClick={() => setOpen(false)} 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        href="/backoffice"
+                      >
+                        <Settings className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                        หลังบ้าน
+                      </Link>
+                    </>
                   )}
-                  <div className="h-px bg-white/10 my-3" />
+                  <div className="my-4 h-px bg-gray-800" />
                   <form action="/api/auth/logout" method="post" className="w-full">
-                    <Button 
-                      className="w-full justify-start" 
-                      type="submit" 
-                      variant="outline"
+                    <button
+                      type="submit"
                       onClick={() => {
                         setTimeout(() => setOpen(false), 100);
                       }}
+                      className="w-full inline-flex items-center justify-start rounded-lg border-2 border-emerald-600 bg-[#0a0a0a] text-emerald-500 px-4 py-3 font-semibold transition-all duration-200 hover:bg-emerald-900/30 hover:border-emerald-500 hover:text-emerald-400"
                     >
-                      <LogOutIcon className="size-5 mr-3" />
+                      <LogOutIcon className="mr-3 h-5 w-5" />
                       ออกจากระบบ
-                    </Button>
+                    </button>
                 </form>
                 </>
               )}
 
               {!isLoggedIn && (
                 <>
-                  <div className="h-px bg-white/10 my-3" />
-                  <Button 
-                    variant="outline"
-                    asChild
-                    className="w-full"
+                  <div className="my-4 h-px bg-gray-800" />
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      setTimeout(() => setLoginDialogOpen(true), 100);
+                    }}
+                    className="w-full inline-flex items-center justify-center rounded-lg border-2 border-emerald-600 bg-[#0a0a0a] text-emerald-500 transition-all duration-200 hover:bg-emerald-900/30 hover:border-emerald-500 hover:text-emerald-400 font-semibold h-11"
                   >
-                    <Link 
-                      href="/login" 
-                      onClick={() => setOpen(false)}
-                    >
-                      เข้าสู่ระบบ
-                    </Link>
-                  </Button>
-                  <Button 
-                    asChild
-                    className="w-full"
+                    เข้าสู่ระบบ
+                  </button>
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      setTimeout(() => setRegisterDialogOpen(true), 100);
+                    }}
+                    className="w-full inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg transition-all duration-200 font-semibold h-11"
                   >
-                    <Link 
-                      href="/register" 
-                      onClick={() => setOpen(false)}
-                    >
-                      สมัครสมาชิก
-                    </Link>
-                  </Button>
+                    สมัครสมาชิก
+                  </button>
                 </>
               )}
             </nav>
@@ -250,11 +291,315 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
 
   return (
     <>
-      <button className="lg:hidden inline-flex items-center justify-center rounded-md border border-white/20 p-2.5 text-white hover:bg-white/10 transition-colors" aria-label="Open Menu" onClick={() => setOpen(true)}>
-        <MenuIcon className="size-6" />
+      <button 
+        className="lg:hidden inline-flex items-center justify-center rounded-md bg-white/10 p-2 text-white backdrop-blur-sm transition-all duration-200 hover:bg-white/20" 
+        aria-label="Open Menu" 
+        onClick={() => setOpen(true)}
+      >
+        <MenuIcon className="h-6 w-6" />
       </button>
       {mounted && createPortal(menuContent, document.body)}
+      {mounted && createPortal(
+        <>
+          <MobileLoginDialog 
+            open={loginDialogOpen} 
+            onOpenChange={setLoginDialogOpen}
+            onSwitchToRegister={() => {
+              setLoginDialogOpen(false);
+              setRegisterDialogOpen(true);
+            }}
+          />
+          <MobileRegisterDialog 
+            open={registerDialogOpen} 
+            onOpenChange={setRegisterDialogOpen}
+            onSwitchToLogin={() => {
+              setRegisterDialogOpen(false);
+              setLoginDialogOpen(true);
+            }}
+          />
+        </>,
+        document.body
+      )}
     </>
+  );
+}
+
+function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister }: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSwitchToRegister: () => void;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      window.dispatchEvent(new Event('wallet:changed'));
+      window.location.reload();
+    } catch (err: unknown) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const resetState = () => { 
+    setUsername(''); 
+    setPassword(''); 
+    setError(null); 
+    setLoading(false); 
+  };
+
+  return (
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        onOpenChange(isOpen);
+        if (!isOpen) resetState();
+      }}>
+        <DialogContent className="sm:max-w-[480px] bg-[#0a0a0a] border border-gray-800 shadow-2xl p-0 overflow-hidden">
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-700 px-8 py-6 relative overflow-hidden rounded-t-2xl">
+            {/* Decorative circles */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                  <LogIn className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white">เข้าสู่ระบบ</h2>
+              </div>
+              <p className="text-white/95 text-sm">กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าใช้งาน</p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={onSubmit} className="px-8 py-6 space-y-5 bg-[#0a0a0a]">
+            <div className="space-y-2">
+              <Label htmlFor="mobile-username" className="text-gray-300 font-medium text-sm">ชื่อผู้ใช้หรืออีเมล</Label>
+              <Input 
+                id="mobile-username" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)} 
+                placeholder="กรอกชื่อผู้ใช้หรืออีเมลของคุณ" 
+                required 
+                className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile-password" className="text-gray-300 font-medium text-sm">รหัสผ่าน</Label>
+              <Input 
+                id="mobile-password" 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                placeholder="กรอกรหัสผ่าน" 
+                required 
+                className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="mobile-remember" className="w-4 h-4 accent-emerald-600 rounded" />
+                <span className="text-sm text-gray-300">จดจำการเข้าสู่ระบบ</span>
+              </label>
+            </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+                {error}
+              </div>
+            )}
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white h-12 rounded-lg font-semibold shadow-lg shadow-emerald-500/30"
+            >
+              {loading ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  กำลังเข้าสู่ระบบ...
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-5 w-5" />
+                  เข้าสู่ระบบ
+                </>
+              )}
+            </Button>
+            <div className="flex gap-3 pt-4 border-t border-gray-800">
+              <button
+                type="button"
+                onClick={() => {
+                  resetState();
+                  onSwitchToRegister();
+                }}
+                className="flex-1 inline-flex items-center justify-center border-2 border-emerald-600 bg-[#0a0a0a] text-emerald-500 hover:bg-emerald-900/30 hover:border-emerald-500 hover:text-emerald-400 h-11 rounded-lg font-semibold transition-colors"
+              >
+                <UserPlus className="mr-2 h-5 w-5" />
+                สมัครสมาชิก
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+  );
+}
+
+function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin }: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSwitchToLogin: () => void;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [repassword, setRepassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password !== repassword) {
+      setError('รหัสผ่านไม่ตรงกัน');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'สมัครสมาชิกไม่สำเร็จ');
+      // Close register and open login
+      resetState();
+      onSwitchToLogin();
+    } catch (err: unknown) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const resetState = () => { 
+    setUsername(''); 
+    setPassword(''); 
+    setRepassword('');
+    setError(null); 
+    setLoading(false); 
+  };
+
+  return (
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        onOpenChange(isOpen);
+        if (!isOpen) resetState();
+      }}>
+        <DialogContent className="sm:max-w-[480px] bg-[#0a0a0a] border border-gray-800 shadow-2xl p-0 overflow-hidden">
+          {/* Header with gradient */}
+          <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-700 px-8 py-6 relative overflow-hidden rounded-t-2xl">
+            {/* Decorative circles */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                  <UserPlus className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white">สมัครสมาชิก</h2>
+              </div>
+              <p className="text-white/95 text-sm">สร้างบัญชีใหม่เพื่อเริ่มต้นใช้งาน</p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={onSubmit} className="px-8 py-6 space-y-5 bg-[#0a0a0a]">
+            <div className="space-y-2">
+              <Label htmlFor="mobile-reg-username" className="text-gray-300 font-medium text-sm">ชื่อผู้ใช้</Label>
+              <Input 
+                id="mobile-reg-username" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)} 
+                placeholder="กรอกชื่อผู้ใช้" 
+                required 
+                className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile-reg-password" className="text-gray-300 font-medium text-sm">รหัสผ่าน</Label>
+              <Input 
+                id="mobile-reg-password" 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                placeholder="กรอกรหัสผ่าน" 
+                required 
+                className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mobile-reg-repassword" className="text-gray-300 font-medium text-sm">ยืนยันรหัสผ่าน</Label>
+              <Input 
+                id="mobile-reg-repassword" 
+                type="password" 
+                value={repassword} 
+                onChange={(e) => setRepassword(e.target.value)} 
+                placeholder="กรอกรหัสผ่านอีกครั้ง" 
+                required 
+                className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
+              />
+            </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+                {error}
+              </div>
+            )}
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white h-12 rounded-lg font-semibold shadow-lg shadow-emerald-500/30"
+            >
+              {loading ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" />
+                  กำลังสมัคร...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  สมัครสมาชิก
+                </>
+              )}
+            </Button>
+            <div className="flex gap-3 pt-4 border-t border-gray-800">
+              <button
+                type="button"
+                onClick={() => {
+                  resetState();
+                  onSwitchToLogin();
+                }}
+                className="flex-1 inline-flex items-center justify-center border-2 border-emerald-600 bg-[#0a0a0a] text-emerald-500 hover:bg-emerald-900/30 hover:border-emerald-500 hover:text-emerald-400 h-11 rounded-lg font-semibold transition-colors"
+              >
+                <LogIn className="mr-2 h-5 w-5" />
+                เข้าสู่ระบบ
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
   );
 }
 

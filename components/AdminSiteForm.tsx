@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 type SiteData = { 
@@ -34,8 +34,16 @@ type SiteData = {
   paymentMethods?: {
     code: boolean;
     qr: boolean;
-    bank: boolean;
+    slip: boolean;
+    truewallet: boolean;
   };
+  bankAccounts?: Array<{
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    branch?: string;
+  }>;
+  truewalletPhone?: string;
   discordWebhookUrl?: string;
   discordWebhooks?: {
     products?: string;
@@ -45,6 +53,12 @@ type SiteData = {
     gameAccounts?: string;
     games?: string;
     wallet?: string;
+  };
+  contact?: {
+    lineId?: string;
+    phone?: string;
+    facebook?: string;
+    email?: string;
   };
 };
 type AnnouncementData = { text: string; enabled: boolean };
@@ -68,8 +82,11 @@ export default function AdminSiteForm() {
     paymentMethods: {
       code: true,
       qr: true,
-      bank: true,
+      slip: true,
+      truewallet: true,
     },
+    bankAccounts: [],
+    truewalletPhone: '',
     discordWebhookUrl: '',
     discordWebhooks: {
       products: '',
@@ -79,6 +96,12 @@ export default function AdminSiteForm() {
       gameAccounts: '',
       games: '',
       wallet: ''
+    },
+    contact: {
+      lineId: '',
+      phone: '',
+      facebook: '',
+      email: ''
     }
   });
   const [postersText, setPostersText] = useState<string>('');
@@ -118,8 +141,11 @@ export default function AdminSiteForm() {
           paymentMethods: json.paymentMethods || {
             code: true,
             qr: true,
-            bank: true,
+            slip: true,
+            truewallet: true,
           },
+          bankAccounts: Array.isArray(json.bankAccounts) ? json.bankAccounts : [],
+          truewalletPhone: json.truewalletPhone || '',
           discordWebhookUrl: json.discordWebhookUrl || '',
           discordWebhooks: json.discordWebhooks || {
             products: '',
@@ -129,6 +155,12 @@ export default function AdminSiteForm() {
             gameAccounts: '',
             games: '',
             wallet: ''
+          },
+          contact: json.contact || {
+            lineId: '',
+            phone: '',
+            facebook: '',
+            email: ''
           }
         });
         setPostersText((json.posters || []).join('\n'));
@@ -152,6 +184,33 @@ export default function AdminSiteForm() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  const addBankAccount = () => {
+    setForm((prev) => ({
+      ...prev,
+      bankAccounts: [...(prev.bankAccounts || []), { bankName: '', accountName: '', accountNumber: '', branch: '' }],
+    }));
+  };
+
+  const updateBankAccount = (index: number, field: 'bankName' | 'accountName' | 'accountNumber' | 'branch', value: string) => {
+    setForm((prev) => {
+      const bankAccounts = [...(prev.bankAccounts || [])];
+      if (!bankAccounts[index]) return prev;
+      bankAccounts[index] = {
+        ...bankAccounts[index],
+        [field]: value,
+      };
+      return { ...prev, bankAccounts };
+    });
+  };
+
+  const removeBankAccount = (index: number) => {
+    setForm((prev) => {
+      const bankAccounts = [...(prev.bankAccounts || [])];
+      bankAccounts.splice(index, 1);
+      return { ...prev, bankAccounts };
+    });
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -161,13 +220,31 @@ export default function AdminSiteForm() {
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean);
+      const sanitizedBankAccounts = (form.bankAccounts || [])
+        .map((item) => ({
+          bankName: item.bankName?.trim() || '',
+          accountName: item.accountName?.trim() || '',
+          accountNumber: item.accountNumber?.trim() || '',
+          branch: item.branch?.trim() || '',
+        }))
+        .filter((item) => item.bankName && item.accountName && item.accountNumber)
+        .map((item) =>
+          item.branch
+            ? item
+            : {
+                bankName: item.bankName,
+                accountName: item.accountName,
+                accountNumber: item.accountNumber,
+              }
+        );
       const res = await fetch('/api/site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           posters: sanitizedPosters,
-          navbarMenuOrder: form.navbarMenuOrder
+          navbarMenuOrder: form.navbarMenuOrder,
+          bankAccounts: sanitizedBankAccounts,
         })
       });
       if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
@@ -258,6 +335,10 @@ export default function AdminSiteForm() {
           <Webhook className="size-4 shrink-0" />
           <span className="hidden sm:inline">แจ้งเตือน</span>
         </TabsTrigger>
+        <TabsTrigger value="contact" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
+          <Share2 className="size-4 shrink-0" />
+          <span className="hidden sm:inline">ติดต่อ</span>
+        </TabsTrigger>
       </TabsList>
 
       {/* หน้าแรก */}
@@ -269,11 +350,19 @@ export default function AdminSiteForm() {
           </div>
           <div>
             <Label>หัวเรื่องหน้าแรก</Label>
-            <Input className="mt-1" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <Input 
+              className="mt-1" 
+              value={form.title} 
+              onChange={(e) => setForm({ ...form, title: e.target.value })} 
+            />
           </div>
           <div>
             <Label>คำอธิบาย</Label>
-            <Input className="mt-1" value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
+            <Input 
+              className="mt-1" 
+              value={form.subtitle} 
+              onChange={(e) => setForm({ ...form, subtitle: e.target.value })} 
+            />
           </div>
           <div>
             <Label>Poster URLs (ขึ้นบรรทัดใหม่แต่ละรูป)</Label>
@@ -499,7 +588,8 @@ export default function AdminSiteForm() {
               paymentMethods: {
                 code: checked,
                 qr: form.paymentMethods?.qr ?? true,
-                bank: form.paymentMethods?.bank ?? true,
+                slip: form.paymentMethods?.slip ?? true,
+                truewallet: form.paymentMethods?.truewallet ?? true,
               }
             })}
           />
@@ -516,29 +606,156 @@ export default function AdminSiteForm() {
               paymentMethods: {
                 code: form.paymentMethods?.code ?? true,
                 qr: checked,
-                bank: form.paymentMethods?.bank ?? true,
+                slip: form.paymentMethods?.slip ?? true,
+                truewallet: form.paymentMethods?.truewallet ?? true,
               }
             })}
           />
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label>ช่องทาง "โอนเงิน"</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยการโอนเงินผ่านธนาคาร</p>
+            <Label>ช่องทาง "สลิปโอนเงิน"</Label>
+            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยสลิปโอนเงิน (ตรวจสอบอัตโนมัติ)</p>
           </div>
           <Switch
-            checked={form.paymentMethods?.bank !== false}
+            checked={form.paymentMethods?.slip !== false}
             onCheckedChange={(checked) => setForm({
               ...form,
               paymentMethods: {
                 code: form.paymentMethods?.code ?? true,
                 qr: form.paymentMethods?.qr ?? true,
-                bank: checked,
+                slip: checked,
+                truewallet: form.paymentMethods?.truewallet ?? true,
+              }
+            })}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>ช่องทาง "ซองอั่งเปา TrueWallet"</Label>
+            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยซองอั่งเปา TrueWallet</p>
+          </div>
+          <Switch
+            checked={form.paymentMethods?.truewallet !== false}
+            onCheckedChange={(checked) => setForm({
+              ...form,
+              paymentMethods: {
+                code: form.paymentMethods?.code ?? true,
+                qr: form.paymentMethods?.qr ?? true,
+                slip: form.paymentMethods?.slip ?? true,
+                truewallet: checked,
               }
             })}
           />
         </div>
           </div>
+          <div className="pt-6 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold">บัญชีธนาคารสำหรับโอนเงิน</h3>
+              <p className="text-sm text-[color:var(--text)]/60">ตั้งค่าบัญชีธนาคารที่จะแสดงให้ลูกค้าเมื่อเลือกชำระเงินด้วยการโอน</p>
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">
+                💡 <strong>หมายเหตุ:</strong> เลขที่บัญชีที่ตั้งค่าไว้จะถูกใช้เป็น "บัญชีผู้รับที่คาดหวัง" สำหรับตรวจสอบสลิปโอนเงินอัตโนมัติ
+              </p>
+            </div>
+            {(form.bankAccounts || []).length === 0 && (
+              <div className="rounded-lg border border-dashed border-white/20 bg-white/5 p-4 text-sm text-[color:var(--text)]/60">
+                ยังไม่มีบัญชีธนาคาร กรุณาเพิ่มบัญชีใหม่
+              </div>
+            )}
+            {(form.bankAccounts || []).map((account, index) => (
+              <div key={index} className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text)]">
+                    <CreditCard className="size-4" />
+                    บัญชีที่ {index + 1}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={() => removeBankAccount(index)}
+                  >
+                    <Trash2 className="size-4" />
+                    ลบ
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs text-[color:var(--text)]/70">ธนาคาร</Label>
+                    <Input
+                      className="mt-1"
+                      value={account.bankName}
+                      onChange={(e) => updateBankAccount(index, 'bankName', e.target.value)}
+                      placeholder="เช่น กสิกรไทย"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[color:var(--text)]/70">ชื่อบัญชี</Label>
+                    <Input
+                      className="mt-1"
+                      value={account.accountName}
+                      onChange={(e) => updateBankAccount(index, 'accountName', e.target.value)}
+                      placeholder="เช่น บริษัท ตัวอย่าง จำกัด"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[color:var(--text)]/70">เลขที่บัญชี</Label>
+                    <Input
+                      className="mt-1"
+                      value={account.accountNumber}
+                      onChange={(e) => updateBankAccount(index, 'accountNumber', e.target.value)}
+                      placeholder="เช่น 123-4-56789-0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[color:var(--text)]/70">สาขา (ถ้ามี)</Label>
+                    <Input
+                      className="mt-1"
+                      value={account.branch || ''}
+                      onChange={(e) => updateBankAccount(index, 'branch', e.target.value)}
+                      placeholder="เช่น สาขาสยามพารากอน"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto border-white/30 text-[color:var(--text)] hover:bg-white/10"
+              onClick={addBankAccount}
+            >
+              <Plus className="size-4 mr-2" />
+              เพิ่มบัญชีธนาคาร
+            </Button>
+          </div>
+          
+          {/* ตั้งค่าเบอร์ TrueWallet */}
+          <div className="pt-6 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold">ตั้งค่าซองอั่งเปา TrueWallet</h3>
+              <p className="text-sm text-[color:var(--text)]/60">ระบุเบอร์โทรศัพท์ TrueWallet สำหรับรับเงินจากซองอั่งเปา</p>
+            </div>
+            <div>
+              <Label className="text-xs text-[color:var(--text)]/70">เบอร์โทรศัพท์ TrueWallet (10 หลัก)</Label>
+              <Input
+                className="mt-1"
+                type="tel"
+                maxLength={10}
+                value={form.truewalletPhone || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setForm({ ...form, truewalletPhone: value });
+                }}
+                placeholder="เช่น 0812345678"
+              />
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">
+                เบอร์นี้จะใช้สำหรับรับเงินจากซองอั่งเปา TrueWallet ที่ลูกค้าแลก
+              </p>
+            </div>
+          </div>
+          
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
           </Button>
@@ -757,6 +974,81 @@ export default function AdminSiteForm() {
             </div>
           </div>
 
+          <Button disabled={saving} type="submit" className="w-full sm:w-auto">
+            {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+          </Button>
+        </form>
+      </TabsContent>
+
+      {/* ติดต่อแอดมิน */}
+      <TabsContent value="contact" className="space-y-4">
+        <form onSubmit={onSubmit} className="card p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">ติดต่อแอดมิน</h2>
+            <p className="text-sm text-[color:var(--text)]/60">ตั้งค่าข้อมูลติดต่อที่จะแสดงในปุ่มติดต่อแอดมิน (มุมขวาล่างของเว็บ)</p>
+          </div>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="contact-line">LINE ID</Label>
+              <Input
+                id="contact-line"
+                value={form.contact?.lineId || ''}
+                onChange={(e) => setForm({ 
+                  ...form, 
+                  contact: { ...(form.contact || {}), lineId: e.target.value } 
+                })}
+                placeholder="เช่น @lineid หรือ https://line.me/ti/p/~lineid"
+              />
+              <p className="text-xs text-[color:var(--text)]/50">ใส่ LINE ID หรือ URL ของ LINE</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contact-phone">เบอร์โทรศัพท์</Label>
+              <Input
+                id="contact-phone"
+                type="tel"
+                value={form.contact?.phone || ''}
+                onChange={(e) => setForm({ 
+                  ...form, 
+                  contact: { ...(form.contact || {}), phone: e.target.value } 
+                })}
+                placeholder="เช่น 0812345678"
+              />
+              <p className="text-xs text-[color:var(--text)]/50">เบอร์โทรศัพท์สำหรับติดต่อ</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contact-facebook">Facebook URL</Label>
+              <Input
+                id="contact-facebook"
+                type="url"
+                value={form.contact?.facebook || ''}
+                onChange={(e) => setForm({ 
+                  ...form, 
+                  contact: { ...(form.contact || {}), facebook: e.target.value } 
+                })}
+                placeholder="https://facebook.com/yourpage"
+              />
+              <p className="text-xs text-[color:var(--text)]/50">URL ของ Facebook Page</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contact-email">Email</Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={form.contact?.email || ''}
+                onChange={(e) => setForm({ 
+                  ...form, 
+                  contact: { ...(form.contact || {}), email: e.target.value } 
+                })}
+                placeholder="admin@example.com"
+              />
+              <p className="text-xs text-[color:var(--text)]/50">อีเมลสำหรับติดต่อ</p>
+            </div>
+          </div>
+          
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
           </Button>

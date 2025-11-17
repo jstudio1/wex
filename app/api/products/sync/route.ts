@@ -26,6 +26,18 @@ export async function POST(req: Request) {
 
     const sb = createServiceClient();
 
+    // รีเซ็ต Global Markup เป็น 0
+    await sb.from('settings').upsert([
+      { key: 'PRICING_MARKUP_PERCENT', value: '0' },
+      { key: 'PRICING_MARKUP_FIXED', value: '0' }
+    ], { onConflict: 'key' });
+
+    // รีเซ็ต Item Markup ทั้งหมดเป็น 0
+    await sb.from('product_items').update({
+      markup_percent: 0,
+      markup_fixed: 0
+    }).neq('id', 0); // update ทุกรายการ
+
     const { data: existingItemRows, error: existingItemsError } = await sb
       .from('product_items')
       .select('id, product_id, sku, price');
@@ -74,7 +86,9 @@ export async function POST(req: Request) {
             .update({
               name: it.name,
               price: basePrice,
-              original_price: sourceOriginal
+              original_price: sourceOriginal,
+              markup_percent: 0,
+              markup_fixed: 0
             })
             .eq('id', existingItem.id);
           if (updateError) {
@@ -93,7 +107,9 @@ export async function POST(req: Request) {
               name: it.name,
               sku: it.sku,
               price: basePrice,
-              original_price: sourceOriginal
+              original_price: sourceOriginal,
+              markup_percent: 0,
+              markup_fixed: 0
             });
           if (insertError) {
             if ((insertError as any)?.code === '23505') {
@@ -113,7 +129,9 @@ export async function POST(req: Request) {
                   .update({
                     name: it.name,
                     price: basePrice,
-                    original_price: sourceOriginal
+                    original_price: sourceOriginal,
+                    markup_percent: 0,
+                    markup_fixed: 0
                   })
                   .eq('id', existingRow.id);
                 if (retryError) {

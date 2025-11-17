@@ -70,10 +70,10 @@ export default function PointsBadge() {
   return (
     <Link 
       href="/wallet/topup" 
-      className="group inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+      className="group inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
     >
-      <Wallet className="size-4 text-yellow-300 group-hover:text-yellow-200 transition-colors" strokeWidth={2} />
-      <span className="font-bold text-xs md:text-sm tabular-nums text-white">
+      <Wallet className="h-5 w-5 text-yellow-300 group-hover:text-yellow-100 transition-colors" strokeWidth={2.5} />
+      <span className="font-bold text-base tabular-nums text-white">
         {loading && points === null ? '—' : animated.toFixed(2)}
       </span>
     </Link>

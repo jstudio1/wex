@@ -132,19 +132,19 @@ export default function QrPayment() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-          <QrCode className="size-5 text-blue-400" />
+        <div className="p-2 rounded-lg bg-red-50 border border-red-200">
+          <QrCode className="h-5 w-5 text-red-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-[color:var(--text)]">ชำระผ่าน PromptPay</h2>
-          <p className="text-sm text-[color:var(--text)]/60">สแกน QR Code เพื่อชำระเงินผ่านแอปธนาคาร</p>
+          <h2 className="text-xl font-semibold text-gray-900">ชำระผ่าน PromptPay</h2>
+          <p className="text-sm text-gray-600">สแกน QR Code เพื่อชำระเงินผ่านแอปธนาคาร</p>
         </div>
       </div>
 
       {!qrData ? (
         <form onSubmit={handleCreatePayment} className="space-y-4">
           <div>
-            <Label htmlFor="amount" className="text-[color:var(--text)]/90">
+            <Label htmlFor="amount" className="text-gray-700 font-medium">
               จำนวนเงิน (บาท)
             </Label>
             <Input
@@ -157,23 +157,23 @@ export default function QrPayment() {
               min="1"
               max="100000"
               step="1"
-              className="h-12 text-lg mt-2"
+              className="h-12 text-lg mt-2 border-2 border-gray-400 bg-white focus:border-red-500 focus:ring-2 focus:ring-red-200 shadow-sm"
             />
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">จำนวนเงินขั้นต่ำ 1 บาท สูงสุด 100,000 บาท</p>
+            <p className="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 1 บาท สูงสุด 100,000 บาท</p>
           </div>
           <Button
             type="submit"
             disabled={loading || !amount}
-            className="w-full h-11"
+            className="w-full h-11 bg-red-600 hover:bg-red-700 text-white"
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">
-                <Spinner className="size-4" />
+                <Spinner className="h-4 w-4" />
                 กำลังสร้าง QR Code...
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
-                <QrCode className="size-4" />
+                <QrCode className="h-4 w-4" />
                 สร้าง QR Code
               </span>
             )}
@@ -184,13 +184,13 @@ export default function QrPayment() {
           {paymentStatus === 'paid' ? (
             <div className="text-center space-y-4 py-8">
               <div className="flex justify-center">
-                <div className="p-4 rounded-full bg-green-500/20 border border-green-500/30">
-                  <CheckCircle2 className="size-12 text-green-400" />
+                <div className="p-4 rounded-full bg-green-100 border border-green-300">
+                  <CheckCircle2 className="h-12 w-12 text-green-600" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-green-400 mb-2">ชำระเงินสำเร็จ</h3>
-                <p className="text-[color:var(--text)]/70">ได้รับ {qrData.amount} บาท เข้าบัญชีแล้ว</p>
+                <h3 className="text-xl font-semibold text-green-700 mb-2">ชำระเงินสำเร็จ</h3>
+                <p className="text-gray-600">ได้รับ {qrData.amount} บาท เข้าบัญชีแล้ว</p>
               </div>
               <Button
                 onClick={() => {
@@ -199,6 +199,7 @@ export default function QrPayment() {
                   setCountdown(null);
                 }}
                 variant="outline"
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
               >
                 เติมเงินอีกครั้ง
               </Button>
@@ -206,13 +207,13 @@ export default function QrPayment() {
           ) : paymentStatus === 'timeout' ? (
             <div className="text-center space-y-4 py-8">
               <div className="flex justify-center">
-                <div className="p-4 rounded-full bg-red-500/20 border border-red-500/30">
-                  <XCircle className="size-12 text-red-400" />
+                <div className="p-4 rounded-full bg-red-100 border border-red-300">
+                  <XCircle className="h-12 w-12 text-red-600" />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-red-400 mb-2">QR Code หมดอายุ</h3>
-                <p className="text-[color:var(--text)]/70">QR Code หมดอายุแล้ว กรุณาสร้างใหม่</p>
+                <h3 className="text-xl font-semibold text-red-700 mb-2">QR Code หมดอายุ</h3>
+                <p className="text-gray-600">QR Code หมดอายุแล้ว กรุณาสร้างใหม่</p>
               </div>
               <Button
                 onClick={() => {
@@ -221,26 +222,27 @@ export default function QrPayment() {
                   setCountdown(null);
                 }}
                 variant="outline"
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
               >
                 สร้าง QR Code ใหม่
               </Button>
             </div>
           ) : (
             <>
-              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <div className="text-sm text-[color:var(--text)]/60">จำนวนเงิน</div>
-                    <div className="text-2xl font-bold text-[color:var(--text)]">{parseFloat(qrData.amount).toLocaleString()} บาท</div>
+                    <div className="text-sm text-gray-600">จำนวนเงิน</div>
+                    <div className="text-2xl font-bold text-gray-900">{parseFloat(qrData.amount).toLocaleString()} บาท</div>
                   </div>
                   {countdown !== null && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                      <Clock className="size-4 text-amber-400" />
-                      <span className="text-amber-400 font-mono font-semibold">{formatTime(countdown)}</span>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-50 border border-yellow-200">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span className="text-yellow-700 font-mono font-semibold">{formatTime(countdown)}</span>
                     </div>
                   )}
                 </div>
-                <div className="flex justify-center p-4 bg-white rounded-lg">
+                <div className="flex justify-center p-4 bg-white rounded-lg border border-gray-200">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`data:image/png;base64,${qrData.qr_image_base64}`}
@@ -248,23 +250,22 @@ export default function QrPayment() {
                     className="w-full max-w-xs"
                   />
                 </div>
-                <p className="text-center text-sm text-[color:var(--text)]/60 mt-4">
+                <p className="text-center text-sm text-gray-600 mt-4">
                   สแกน QR Code นี้ด้วยแอปธนาคารของคุณเพื่อชำระเงิน
                 </p>
               </div>
-              <Item variant="muted">
-                <ItemMedia>
-                  <Spinner />
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle className="line-clamp-1">กำลังตรวจสอบสถานะการชำระเงิน...</ItemTitle>
-                </ItemContent>
-                <ItemContent className="flex-none justify-end">
-                  <span className="text-sm tabular-nums text-[color:var(--text)] font-semibold">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-3">
+                  <Spinner className="h-5 w-5 text-red-600" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900">กำลังตรวจสอบสถานะการชำระเงิน...</div>
+                    <div className="text-xs text-gray-600 mt-1">กรุณารอสักครู่</div>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-900 tabular-nums">
                     {parseFloat(qrData.amount).toLocaleString()} ฿
-                  </span>
-                </ItemContent>
-              </Item>
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -272,4 +273,3 @@ export default function QrPayment() {
     </div>
   );
 }
-

@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     const sb = createServiceClient();
     let query = sb
       .from('game_accounts')
-      .select('*, game_categories(id, name, slug)')
+      .select('*, game_categories(id, name, slug), game_account_prices(permission_id, price)')
       .order('created_at', { ascending: false });
 
     // Filter by category

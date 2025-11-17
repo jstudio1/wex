@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { logOrderToDiscord } from '@/lib/discord';
+import { applyPermissionDiscount } from '@/lib/pricing';
 import { z } from 'zod';
 
 const buyAccountSchema = z.object({
@@ -49,19 +50,53 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const price = Number(accounts[0].price);
-    const totalPrice = price * validated.quantity;
-
-    // Check user balance
+    // Get user permission for discount
     const { data: userData, error: userError } = await sb
       .from('users')
-      .select('points')
+      .select('points, permission_id, permission:permissions(id, name, discount_percent, discount_amount, discount_cap_amount)')
       .eq('id', user.id)
       .single();
 
     if (userError || !userData) {
       return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
     }
+
+    const userPermissionId = userData.permission_id || null;
+    
+    // ตรวจสอบว่ามีราคาสำหรับ permission นี้หรือไม่
+    let basePrice = Number(accounts[0].price);
+    if (userPermissionId) {
+      const { data: customPrice } = await sb
+        .from('game_account_prices')
+        .select('price')
+        .eq('game_account_id', accounts[0].id)
+        .eq('permission_id', userPermissionId)
+        .maybeSingle();
+      
+      if (customPrice) {
+        basePrice = Number(customPrice.price);
+      }
+    }
+
+    const productPermissionId = accounts[0].permission_id || null;
+    
+    // Calculate price with permission discount
+    // Handle both array and object cases from Supabase
+    let permission = null;
+    let permissionName: string | null = null;
+    if (userData.permission) {
+      const perm = Array.isArray(userData.permission) ? userData.permission[0] : userData.permission;
+      if (perm && typeof perm.discount_percent === 'number' && typeof perm.discount_amount === 'number' && typeof perm.discount_cap_amount === 'number') {
+        permission = {
+          discount_percent: perm.discount_percent,
+          discount_amount: perm.discount_amount,
+          discount_cap_amount: perm.discount_cap_amount
+        };
+        permissionName = perm.name || null;
+      }
+    }
+    const discountedPrice = applyPermissionDiscount(basePrice, permission, productPermissionId, userPermissionId);
+    const totalPrice = discountedPrice * validated.quantity;
 
     const userPoints = Number(userData.points || 0);
     if (userPoints < totalPrice) {
@@ -85,7 +120,7 @@ export async function POST(req: Request) {
           transaction_id: transactionId,
           user_id: user.id,
           game_account_id: account.id,
-          price: price,
+          price: discountedPrice, // Use discounted price
           state: 'completed',
           username: account.username,
           password: account.password
@@ -179,6 +214,8 @@ export async function POST(req: Request) {
             '🎮 เกม': firstAccount.game_name,
             '📦 จำนวน': `${validated.quantity}`,
             '💰 ราคารวม': `${totalPrice.toFixed(2)} พอยต์`,
+            ...(permission ? { '🎁 ส่วนลดสิทธิ์': permissionName || 'มีสิทธิ์ส่วนลด' } : {}),
+            ...(discountedPrice < basePrice ? { '💵 ราคาเดิม': `${(basePrice * validated.quantity).toFixed(2)} พอยต์` } : {})
           }
         });
       }

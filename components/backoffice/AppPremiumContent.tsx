@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner, SpinnerCustom } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
@@ -41,10 +41,13 @@ interface AppPremiumProduct {
   image_url: string | null;
   description: string | null;
   is_published: boolean;
+  show_on_homepage: boolean;
+  app_category: string | null;
+  sub_category: string | null;
 }
 
 type DraftProduct = AppPremiumProduct & { __dirty?: boolean };
-type ProductSnapshot = Pick<AppPremiumProduct, 'id' | 'display_name' | 'markup_percent' | 'markup_fixed' | 'is_published'>;
+type ProductSnapshot = Pick<AppPremiumProduct, 'id' | 'display_name' | 'markup_percent' | 'markup_fixed' | 'is_published' | 'show_on_homepage'>;
 
 interface AppPremiumCategory {
   id: number;
@@ -54,6 +57,7 @@ interface AppPremiumCategory {
   is_published: boolean;
   display_order: number;
   icon_url: string | null;
+  card_image_url: string | null;
   __dirty?: boolean;
 }
 
@@ -77,6 +81,8 @@ export default function AppPremiumContent() {
   const [showAddCategoryDialog, setShowAddCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryKeywordsInput, setCategoryKeywordsInput] = useState<Record<number, string>>({});
+  const [editingSubCategory, setEditingSubCategory] = useState<{ categoryId: number; oldValue: string; newValue: string } | null>(null);
   const itemsPerPage = 50;
   const [globalMarkup, setGlobalMarkup] = useState({ percent: '0', fixed: '0' });
   const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
@@ -147,7 +153,8 @@ export default function AppPremiumContent() {
         display_name: prod.display_name,
         markup_percent: prod.markup_percent,
         markup_fixed: prod.markup_fixed,
-        is_published: prod.is_published
+        is_published: prod.is_published,
+        show_on_homepage: prod.show_on_homepage
       }));
 
       setProducts(productsData);
@@ -165,6 +172,12 @@ export default function AppPremiumContent() {
       if (!res.ok) throw new Error('ไม่สามารถโหลดหมวดหมู่ได้');
       const json = await res.json();
       setCategories(json || []);
+      // Initialize keywords input state
+      const keywordsMap: Record<number, string> = {};
+      (json || []).forEach((cat: AppPremiumCategory) => {
+        keywordsMap[cat.id] = (cat.filter_keywords || []).join(', ');
+      });
+      setCategoryKeywordsInput(keywordsMap);
     } catch (error) {
       console.error(error);
       toast.show({ title: 'เกิดข้อผิดพลาด', description: 'ไม่สามารถโหลดหมวดหมู่ได้', variant: 'destructive' });
@@ -270,6 +283,7 @@ export default function AppPremiumContent() {
       if (current.markup_percent !== initial.markup_percent) payload.markup_percent = Number(current.markup_percent) || 0;
       if (current.markup_fixed !== initial.markup_fixed) payload.markup_fixed = Number(current.markup_fixed) || 0;
       if (current.is_published !== initial.is_published) payload.is_published = current.is_published;
+      if (current.show_on_homepage !== initial.show_on_homepage) payload.show_on_homepage = current.show_on_homepage;
 
       if (!Object.keys(payload).length) {
         continue;
@@ -291,7 +305,8 @@ export default function AppPremiumContent() {
                 display_name: current.display_name,
                 markup_percent: Number(current.markup_percent) || 0,
                 markup_fixed: Number(current.markup_fixed) || 0,
-                is_published: current.is_published
+                is_published: current.is_published,
+                show_on_homepage: current.show_on_homepage
               }
             : prod
         );
@@ -371,7 +386,13 @@ export default function AppPremiumContent() {
   const filteredProducts = useMemo(() => {
     return products.filter((prod) => {
       const text = filterText.trim().toLowerCase();
-      const matchText = !text || [prod.name, prod.display_name, prod.provider_product_id.toString()].some((v) => v?.toLowerCase().includes(text));
+      const matchText = !text || [
+        prod.name, 
+        prod.display_name, 
+        prod.provider_product_id.toString(),
+        prod.app_category,
+        prod.sub_category
+      ].some((v) => v?.toLowerCase().includes(text));
       return matchText;
     });
   }, [products, filterText]);
@@ -485,7 +506,7 @@ export default function AppPremiumContent() {
               <p className="text-xs text-[color:var(--text)]/50">กำไรคงที่ที่บวกเข้ากับราคาทุกสินค้า (บาท)</p>
             </div>
           </div>
-          <Button type="submit" disabled={savingGlobalMarkup} className="gap-2">
+          <Button type="submit" disabled={savingGlobalMarkup} className="gap-2 text-white">
             {savingGlobalMarkup ? (
               <>
                 <Spinner className="size-4" />
@@ -549,7 +570,7 @@ export default function AppPremiumContent() {
             <Button
               onClick={handleSaveSelected}
               disabled={savingProductIds.size > 0 || products.filter((prod) => prod.__dirty).length === 0}
-              className="gap-2"
+              className="gap-2 text-white"
             >
               {savingProductIds.size > 0 ? (
                 <>
@@ -573,7 +594,7 @@ export default function AppPremiumContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[color:var(--text)]/40" />
             <Input
               id="search-products"
-              placeholder="ค้นหาจากชื่อสินค้าหรือ ID"
+              placeholder="ค้นหาจากชื่อสินค้า, ID, หมวดหมู่หลัก, หรือหมวดหมู่ย่อย"
               className="pl-9"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
@@ -581,20 +602,28 @@ export default function AppPremiumContent() {
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[calc(100vh-450px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}>
+        <div className="space-y-3 max-h-[calc(100vh-450px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}>
           {paginatedProducts.map((prod) => {
             const basePrice = currencyFormatter.format(prod.base_price || 0);
             const finalPrice = calculateFinalPrice(prod.base_price, prod.markup_percent, prod.markup_fixed);
             const finalPriceFormatted = currencyFormatter.format(finalPrice);
             return (
-              <div key={prod.id} className={`rounded-lg border p-4 space-y-4 transition-colors ${prod.__dirty ? 'border-accent/50 bg-accent/5' : 'border-white/10 bg-white/5'}`}>
+              <div key={prod.id} className={`rounded-lg border p-4 space-y-4 transition-colors ${prod.__dirty ? 'border-accent/50 bg-accent/5' : 'border-border bg-muted/50'}`}>
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="text-sm text-[color:var(--text)]/60">Product ID #{prod.provider_product_id}</div>
-                      <h4 className="text-lg font-semibold">{prod.name}</h4>
+                      <h4 
+                        className="text-lg font-semibold"
+                        dangerouslySetInnerHTML={{ __html: prod.name || '' }}
+                        suppressHydrationWarning
+                      />
                       {prod.description && (
-                        <div className="text-xs text-[color:var(--text)]/40 mt-1">{prod.description}</div>
+                        <div 
+                          className="text-xs text-[color:var(--text)]/40 mt-1"
+                          dangerouslySetInnerHTML={{ __html: prod.description }}
+                          suppressHydrationWarning
+                        />
                       )}
                     </div>
                     <div className="text-right text-sm text-[color:var(--text)]/70">
@@ -614,6 +643,10 @@ export default function AppPremiumContent() {
                     <div className="space-y-1">
                       <Label>ชื่อแสดง (หน้าเว็บ)</Label>
                       <Input value={prod.display_name ?? ''} onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, display_name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>หมวดหมู่หลัก</Label>
+                      <Input value={prod.app_category ?? ''} disabled className="bg-muted/30" />
                     </div>
                   </div>
 
@@ -636,12 +669,27 @@ export default function AppPremiumContent() {
                         onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, markup_fixed: Number(e.target.value) }))}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-white/10 px-3">
-                      <div>
-                        <Label className="text-xs text-[color:var(--text)]/60">เผยแพร่</Label>
-                        <div className="text-sm font-medium">{prod.is_published ? 'เปิดขาย' : 'ซ่อนอยู่'}</div>
+                    <div className="space-y-2">
+                    <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-3">
+                      <Checkbox 
+                        id={`publish-${prod.id}`}
+                        checked={prod.is_published} 
+                        onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, is_published: e.target.checked }))} 
+                      />
+                      <Label htmlFor={`publish-${prod.id}`} className="text-sm font-medium cursor-pointer">
+                        {prod.is_published ? 'เปิดขาย' : 'ซ่อนอยู่'}
+                      </Label>
                       </div>
-                      <Switch checked={prod.is_published} onCheckedChange={(checked) => markProductDirty(prod.id, (prev) => ({ ...prev, is_published: checked }))} />
+                      <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-3">
+                        <Checkbox 
+                          id={`homepage-${prod.id}`}
+                          checked={prod.show_on_homepage} 
+                          onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, show_on_homepage: e.target.checked }))} 
+                        />
+                        <Label htmlFor={`homepage-${prod.id}`} className="text-sm font-medium cursor-pointer">
+                          แสดงหน้าแรก
+                        </Label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -665,7 +713,7 @@ export default function AppPremiumContent() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border">
             <Button
               variant="outline"
               size="sm"
@@ -761,7 +809,7 @@ export default function AppPremiumContent() {
                     return displayName.includes(searchLower) || categoryName.includes(searchLower);
                   })
                   .map((category) => (
-                  <div key={category.id} className="space-y-3 p-4 rounded-lg border border-white/10">
+                  <div key={category.id} className="space-y-3 p-4 rounded-lg border border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-[color:var(--text)]">{category.display_name || category.category}</div>
@@ -825,35 +873,68 @@ export default function AppPremiumContent() {
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor={`cat-icon-${category.id}`} className="text-sm">URL รูป Icon:</Label>
-                      <Input
-                        id={`cat-icon-${category.id}`}
-                        type="url"
-                        value={category.icon_url || ''}
-                        onChange={(e) => {
-                          setCategories((prev) =>
-                            prev.map((cat) =>
-                              cat.id === category.id ? { ...cat, icon_url: e.target.value || null, __dirty: true } : cat
-                            )
-                          );
-                        }}
-                        placeholder="https://example.com/icon.png"
-                      />
-                      <p className="text-xs text-[color:var(--text)]/50">URL รูป icon ที่จะแสดงบนปุ่มกรอง</p>
-                      {category.icon_url && (
-                        <div className="mt-2">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={category.icon_url} 
-                            alt="Icon preview" 
-                            className="w-12 h-12 object-contain rounded border border-white/10"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`cat-icon-${category.id}`} className="text-sm">URL รูป Icon:</Label>
+                        <Input
+                          id={`cat-icon-${category.id}`}
+                          type="url"
+                          value={category.icon_url || ''}
+                          onChange={(e) => {
+                            setCategories((prev) =>
+                              prev.map((cat) =>
+                                cat.id === category.id ? { ...cat, icon_url: e.target.value || null, __dirty: true } : cat
+                              )
+                            );
+                          }}
+                          placeholder="https://example.com/icon.png"
+                        />
+                        <p className="text-xs text-[color:var(--text)]/50">URL รูป icon ที่จะแสดงบนปุ่มกรอง</p>
+                        {category.icon_url && (
+                          <div className="mt-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={category.icon_url} 
+                              alt="Icon preview" 
+                              className="w-12 h-12 object-contain rounded border border-border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`cat-card-${category.id}`} className="text-sm">URL รูปการ์ดหน้าแรก:</Label>
+                        <Input
+                          id={`cat-card-${category.id}`}
+                          type="url"
+                          value={category.card_image_url || ''}
+                          onChange={(e) => {
+                            setCategories((prev) =>
+                              prev.map((cat) =>
+                                cat.id === category.id ? { ...cat, card_image_url: e.target.value || null, __dirty: true } : cat
+                              )
+                            );
+                          }}
+                          placeholder="https://example.com/card.jpg"
+                        />
+                        <p className="text-xs text-[color:var(--text)]/50">URL รูปการ์ดที่จะแสดงบนหน้าแรก</p>
+                        {category.card_image_url && (
+                          <div className="mt-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={category.card_image_url} 
+                              alt="Card preview" 
+                              className="w-20 h-20 object-cover rounded border border-border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -861,34 +942,303 @@ export default function AppPremiumContent() {
                       <Input
                         id={`cat-keywords-${category.id}`}
                         type="text"
-                        value={(category.filter_keywords || []).join(', ')}
+                        value={categoryKeywordsInput[category.id] ?? (category.filter_keywords || []).join(', ')}
                         onChange={(e) => {
-                          const keywords = e.target.value.split(',').map(k => k.trim()).filter(k => k.length > 0);
+                          const rawValue = e.target.value;
+                          
+                          // Update input state immediately to preserve spaces
+                          setCategoryKeywordsInput((prev) => ({
+                            ...prev,
+                            [category.id]: rawValue
+                          }));
+                          
+                          // Split by comma but preserve spaces within keywords
+                          // Only trim leading/trailing spaces, keep spaces within words
+                          // Example: "Netflix Premium, NF, น็อกซ์" -> ["Netflix Premium", "NF", "น็อกซ์"]
+                          const keywords = rawValue
+                            .split(',')
+                            .map(k => {
+                              // Trim only leading and trailing spaces, preserve internal spaces
+                              return k.replace(/^\s+|\s+$/g, '');
+                            })
+                            .filter(k => k.length > 0);
+                          
                           setCategories((prev) =>
                             prev.map((cat) =>
                               cat.id === category.id ? { ...cat, filter_keywords: keywords, __dirty: true } : cat
                             )
                           );
                         }}
-                        placeholder="Netflix, NF, น็อกซ์"
+                        placeholder="Netflix Premium, NF, น็อกซ์"
                       />
-                      <p className="text-xs text-[color:var(--text)]/50">คำที่ใช้กรองสินค้า (เช่น Netflix, NF) คั่นด้วยจุลภาค</p>
+                      <p className="text-xs text-[color:var(--text)]/50">คำที่ใช้กรองสินค้า (เช่น Netflix Premium, NF) คั่นด้วยจุลภาค สามารถเว้นวรรคในคำได้</p>
+                    </div>
+
+                    {/* Sub Categories Section */}
+                    <div className="space-y-2 border-t border-border pt-4 mt-4">
+                      <Label className="text-sm font-medium">หมวดหมู่ย่อย (Sub Categories)</Label>
+                      <div className="space-y-2">
+                        {(() => {
+                          // Get unique sub categories for this category from products
+                          const categoryProducts = products.filter((p) => 
+                            p.app_category?.toLowerCase() === category.category.toLowerCase()
+                          );
+                          const subCategories = Array.from(
+                            new Set(
+                              categoryProducts
+                                .map((p) => p.sub_category)
+                                .filter((sc): sc is string => Boolean(sc && sc.trim()))
+                            )
+                          ).sort();
+
+                          if (subCategories.length === 0) {
+                            return (
+                              <div className="text-xs text-[color:var(--text)]/50 italic py-2">
+                                ยังไม่มีหมวดหมู่ย่อย (ดึงมาจากสินค้าที่มี app_category ตรงกับหมวดหมู่นี้)
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              {subCategories.map((subCat, idx) => {
+                                const productsWithSubCat = categoryProducts.filter(
+                                  (p) => p.sub_category === subCat
+                                );
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-2 p-2 rounded border border-border bg-muted/30"
+                                  >
+                                    {editingSubCategory?.categoryId === category.id && editingSubCategory?.oldValue === subCat ? (
+                                      <div className="flex-1 flex items-center gap-2">
+                                        <Input
+                                          value={editingSubCategory.newValue}
+                                          onChange={(e) => setEditingSubCategory({ ...editingSubCategory, newValue: e.target.value })}
+                                          className="flex-1 text-sm"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              // Save
+                                              const handleSave = async () => {
+                                                if (!editingSubCategory) return;
+                                                const newValue = editingSubCategory.newValue.trim();
+                                                if (newValue === editingSubCategory.oldValue) {
+                                                  setEditingSubCategory(null);
+                                                  return;
+                                                }
+
+                                                try {
+                                                  const productIds = productsWithSubCat.map((p) => p.id);
+                                                  let successCount = 0;
+                                                  let errorCount = 0;
+
+                                                  for (const productId of productIds) {
+                                                    try {
+                                                      const res = await fetch(`/api/admin/app-premium/products/${productId}`, {
+                                                        method: 'PATCH',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ sub_category: newValue || null })
+                                                      });
+                                                      if (res.ok) {
+                                                        successCount++;
+                                                        setProducts((prev) =>
+                                                          prev.map((p) =>
+                                                            p.id === productId ? { ...p, sub_category: newValue || null } : p
+                                                          )
+                                                        );
+                                                      } else {
+                                                        errorCount++;
+                                                      }
+                                                    } catch (err) {
+                                                      errorCount++;
+                                                    }
+                                                  }
+
+                                                  if (errorCount > 0) {
+                                                    toast.show({
+                                                      title: `แก้ไขสำเร็จ ${successCount} รายการ`,
+                                                      description: `มี ${errorCount} รายการที่แก้ไขไม่สำเร็จ`,
+                                                      variant: 'default'
+                                                    });
+                                                  } else {
+                                                    toast.show({ title: `แก้ไขหมวดหมู่ย่อยสำเร็จ` });
+                                                  }
+                                                  setEditingSubCategory(null);
+                                                } catch (error) {
+                                                  console.error(error);
+                                                  toast.show({ title: 'แก้ไขไม่สำเร็จ', variant: 'destructive' });
+                                                }
+                                              };
+                                              handleSave();
+                                            } else if (e.key === 'Escape') {
+                                              setEditingSubCategory(null);
+                                            }
+                                          }}
+                                          autoFocus
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={async () => {
+                                            if (!editingSubCategory) return;
+                                            const newValue = editingSubCategory.newValue.trim();
+                                            if (newValue === editingSubCategory.oldValue) {
+                                              setEditingSubCategory(null);
+                                              return;
+                                            }
+
+                                            try {
+                                              const productIds = productsWithSubCat.map((p) => p.id);
+                                              let successCount = 0;
+                                              let errorCount = 0;
+
+                                              for (const productId of productIds) {
+                                                try {
+                                                  const res = await fetch(`/api/admin/app-premium/products/${productId}`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ sub_category: newValue || null })
+                                                  });
+                                                  if (res.ok) {
+                                                    successCount++;
+                                                    setProducts((prev) =>
+                                                      prev.map((p) =>
+                                                        p.id === productId ? { ...p, sub_category: newValue || null } : p
+                                                      )
+                                                    );
+                                                  } else {
+                                                    errorCount++;
+                                                  }
+                                                } catch (err) {
+                                                  errorCount++;
+                                                }
+                                              }
+
+                                              if (errorCount > 0) {
+                                                toast.show({
+                                                  title: `แก้ไขสำเร็จ ${successCount} รายการ`,
+                                                  description: `มี ${errorCount} รายการที่แก้ไขไม่สำเร็จ`,
+                                                  variant: 'default'
+                                                });
+                                              } else {
+                                                toast.show({ title: `แก้ไขหมวดหมู่ย่อยสำเร็จ` });
+                                              }
+                                              setEditingSubCategory(null);
+                                            } catch (error) {
+                                              console.error(error);
+                                              toast.show({ title: 'แก้ไขไม่สำเร็จ', variant: 'destructive' });
+                                            }
+                                          }}
+                                        >
+                                          <Save className="size-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setEditingSubCategory(null)}
+                                        >
+                                          ยกเลิก
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium text-[color:var(--text)]">
+                                            {subCat}
+                                          </div>
+                                          <div className="text-xs text-[color:var(--text)]/50">
+                                            มีสินค้า {productsWithSubCat.length} รายการ
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setEditingSubCategory({ categoryId: category.id, oldValue: subCat, newValue: subCat })}
+                                            className="gap-1"
+                                          >
+                                            <Save className="size-3" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={async () => {
+                                              if (!confirm(`ต้องการลบหมวดหมู่ย่อย "${subCat}" จากสินค้าทั้งหมดหรือไม่?`)) return;
+                                              
+                                              try {
+                                                const productIds = productsWithSubCat.map((p) => p.id);
+                                                let successCount = 0;
+                                                let errorCount = 0;
+
+                                                for (const productId of productIds) {
+                                                  try {
+                                                    const res = await fetch(`/api/admin/app-premium/products/${productId}`, {
+                                                      method: 'PATCH',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({ sub_category: null })
+                                                    });
+                                                    if (res.ok) {
+                                                      successCount++;
+                                                      setProducts((prev) =>
+                                                        prev.map((p) =>
+                                                          p.id === productId ? { ...p, sub_category: null } : p
+                                                        )
+                                                      );
+                                                    } else {
+                                                      errorCount++;
+                                                    }
+                                                  } catch (err) {
+                                                    errorCount++;
+                                                  }
+                                                }
+
+                                                if (errorCount > 0) {
+                                                  toast.show({
+                                                    title: `ลบสำเร็จ ${successCount} รายการ`,
+                                                    description: `มี ${errorCount} รายการที่ลบไม่สำเร็จ`,
+                                                    variant: 'default'
+                                                  });
+                                                } else {
+                                                  toast.show({ title: `ลบหมวดหมู่ย่อย "${subCat}" สำเร็จ` });
+                                                }
+                                              } catch (error) {
+                                                console.error(error);
+                                                toast.show({ title: 'ลบไม่สำเร็จ', variant: 'destructive' });
+                                              }
+                                            }}
+                                            className="gap-1 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                          >
+                                            <Trash2 className="size-3" />
+                                          </Button>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-xs text-[color:var(--text)]/50">
+                        หมวดหมู่ย่อยจะถูกดึงมาจากสินค้าที่มี app_category ตรงกับหมวดหมู่นี้
+                      </p>
                     </div>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor={`cat-publish-${category.id}`} className="text-sm whitespace-nowrap">เผยแพร่:</Label>
-                        <Switch
+                        <Checkbox
                           id={`cat-publish-${category.id}`}
                           checked={category.is_published}
-                          onCheckedChange={(checked) => {
+                          onChange={(e) => {
                             setCategories((prev) =>
                               prev.map((cat) =>
-                                cat.id === category.id ? { ...cat, is_published: checked, __dirty: true } : cat
+                                cat.id === category.id ? { ...cat, is_published: e.target.checked, __dirty: true } : cat
                               )
                             );
                           }}
                         />
+                        <Label htmlFor={`cat-publish-${category.id}`} className="text-sm whitespace-nowrap cursor-pointer">เผยแพร่</Label>
                       </div>
                       {savingCategoryIds.has(category.id) ? (
                         <Spinner className="size-4" />
@@ -911,7 +1261,8 @@ export default function AppPremiumContent() {
                                   filter_keywords: updated.filter_keywords || [],
                                   is_published: updated.is_published,
                                   display_order: updated.display_order || 0,
-                                  icon_url: updated.icon_url || null
+                                  icon_url: updated.icon_url || null,
+                                  card_image_url: updated.card_image_url || null
                                 })
                               });
                               const json = await res.json();

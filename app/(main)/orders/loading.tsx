@@ -12,7 +12,7 @@ export default function OrdersLoading() {
       </div>
 
       <div className="card p-0">
-        <div className="flex gap-2 border-b border-white/10 px-6">
+        <div className="flex gap-2 border-b border-gray-800 px-6">
           <Skeleton className="h-12 w-32" />
           <Skeleton className="h-12 w-32" />
         </div>
@@ -24,18 +24,18 @@ export default function OrdersLoading() {
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-white/5 border-b border-white/10">
+                <thead className="bg-gray-900/50 border-b border-gray-800">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">บริการ</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">Order ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ลิงค์</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">จำนวน</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">ราคา</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">สถานะ</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">วันที่สร้าง</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-white">บริการ</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-white whitespace-nowrap">Order ID</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-white">ลิงค์</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-white whitespace-nowrap">จำนวน</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-white whitespace-nowrap">ราคา</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-white whitespace-nowrap">สถานะ</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-white whitespace-nowrap">วันที่สร้าง</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-gray-800">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>

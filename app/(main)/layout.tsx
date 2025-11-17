@@ -7,9 +7,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <>
       <NavBar />
       <AnnouncementBar />
-      <div className="pt-4">
-        {children}
-      </div>
+      {children}
     </>
   );
 }

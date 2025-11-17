@@ -50,11 +50,11 @@ export default function AnnouncementBar() {
   }
 
   return (
-    <div className="relative z-30 w-full overflow-hidden border-b border-white/10 bg-gradient-to-r from-accent/20 via-accent/10 to-accent/20 backdrop-blur-sm" style={{ position: 'relative', display: 'block', minHeight: '40px' }}>
+    <div className="relative z-30 w-full overflow-hidden border-b border-emerald-800/30 bg-gradient-to-r from-emerald-950/80 via-emerald-900/80 to-emerald-950/80 backdrop-blur-sm" style={{ position: 'relative', display: 'block', minHeight: '40px' }}>
       <div className="flex items-center justify-center h-10 md:h-12 mx-auto max-w-full">
         <div className="marquee-wrapper w-full overflow-hidden">
           <div 
-            className="marquee-content inline-flex items-center gap-12 text-sm md:text-base font-medium text-[color:var(--text)]"
+            className="marquee-content inline-flex items-center gap-12 text-sm md:text-base font-medium text-emerald-300"
             style={{ 
               animationDuration: `${speed}s`,
               animationName: 'marquee',

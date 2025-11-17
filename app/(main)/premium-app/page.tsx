@@ -1,3 +1,6 @@
+import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import AppPremiumProductsList from '@/components/AppPremiumProductsList';
@@ -7,6 +10,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function fetchAppPremiumProducts() {
+  noStore();
   try {
     const sb = createServiceClient();
     
@@ -21,7 +25,7 @@ async function fetchAppPremiumProducts() {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const result = await sb
         .from('app_premium_products')
-        .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, description, is_published')
+        .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, icon_url, description, is_published, app_category, sub_category')
         .eq('is_published', true)
         .order('name');
       
@@ -65,7 +69,10 @@ async function fetchAppPremiumProducts() {
         base_price: Number(prod.base_price || 0),
         stock: prod.stock || 0,
         image_url: prod.image_url,
+        icon_url: prod.icon_url,
         description: prod.description,
+        app_category: prod.app_category || null,
+        sub_category: prod.sub_category || null,
       };
     });
 
@@ -79,43 +86,51 @@ async function fetchAppPremiumProducts() {
   }
 }
 
-export default async function PremiumAppPage() {
+export default async function PremiumAppPage({
+  searchParams,
+}: {
+  searchParams?: { category?: string };
+}) {
+  noStore();
+  const categoryParam = searchParams?.category;
+
+  if (categoryParam) {
+    try {
+      const sb = createServiceClient();
+      const { data: category, error } = await sb
+        .from('app_premium_categories')
+        .select('id')
+        .eq('category', categoryParam)
+        .eq('is_published', true)
+        .maybeSingle();
+
+      if (error || !category) {
+        redirect('/premium-app');
+      }
+    } catch (error) {
+      console.error('validate premium app category error:', error);
+      redirect('/premium-app');
+    }
+  }
+
   const data = await fetchAppPremiumProducts();
   
   // แสดงข้อความเตือนถ้ายังไม่ได้ sync
   if (data.products.length === 0) {
     return (
-      <div className="min-h-screen bg-black relative overflow-hidden">
-        {/* Starry Night Background Effect */}
-        <div className="fixed inset-0 bg-black" style={{
-          backgroundImage: `
-            radial-gradient(2px 2px at 20% 30%, white, transparent),
-            radial-gradient(2px 2px at 60% 70%, white, transparent),
-            radial-gradient(1px 1px at 50% 50%, white, transparent),
-            radial-gradient(1px 1px at 80% 10%, white, transparent),
-            radial-gradient(2px 2px at 90% 40%, white, transparent),
-            radial-gradient(1px 1px at 33% 60%, white, transparent),
-            radial-gradient(2px 2px at 10% 80%, white, transparent),
-            radial-gradient(1px 1px at 70% 20%, white, transparent),
-            radial-gradient(2px 2px at 40% 90%, white, transparent),
-            radial-gradient(1px 1px at 15% 50%, white, transparent)
-          `,
-          backgroundSize: '200% 200%',
-          backgroundPosition: '0% 0%',
-          opacity: 0.3
-        }} />
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          <div className="card p-12 text-center max-w-md mx-auto bg-black/50 border-purple-500/20 backdrop-blur-sm">
-            <div className="w-16 h-16 rounded-full bg-purple-600/20 mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-black">
+        <div className="container mx-auto px-4 py-8">
+          <div className="card p-12 text-center max-w-md mx-auto bg-[#0a0a0a] border-emerald-800 shadow-sm">
+            <div className="w-16 h-16 rounded-full bg-emerald-900/20 mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">ยังไม่มีสินค้าแอพพรีเมี่ยม</h1>
-            <p className="text-white/70 mb-2">
+            <p className="text-gray-300 mb-2">
               กรุณาไปที่ Backoffice → แอพพรีเมี่ยม → กดปุ่ม "ซิงก์จากผู้ให้บริการ" เพื่อดึงข้อมูลล่าสุด
             </p>
-            <p className="text-sm text-white/50">
+            <p className="text-sm text-gray-400">
               (Sync จะดึงข้อมูลจาก External API ลง Database)
             </p>
           </div>
@@ -125,49 +140,28 @@ export default async function PremiumAppPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Starry Night Background Effect */}
-      <div className="fixed inset-0 bg-black" style={{
-        backgroundImage: `
-          radial-gradient(2px 2px at 20% 30%, white, transparent),
-          radial-gradient(2px 2px at 60% 70%, white, transparent),
-          radial-gradient(1px 1px at 50% 50%, white, transparent),
-          radial-gradient(1px 1px at 80% 10%, white, transparent),
-          radial-gradient(2px 2px at 90% 40%, white, transparent),
-          radial-gradient(1px 1px at 33% 60%, white, transparent),
-          radial-gradient(2px 2px at 10% 80%, white, transparent),
-          radial-gradient(1px 1px at 70% 20%, white, transparent),
-          radial-gradient(2px 2px at 40% 90%, white, transparent),
-          radial-gradient(1px 1px at 15% 50%, white, transparent)
-        `,
-        backgroundSize: '200% 200%',
-        backgroundPosition: '0% 0%',
-        opacity: 0.3
-      }} />
-
-      {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="relative mb-12">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-transparent to-purple-600/10 rounded-2xl"></div>
-          <div className="relative bg-black/50 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 lg:p-8">
-            <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-600/20 border border-purple-500/30 mb-4">
-                <span className="text-xs font-medium text-purple-400">แอพพรีเมี่ยม</span>
-              </div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent">
-                แอพพรีเมี่ยม
-              </h1>
-              <p className="text-sm lg:text-base text-white/70">
-                รายการสินค้าแอพพรีเมี่ยมที่เปิดขาย - Netflix, Disney+, Bilibili, Canva, CAPCUT และอื่นๆ
-              </p>
+    <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+      {/* Hero Section */}
+      <div className="relative mb-8">
+        <div className="relative bg-[#0a0a0a] border border-emerald-800 rounded-2xl p-6 lg:p-8 shadow-sm">
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/20 border border-emerald-800 mb-4">
+              <span className="text-xs font-medium text-emerald-600">แอพพรีเมี่ยม</span>
             </div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
+              แอพพรีเมี่ยม
+            </h1>
+            <p className="text-sm lg:text-base text-gray-300">
+              รายการสินค้าแอพพรีเมี่ยมที่เปิดขาย - Netflix, Disney+, Bilibili, Canva, CAPCUT และอื่นๆ
+            </p>
           </div>
         </div>
-
-        <AppPremiumProductsList products={data.products} />
       </div>
-    </div>
+
+      <Suspense fallback={<div className="text-center py-8 text-white">กำลังโหลด...</div>}>
+        <AppPremiumProductsList products={data.products} />
+      </Suspense>
+    </main>
   );
 }
 

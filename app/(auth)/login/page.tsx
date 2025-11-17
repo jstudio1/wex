@@ -1,8 +1,6 @@
-import dynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { getAuthUser } from '@/lib/auth';
-
-const LoginClient = dynamic(() => import('./LoginClient'));
+import LoginClient from './LoginClient';
 
 export default async function LoginPage() {
   const user = await getAuthUser();

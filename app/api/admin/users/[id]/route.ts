@@ -9,6 +9,11 @@ const updateUserSchema = z.object({
   username: z.string().min(1).max(50).nullable().optional(),
   points: z.number().optional(),
   is_admin: z.boolean().optional(),
+  permission_id: z.union([
+    z.number().int().positive(),
+    z.null(),
+    z.literal(''),
+  ]).optional().transform((val) => val === '' ? null : val),
   reset_password: z.boolean().optional(),
 });
 
@@ -19,7 +24,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('users')
-    .select('id, username, points, created_at, is_admin')
+    .select('id, username, points, created_at, is_admin, permission_id, permission:permissions(id, name)')
     .eq('id', params.id)
     .single();
 
@@ -38,11 +43,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (!currentUser) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const userId = Number(params.id);
-  
-  // ตรวจสอบว่าไม่ใช่ตัวเอง (ป้องกันลบ/ลบสิทธิ์ตัวเอง)
-  if (userId === currentUser.id) {
-    return NextResponse.json({ error: 'cannot_modify_self' }, { status: 400 });
-  }
+  const isSelf = userId === currentUser.id;
 
   try {
     const body = await req.json();
@@ -53,12 +54,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     // ตรวจสอบว่ามีผู้ใช้หรือไม่
     const { data: existingUser, error: fetchError } = await sb
       .from('users')
-      .select('id')
+      .select('id, is_admin')
       .eq('id', userId)
       .single();
 
     if (fetchError || !existingUser) {
       return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
+    }
+
+    // ป้องกันการลบสิทธิ์ admin ของตัวเอง
+    if (isSelf && parsed.is_admin === false && existingUser.is_admin === true) {
+      return NextResponse.json({ 
+        error: 'cannot_remove_own_admin', 
+        message: 'ไม่สามารถลบสิทธิ์ Admin ของตัวเองได้' 
+      }, { status: 400 });
     }
 
     // เตรียมข้อมูลที่จะอัปเดต
@@ -72,8 +81,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       updateData.points = Math.max(0, parsed.points);
     }
     
+    // อนุญาตให้แก้ไข is_admin ได้ แต่ป้องกันการลบสิทธิ์ admin ของตัวเอง (ตรวจสอบแล้วด้านบน)
     if (parsed.is_admin !== undefined) {
       updateData.is_admin = parsed.is_admin;
+    }
+
+    if (parsed.permission_id !== undefined) {
+      updateData.permission_id = parsed.permission_id;
     }
 
     // รีเซ็ตรหัสผ่านเป็น "123456" ถ้าต้องการ
@@ -87,7 +101,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .from('users')
       .update(updateData)
       .eq('id', userId)
-      .select('id, username, points, created_at, is_admin')
+      .select('id, username, points, created_at, is_admin, permission_id, permission:permissions(id, name)')
       .single();
 
     if (error) {
@@ -97,7 +111,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ data });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: err.issues }, { status: 400 });
+      console.error('Validation error:', err.issues);
+      return NextResponse.json({ 
+        error: 'validation_error', 
+        details: err.issues,
+        message: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่ส่งมา'
+      }, { status: 400 });
     }
     console.error('Update user error:', err);
     return NextResponse.json({ error: 'unexpected' }, { status: 500 });

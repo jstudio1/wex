@@ -54,8 +54,13 @@ const menuSections: MenuSection[] = [
     items: [
       { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
       { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
-      { id: 'app-premium', label: 'แอพพรีเมี่ยม', icon: Package },
       { id: 'cashcard', label: 'บัตรเติมเงิน', icon: Coins },
+    ]
+  },
+  {
+    label: 'แอพพรีเมี่ยม',
+    items: [
+      { id: 'app-premium', label: 'จัดการแอพพรีเมี่ยม', icon: Package },
     ]
   },
   {

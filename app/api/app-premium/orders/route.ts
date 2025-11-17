@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { getApiKey } from '@/lib/api-keys';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
 import { z } from 'zod';
 
-const API_URL = 'https://api.peamsub24hr.com/v2/app-premium';
+const API_URL = 'https://otp24hr.com/api/v1';
+
+function getOtp24hrApiKey(): string {
+  // ใช้ env variable หรือ fallback to empty string
+  return process.env.OTP24HR_API_KEY || '';
+}
 
 const createOrderSchema = z.object({
   product_id: z.number().min(1),
@@ -18,7 +22,20 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
+    // ดึงประวัติจาก database เท่านั้น (เฉพาะของ user นี้)
+    console.log(`[App Premium Orders] Fetching orders for user: ${user.id}`);
+    return await getOrdersFromDatabase(String(user.id));
+  } catch (error) {
+    console.error('[App Premium Orders] Fetch error:', error);
+    return NextResponse.json({ error: 'unexpected', detail: 'เกิดข้อผิดพลาดในการดึงข้อมูล' }, { status: 500 });
+  }
+}
+
+async function getOrdersFromDatabase(userId: string) {
+  try {
     const sb = createServiceClient();
+    console.log(`[App Premium Orders] Querying database for user: ${userId}`);
+    
     const { data: orders, error } = await sb
       .from('app_premium_orders')
       .select(`
@@ -38,17 +55,19 @@ export async function GET(req: Request) {
           image_url
         )
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('[App Premium Orders] Database error:', error);
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
+    console.log(`[App Premium Orders] Found ${orders?.length || 0} orders for user: ${userId}`);
     return NextResponse.json({ ok: true, data: orders || [] });
   } catch (error) {
-    console.error('App premium orders fetch error:', error);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    console.error('[App Premium Orders] Database fetch error:', error);
+    return NextResponse.json({ error: 'unexpected', detail: 'เกิดข้อผิดพลาดในการดึงข้อมูล' }, { status: 500 });
   }
 }
 
@@ -56,8 +75,10 @@ export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const apiKey = await getApiKey('peamsubapi');
-  if (!apiKey) return NextResponse.json({ error: 'missing_peamsub_api_key' }, { status: 500 });
+  const apiKey = getOtp24hrApiKey();
+  if (!apiKey) {
+    return NextResponse.json({ error: 'missing_otp24hr_api_key' }, { status: 500 });
+  }
 
   try {
     const body = await req.json();
@@ -120,48 +141,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'deduct_failed', detail: 'ไม่สามารถหักเงินได้' }, { status: 500 });
     }
 
-    // Encode API key ด้วย Base64
-    const encodedKey = Buffer.from(apiKey).toString('base64');
+    // เรียก OTP24HR API (ใช้ form-data ตามเอกสาร)
+    const formData = new URLSearchParams();
+    formData.append('keyapi', apiKey);
+    formData.append('type_code', String(product.provider_product_id));
+    formData.append('amount', '1');
+    // email เป็น optional ตามตัวอย่าง
 
-    // เรียก Peamsub API
-    const upstream = await fetch(API_URL, {
+    const upstream = await fetch(`${API_URL}?action=buypack`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        id: product.provider_product_id,
-        reference: finalReference
-      })
+      body: formData.toString()
     });
 
     const responseJson = await upstream.json();
 
     // ถ้า API ล้มเหลว ให้คืน points กลับ
-    if (!upstream.ok || responseJson.statusCode !== 200 || !responseJson.data) {
+    // OTP24HR response: { status: 'success' | 'error', name, textid, amount, price, total_credit, linkz }
+    if (!upstream.ok || responseJson.status !== 'success') {
       await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
       // Log error details for debugging แต่ไม่แสดงให้ user
-      console.error('Peamsub API error:', {
+      console.error('OTP24HR API error:', {
         status: upstream.status,
         statusText: upstream.statusText,
         response: responseJson
       });
       return NextResponse.json({ 
         error: 'provider_error', 
-        detail: 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง' 
+        detail: responseJson.msg || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง' 
       }, { status: 502 });
     }
 
     // บันทึก order ลง database
+    // OTP24HR response: { status: 'success', name, id, textid, amount, price, total_credit, linkz }
+    const otp24hrId = responseJson.id ? String(responseJson.id) : finalReference;
     const { data: orderInsert, error: insertError } = await sb
       .from('app_premium_orders')
       .insert({
         user_id: user.id,
         app_premium_product_id: product.id,
-        reference: finalReference,
-        external_reference: finalReference,
-        product_data: responseJson.data,
+        reference: otp24hrId,
+        external_reference: otp24hrId,
+        product_data: {
+          name: responseJson.name,
+          id: responseJson.id,
+          textid: responseJson.textid,
+          amount: responseJson.amount,
+          price: responseJson.price,
+          total_credit: responseJson.total_credit,
+          linkz: responseJson.linkz
+        },
         price: finalPrice,
         status: 'completed',
         raw_response: responseJson

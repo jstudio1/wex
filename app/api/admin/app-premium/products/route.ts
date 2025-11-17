@@ -9,10 +9,13 @@ export async function GET() {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('app_premium_products')
-    .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, description, is_published, created_at, updated_at')
+    .select('*')
     .order('name');
 
-  if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
+  if (error) {
+    console.error('Admin app premium products GET error:', error);
+    return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
+  }
   return NextResponse.json({ data });
 }
 

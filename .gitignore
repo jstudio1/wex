@@ -38,7 +38,3 @@ next-env.d.ts
 *.sql
 *.dump
 
-node_modules/
-.next/
-*.md
-*.sql

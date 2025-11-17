@@ -18,6 +18,8 @@ export async function PATCH(req: Request, { params }: Params) {
   if (typeof payload.markup_percent === 'number') update.markup_percent = payload.markup_percent;
   if (typeof payload.markup_fixed === 'number') update.markup_fixed = payload.markup_fixed;
   if (typeof payload.is_published === 'boolean') update.is_published = payload.is_published;
+  if (typeof payload.show_on_homepage === 'boolean') update.show_on_homepage = payload.show_on_homepage;
+  if (typeof payload.sub_category === 'string' || payload.sub_category === null) update.sub_category = payload.sub_category;
 
   if (!Object.keys(update).length) return NextResponse.json({ error: 'empty_payload' }, { status: 400 });
 

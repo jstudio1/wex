@@ -8,15 +8,25 @@ export async function GET(req: Request) {
       .from('game_categories')
       .select('*')
       .eq('is_published', true)
-      .order('name');
+      .order('id', { ascending: true });
 
     if (error) {
+      console.error('Game categories GET error:', error);
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Get stats for each category
+    if (!categories || categories.length === 0) {
+      return NextResponse.json({ ok: true, data: [] }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    }
+
     const categoriesWithStats = await Promise.all(
-      (categories || []).map(async (cat) => {
+      categories.map(async (cat) => {
         const { data: accounts } = await sb
           .from('game_accounts')
           .select('price, stock')
@@ -46,7 +56,9 @@ export async function GET(req: Request) {
       { ok: true, data: categoriesWithStats },
       {
         headers: {
-          'Cache-Control': 'no-store',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

@@ -9,7 +9,7 @@ export async function GET() {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('users')
-    .select('id, username, points, created_at, is_admin')
+    .select('id, username, points, created_at, is_admin, permission_id, permission:permissions(id, name)')
     .order('created_at', { ascending: false });
 
   if (error) {

@@ -12,7 +12,7 @@ export async function GET() {
 
     const { data: products, error } = await sb
       .from('app_premium_products')
-      .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, description, is_published')
+      .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, icon_url, description, is_published, app_category, sub_category')
       .eq('is_published', true)
       .order('name');
 
@@ -36,7 +36,10 @@ export async function GET() {
         base_price: Number(product.base_price || 0),
         stock: product.stock || 0,
         image_url: product.image_url,
+        icon_url: product.icon_url,
         description: product.description,
+        app_category: product.app_category || null,
+        sub_category: product.sub_category || null,
       };
     });
 

@@ -180,13 +180,13 @@ export default function GameCategoriesContent() {
         </div>
         <div className="card p-4 overflow-x-auto">
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-5 gap-2 pb-2 border-b border-gray-700/50">
+            <div className="grid grid-cols-5 gap-2 pb-2 border-b border-border">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-5 gap-2 py-2 border-b border-gray-700/30">
+              <div key={i} className="grid grid-cols-5 gap-2 py-2 border-b border-border/50">
                 {Array.from({ length: 5 }).map((_, j) => (
                   <Skeleton key={j} className="h-6 w-full" />
                 ))}
@@ -253,7 +253,7 @@ export default function GameCategoriesContent() {
                   />
                   <p className="text-xs text-[color:var(--text)]/60">รูปภาพที่จะใช้แสดงในปุ่มหมวดหมู่ (ถ้าไม่ระบุจะใช้รูป default)</p>
                   {formData.image_url && (
-                    <div className="mt-2 rounded-lg border border-white/10 overflow-hidden bg-white/5">
+                    <div className="mt-2 rounded-lg border border-border overflow-hidden bg-muted/50">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={formData.image_url} alt="Preview" className="w-full h-auto max-h-32 object-contain" />
                     </div>
@@ -265,7 +265,7 @@ export default function GameCategoriesContent() {
                     id="is_published"
                     checked={formData.is_published}
                     onChange={(e) => setFormData(prev => ({ ...prev, is_published: e.target.checked }))}
-                    className="h-4 w-4 rounded border border-white/20 bg-transparent text-accent focus:ring-2 focus:ring-accent-50 focus:ring-offset-0"
+                    className="h-4 w-4 rounded border border-border bg-transparent text-accent focus:ring-2 focus:ring-accent-50 focus:ring-offset-0"
                   />
                   <Label htmlFor="is_published" className="cursor-pointer">
                     เผยแพร่
@@ -298,10 +298,10 @@ export default function GameCategoriesContent() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="border-gray-700/50 hover:bg-white/5">
+            <TableRow className="border-border hover:bg-muted/50">
               <TableHead>รูปภาพ</TableHead>
               <TableHead>ชื่อหมวดหมู่</TableHead>
               <TableHead>Slug</TableHead>
@@ -319,9 +319,9 @@ export default function GameCategoriesContent() {
               </TableRow>
             ) : (
               categories.map((category) => (
-                <TableRow key={category.id} className="border-white/10 hover:bg-white/5">
+                <TableRow key={category.id} className="border-border hover:bg-muted/50">
                   <TableCell>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-border">
                       {category.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img 
@@ -330,7 +330,7 @@ export default function GameCategoriesContent() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                        <div className="w-full h-full bg-muted/50 flex items-center justify-center">
                           <Grid3x3 className="size-6 text-[color:var(--text)]/30" />
                         </div>
                       )}

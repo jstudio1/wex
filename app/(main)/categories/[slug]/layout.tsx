@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {
       title,
       description,
-      keywords: [cat.name, 'หมวดหมู่', 'เติมเกม', 'สินค้าเกม', 'บริการเกม', 'wexplus'],
+      keywords: [cat.name, 'หมวดหมู่', 'เติมเกม', 'สินค้าเกม', 'บริการเกม', 'WeXPlus'],
       alternates: { canonical: url },
       openGraph: {
         title,

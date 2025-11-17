@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: { key: string } }):
     return {
       title,
       description,
-      keywords: [data.name, 'เติมเกม', 'ซื้อไอเท็ม', 'ราคาถูก', 'โปร', 'ส่วนลด', 'wexplus'],
+      keywords: [data.name, 'เติมเกม', 'ซื้อไอเท็ม', 'ราคาถูก', 'โปร', 'ส่วนลด', 'WeXPlus'],
       alternates: { canonical: url },
       openGraph: {
         title,

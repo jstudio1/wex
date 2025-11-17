@@ -76,7 +76,7 @@ function translateState(state: string): string {
 function getStateColorClass(state: string): string {
   const stateLower = state.toLowerCase();
   if (stateLower === 'success' || stateLower === 'completed') {
-    return 'bg-emerald-600/30 text-emerald-300 border-emerald-500/30';
+    return 'bg-emerald-500 text-white border-emerald-500/30';
   } else if (stateLower === 'pending') {
     return 'bg-amber-600/30 text-amber-300 border-amber-500/30';
   } else if (stateLower === 'failed') {
@@ -86,7 +86,7 @@ function getStateColorClass(state: string): string {
   } else if (stateLower === 'processing' || stateLower === 'in_progress') {
     return 'bg-blue-600/30 text-blue-300 border-blue-500/30';
   }
-  return 'bg-white/10 text-[color:var(--text)]/70 border-white/20';
+  return 'bg-secondary text-muted-foreground border-border';
 }
 
 export default function OrdersContent() {
@@ -181,7 +181,7 @@ export default function OrdersContent() {
     if (order.type === 'product') {
       return (
         <TableRow key={order.id}>
-          <TableCell className="font-medium">{order.transaction_id || '-'}</TableCell>
+          <TableCell className="font-medium text-white">{order.transaction_id || '-'}</TableCell>
           <TableCell>
             <div className="flex items-center gap-2">
               {order.product?.image_url && (
@@ -192,17 +192,17 @@ export default function OrdersContent() {
                   className="h-8 w-8 rounded object-cover"
                 />
               )}
-              <span>{order.product?.name || 'ไม่พบข้อมูล'}</span>
+              <span className="text-white">{order.product?.name || 'ไม่พบข้อมูล'}</span>
             </div>
           </TableCell>
-          <TableCell>{order.user?.username || '-'}</TableCell>
-          <TableCell>{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
+          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
               {translateState(order.state)}
             </span>
           </TableCell>
-          <TableCell className="text-right">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
+          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
         </TableRow>
       );
     }
@@ -210,7 +210,7 @@ export default function OrdersContent() {
     if (order.type === 'game_account') {
       return (
         <TableRow key={order.id}>
-          <TableCell className="font-medium">{order.transaction_id || `GA-${order.id}`}</TableCell>
+          <TableCell className="font-medium text-white">{order.transaction_id || `GA-${order.id}`}</TableCell>
           <TableCell>
             <div className="flex items-center gap-2">
               {order.game_account?.cover_image_url && (
@@ -222,19 +222,19 @@ export default function OrdersContent() {
                 />
               )}
               <div>
-                <div className="font-medium">{order.game_account?.title || 'ไม่พบข้อมูล'}</div>
-                <div className="text-xs text-[color:var(--text)]/60">{order.game_account?.game_name || ''}</div>
+                <div className="font-medium text-white">{order.game_account?.title || 'ไม่พบข้อมูล'}</div>
+                <div className="text-xs text-gray-400">{order.game_account?.game_name || ''}</div>
               </div>
             </div>
           </TableCell>
-          <TableCell>{order.user?.username || '-'}</TableCell>
-          <TableCell>{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
+          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
               {translateState(order.state)}
             </span>
           </TableCell>
-          <TableCell className="text-right">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
+          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
         </TableRow>
       );
     }
@@ -242,26 +242,26 @@ export default function OrdersContent() {
     if (order.type === 'social') {
       return (
         <TableRow key={order.id}>
-          <TableCell className="font-medium">{order.transaction_id || `SO-${order.id}`}</TableCell>
+          <TableCell className="font-medium text-white">{order.transaction_id || `SO-${order.id}`}</TableCell>
           <TableCell>
             <div>
-              <div className="font-medium">{order.social_service?.display_name || order.social_service?.name || 'ไม่พบข้อมูล'}</div>
+              <div className="font-medium text-white">{order.social_service?.display_name || order.social_service?.name || 'ไม่พบข้อมูล'}</div>
               {order.link && (
-                <div className="text-xs text-[color:var(--text)]/60 truncate max-w-xs">{order.link}</div>
+                <div className="text-xs text-gray-400 truncate max-w-xs">{order.link}</div>
               )}
               {order.quantity && (
-                <div className="text-xs text-[color:var(--text)]/60">จำนวน: {order.quantity}</div>
+                <div className="text-xs text-gray-400">จำนวน: {order.quantity}</div>
               )}
             </div>
           </TableCell>
-          <TableCell>{order.user?.username || '-'}</TableCell>
-          <TableCell>{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
+          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
               {translateState(order.state)}
             </span>
           </TableCell>
-          <TableCell className="text-right">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
+          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
         </TableRow>
       );
     }
@@ -294,7 +294,7 @@ export default function OrdersContent() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-xl font-semibold">ประวัติคำสั่งซื้อ</h2>
+        <h2 className="text-xl font-semibold text-white">ประวัติคำสั่งซื้อ</h2>
         <div className="flex-1 min-w-[200px] max-w-md">
           <InputGroup>
             <InputGroupInput
@@ -347,10 +347,10 @@ export default function OrdersContent() {
                           <EmptyMedia variant="icon">
                             <ShoppingCart className="size-6" />
                           </EmptyMedia>
-                          <EmptyTitle>
+                          <EmptyTitle className="text-white">
                       {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ'}
                           </EmptyTitle>
-                          <EmptyDescription>
+                          <EmptyDescription className="text-gray-400">
                             {searchQuery 
                               ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
                               : 'คำสั่งซื้อจะแสดงที่นี่เมื่อมีการสั่งซื้อ'}
@@ -397,10 +397,10 @@ export default function OrdersContent() {
                           <EmptyMedia variant="icon">
                             <ShoppingCart className="size-6" />
                           </EmptyMedia>
-                          <EmptyTitle>
+                          <EmptyTitle className="text-white">
                       {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ ประเภทเติมเกม'}
                           </EmptyTitle>
-                          <EmptyDescription>
+                          <EmptyDescription className="text-gray-400">
                             {searchQuery 
                               ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
                               : 'คำสั่งซื้อประเภทเติมเกมจะแสดงที่นี่'}
@@ -447,10 +447,10 @@ export default function OrdersContent() {
                           <EmptyMedia variant="icon">
                             <ShoppingCart className="size-6" />
                           </EmptyMedia>
-                          <EmptyTitle>
+                          <EmptyTitle className="text-white">
                       {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ ประเภทไอดีเกม'}
                           </EmptyTitle>
-                          <EmptyDescription>
+                          <EmptyDescription className="text-gray-400">
                             {searchQuery 
                               ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
                               : 'คำสั่งซื้อประเภทไอดีเกมจะแสดงที่นี่'}
@@ -497,10 +497,10 @@ export default function OrdersContent() {
                           <EmptyMedia variant="icon">
                             <ShoppingCart className="size-6" />
                           </EmptyMedia>
-                          <EmptyTitle>
+                          <EmptyTitle className="text-white">
                       {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : `ยังไม่มีคำสั่งซื้อ${activeTab !== 'all' ? ` ประเภท${getOrderTypeLabel(activeTab)}` : ''}`}
                           </EmptyTitle>
-                          <EmptyDescription>
+                          <EmptyDescription className="text-gray-400">
                             {searchQuery 
                               ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
                               : 'คำสั่งซื้อจะแสดงที่นี่เมื่อมีการสั่งซื้อ'}

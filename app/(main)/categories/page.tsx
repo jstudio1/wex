@@ -1,21 +1,23 @@
 import { getBaseUrl } from '@/lib/url';
 import GameCategoryList from '@/components/GameCategoryList';
-import { cache } from 'react';
-import { CACHE_CONFIG } from '@/lib/cache';
 import type { Metadata } from 'next';
+
+// Force dynamic rendering - no cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว',
-  description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก wexplus เว็บเติมเกมอันดับ 1',
-  keywords: ['หมวดหมู่เกม', 'เติมเกม', 'ราคาถูก', 'เติมเกมรวดเร็ว', 'สินค้าเกม', 'บริการเกม', 'wexplus', 'เว็บเติมเกม'],
+  description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก WeXPlus เว็บเติมเกมอันดับ 1',
+  keywords: ['หมวดหมู่เกม', 'เติมเกม', 'ราคาถูก', 'เติมเกมรวดเร็ว', 'สินค้าเกม', 'บริการเกม', 'WeXPlus', 'เว็บเติมเกม'],
   alternates: { canonical: '/categories' },
   openGraph: {
     title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว',
-    description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก wexplus เว็บเติมเกมอันดับ 1',
+    description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก WeXPlus เว็บเติมเกมอันดับ 1',
     url: '/categories',
     type: 'website',
   },
-  twitter: { card: 'summary', title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว', description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก wexplus เว็บเติมเกมอันดับ 1' },
+  twitter: { card: 'summary', title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว', description: 'เลือกหมวดหมู่เกมที่ต้องการเติม รวมทุกเกมดัง ราคาถูก เติมเร็ว ปลอดภัย จาก WeXPlus เว็บเติมเกมอันดับ 1' },
 };
 
 type GameCategory = {
@@ -28,12 +30,15 @@ type GameCategory = {
   maxPrice?: number;
 };
 
-const fetchCategories = cache(async (): Promise<GameCategory[]> => {
+async function fetchCategories(): Promise<GameCategory[]> {
   const base = getBaseUrl();
-  const categoriesRes = await fetch(`${base}/api/game-categories`, { next: { revalidate: 120, tags: ['game-categories'] } });
+  const categoriesRes = await fetch(`${base}/api/game-categories`, { 
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+  });
   const categories = categoriesRes.ok ? (await categoriesRes.json()).data : [];
   return categories;
-});
+}
 
 export default async function CategoriesPage() {
   const categories = await fetchCategories();

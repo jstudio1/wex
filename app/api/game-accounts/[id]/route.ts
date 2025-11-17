@@ -15,6 +15,11 @@ const updateGameAccountSchema = z.object({
   price: z.number().min(0).optional(),
   original_price: z.number().min(0).optional().nullable(),
   discount_percent: z.number().int().min(0).max(100).optional().nullable(),
+  permission_id: z.union([
+    z.number().int().positive(),
+    z.null(),
+    z.literal(''),
+  ]).optional().transform((val) => val === '' ? null : val),
   stock: z.number().int().min(0).optional(),
   is_published: z.boolean().optional()
 });
@@ -29,19 +34,44 @@ export async function GET(
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const permissionId = searchParams.get('permission_id');
+
     const sb = createServiceClient();
-    const { data, error } = await sb
+    let query = sb
       .from('game_accounts')
       .select('*, game_categories(id, name, slug)')
       .eq('id', id)
-      .eq('is_published', true)
-      .single();
+      .eq('is_published', true);
+
+    const { data, error } = await query.single();
 
     if (error) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'not_found' }, { status: 404 });
       }
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
+    }
+
+    // ถ้ามี permission_id ให้ดึงราคาสำหรับ permission นี้
+    if (permissionId) {
+      const permId = parseInt(permissionId);
+      if (!isNaN(permId)) {
+        const { data: customPrice } = await sb
+          .from('game_account_prices')
+          .select('price')
+          .eq('game_account_id', id)
+          .eq('permission_id', permId)
+          .maybeSingle();
+        
+        if (customPrice) {
+          return NextResponse.json({ 
+            ok: true, 
+            data: { price: Number(customPrice.price) } 
+          });
+        }
+      }
+      return NextResponse.json({ ok: true, data: null });
     }
 
     return NextResponse.json({ ok: true, data });
@@ -85,6 +115,7 @@ export async function PUT(
     if (validated.price !== undefined) updateData.price = validated.price;
     if (validated.original_price !== undefined) updateData.original_price = validated.original_price;
     if (validated.discount_percent !== undefined) updateData.discount_percent = validated.discount_percent;
+    if (validated.permission_id !== undefined) updateData.permission_id = validated.permission_id;
     if (validated.stock !== undefined) updateData.stock = validated.stock;
     if (validated.is_published !== undefined) updateData.is_published = validated.is_published;
     

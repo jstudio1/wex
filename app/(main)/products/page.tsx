@@ -1,8 +1,11 @@
 import { getBaseUrl } from '@/lib/url';
-import ProductsBrowser from '@/components/ProductsBrowser';
+import PublicProductsSearch from '@/components/PublicProductsSearch';
+import ProductsHeroBanner from '@/components/ProductsHeroBanner';
+import ProductsBreadcrumb from '@/components/ProductsBreadcrumb';
 import { cache } from 'react';
 import { CACHE_CONFIG } from '@/lib/cache';
 import type { Metadata } from 'next';
+import { Gamepad2 } from 'lucide-react';
 
 type ProductCard = {
   id: number;
@@ -13,13 +16,11 @@ type ProductCard = {
   badge?: { text?: string | null; percent?: number | null } | null;
 };
 
-const fetchProducts = cache(async (category?: string): Promise<{ products: ProductCard[], categories: { id: number; name: string; slug: string }[] }> => {
+const fetchProducts = cache(async (): Promise<ProductCard[]> => {
   const base = getBaseUrl();
-  const p = await fetch(`${base}/api/products${category ? `?category=${category}` : ''}`, { next: { revalidate: 120, tags: ['products'] } });
-  const c = await fetch(`${base}/api/categories`, { next: { revalidate: 120, tags: ['categories'] } });
+  const p = await fetch(`${base}/api/products`, { next: { revalidate: 120, tags: ['products'] } });
   const products = p.ok ? (await p.json()).data : [];
-  const categories = c.ok ? (await c.json()).data : [];
-  return { products, categories };
+  return products;
 });
 
 const fetchSite = cache(async () => {
@@ -28,28 +29,55 @@ const fetchSite = cache(async () => {
   return res.ok ? res.json() : { flashStart: null, flashEnd: null };
 });
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'รายการบริการเติมเกมทั้งหมด - ราคาถูก เติมเร็ว ปลอดภัย',
-  description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก wexplus เว็บเติมเกมอันดับ 1',
+  description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus เว็บเติมเกมอันดับ 1',
   alternates: { canonical: '/products' },
   openGraph: {
     title: 'รายการบริการเติมเกมทั้งหมด - ราคาถูก เติมเร็ว ปลอดภัย',
-    description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก wexplus เว็บเติมเกมอันดับ 1',
+    description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus เว็บเติมเกมอันดับ 1',
     url: '/products',
     type: 'website',
   },
-  twitter: { card: 'summary', title: 'รายการบริการเติมเกมทั้งหมด - ราคาถูก เติมเร็ว ปลอดภัย', description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก wexplus เว็บเติมเกมอันดับ 1' },
+  twitter: { card: 'summary', title: 'รายการบริการเติมเกมทั้งหมด - ราคาถูก เติมเร็ว ปลอดภัย', description: 'รวมบริการเติมเกมทุกเกมดัง ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus เว็บเติมเกมอันดับ 1' },
 };
 
-export default async function ProductsPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-  const category = typeof searchParams?.category === 'string' ? searchParams?.category : undefined;
-  const { products, categories } = await fetchProducts(category);
+export default async function ProductsPage() {
+  const products = await fetchProducts();
   const site = await fetchSite();
   return (
-    <main className="mx-auto max-w-7xl px-6 py-6 space-y-3">
-      <h1 className="text-xl font-semibold">รายการบริการ</h1>
-      <ProductsBrowser products={products} categories={categories} initialCategory={category} flashStart={site.flashStart} flashEnd={site.flashEnd} />
-    </main>
+    <>
+      {/* Hero Banner */}
+      <ProductsHeroBanner />
+      
+      {/* Main Content */}
+      <main className="bg-black py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
+                <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white sm:text-3xl">เติมเกมออนไลน์</h1>
+                <p className="text-sm text-gray-400">Termgame Online</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Products Grid */}
+          <PublicProductsSearch 
+            products={products} 
+            hideSearch={true}
+            flashStart={site.flashStart} 
+            flashEnd={site.flashEnd} 
+          />
+        </div>
+      </main>
+    </>
   );
 }
 

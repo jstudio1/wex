@@ -86,7 +86,7 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
       >
         {isHighlight && (
           <div className="absolute -top-2 -left-2 z-10">
-            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-[color:var(--text)] border-0 text-xs px-2 py-0.5 shadow-lg">
+            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-lg">
               ★ Highlight
             </Badge>
           </div>
@@ -94,16 +94,16 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
         <div className={`relative ${isHighlight ? 'border-2 border-yellow-500 rounded-xl p-1' : ''}`}>
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.image_url} alt={p.name} className={`rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.035] ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`} />
+            <img src={p.image_url} alt={p.name} className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`} />
           ) : (
-            <div className={`rounded-xl bg-white/5 flex items-center justify-center ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
-              <span className="text-xs text-[color:var(--text)]/40 text-center px-2">ไม่มีรูป</span>
+            <div className={`rounded-xl bg-gray-800 flex items-center justify-center ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
+              <span className="text-xs text-gray-500 text-center px-2">ไม่มีรูป</span>
             </div>
           )}
           {badgeText && (
             <div className="absolute -bottom-2 left-2 flex flex-col gap-1.5">
-              <Badge variant="destructive" className="shadow-sm gap-1">
-                <Zap className="size-3" />
+              <Badge variant="destructive" className="shadow-md gap-1">
+                <Zap className="h-3 w-3" />
                 <span className="font-semibold whitespace-nowrap">{badgeText}</span>
               </Badge>
               {(flashStart || flashEnd) && (
@@ -112,14 +112,14 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
             </div>
           )}
         </div>
-        <h2 className="mt-3 text-sm md:text-base font-medium truncate w-full text-center">{p.name}</h2>
+        <h2 className="mt-3 text-sm md:text-base font-semibold text-white truncate w-full text-center">{p.name}</h2>
         {isHighlight && recommendedItem && (
           <div className="mt-1 text-center">
-            <div className="text-xs text-[color:var(--text)]/60">{recommendedItem.name}</div>
-            <div className="text-sm font-semibold text-[color:var(--text)]">
+            <div className="text-xs text-gray-400">{recommendedItem.name}</div>
+            <div className="text-sm font-bold text-white">
               <span className="tabular-nums">{Number(recommendedItem.price)}฿</span>
               {Number(recommendedItem.originalPrice) > Number(recommendedItem.price) && (
-                <span className="line-through opacity-60 ml-1 text-xs tabular-nums">{Number(recommendedItem.originalPrice)}฿</span>
+                <span className="line-through opacity-60 ml-1 text-xs tabular-nums text-gray-500">{Number(recommendedItem.originalPrice)}฿</span>
               )}
             </div>
           </div>
