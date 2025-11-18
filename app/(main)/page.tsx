@@ -235,12 +235,12 @@ async function HomeServer() {
                 >
                   <div className="relative">
                     {product.image_url || product.icon_url ? (
-                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative">
+                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative bg-gray-800/50 flex items-center justify-center">
                         <Image 
                           src={product.image_url || product.icon_url} 
                           alt={product.display_name || product.name} 
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-110" 
+                          className="object-contain p-2 transition-transform duration-300 group-hover:scale-105" 
                           sizes="(max-width: 640px) 160px, 176px"
                           loading={index < 6 ? 'eager' : 'lazy'}
                           priority={index < 3}

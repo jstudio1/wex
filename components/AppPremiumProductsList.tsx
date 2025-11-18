@@ -104,12 +104,12 @@ function ProductCard({
       <div className="relative flex flex-col h-full p-5 z-10">
         {/* Image Section with Overlay */}
         {product.image_url && (
-          <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-4 group/image">
+          <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-4 group/image flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src={product.image_url} 
               alt={product.display_name} 
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              className="w-full h-full object-contain p-3 transition-transform duration-700 group-hover:scale-105"
               suppressHydrationWarning
             />
             {/* Image Overlay */}
