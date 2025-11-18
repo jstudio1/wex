@@ -69,25 +69,61 @@ const getPremiumAppCategories = cache(async () => {
   }
 });
 
-const getPremiumAppProducts = cache(async () => {
+const getPremiumAppProductsByCategory = cache(async () => {
   try {
     const sb = createServiceClient();
-    const { data: products, error } = await sb
-      .from('app_premium_products')
-      .select('id, name, display_name, image_url, icon_url, base_price, stock, is_published')
+    
+    // Fetch published app premium categories
+    const { data: categories, error: catError } = await sb
+      .from('app_premium_categories')
+      .select('id, category, display_name, icon_url, is_published, display_order')
       .eq('is_published', true)
-      .gt('stock', 0)
-      .order('created_at', { ascending: false })
-      .limit(12);
+      .order('display_order', { ascending: true })
+      .order('id', { ascending: true });
 
-    if (error) {
-      console.error('premium app products fetch error:', error);
+    if (catError || !categories) {
+      console.error('premium app categories fetch error:', catError);
       return [];
     }
 
-    return products || [];
+    // For each category, fetch products
+    const categoriesWithProducts = await Promise.all(
+      categories.map(async (cat: any) => {
+        // Get products for this category using app_category field
+        const { data: products, error: productsError } = await sb
+          .from('app_premium_products')
+          .select('id, name, display_name, image_url, icon_url, base_price, stock, is_published, app_category')
+          .eq('is_published', true)
+          .gt('stock', 0)
+          .ilike('app_category', `%${cat.category}%`)
+          .order('created_at', { ascending: false })
+          .limit(12);
+
+        if (productsError) {
+          console.error(`Error fetching products for category ${cat.category}:`, productsError);
+          return null;
+        }
+
+        if (!products || products.length === 0) {
+          return null;
+        }
+
+        return {
+          category: {
+            id: cat.id,
+            category: cat.category,
+            display_name: cat.display_name || cat.category,
+            icon_url: cat.icon_url,
+          },
+          products: products || [],
+        };
+      })
+    );
+
+    // Filter out categories with no products
+    return categoriesWithProducts.filter((item): item is NonNullable<typeof item> => item !== null && item.products.length > 0);
   } catch (error) {
-    console.error('premium app products fetch error:', error);
+    console.error('premium app products by category fetch error:', error);
     return [];
   }
 });
@@ -104,22 +140,28 @@ async function HomeServer() {
   const site = await getSite();
   const stats = await getHomeStats();
   const premiumAppCategories = await getPremiumAppCategories();
-  const premiumAppProducts = await getPremiumAppProducts();
+  const premiumAppProductsByCategory = await getPremiumAppProductsByCategory();
   const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
   
-  // Calculate prices for premium app products
-  const premiumAppProductsWithPrice = premiumAppProducts.map((product: any) => {
-    const basePrice = Number(product.base_price || 0);
-    const finalPrice = computePrice(
-      basePrice,
-      0,
-      0,
-      globalPct,
-      globalFix
-    );
+  // Calculate prices for products in each category
+  const categoriesWithProductsAndPrices = premiumAppProductsByCategory.map((catData: any) => {
+    const productsWithPrice = catData.products.map((product: any) => {
+      const basePrice = Number(product.base_price || 0);
+      const finalPrice = computePrice(
+        basePrice,
+        0,
+        0,
+        globalPct,
+        globalFix
+      );
+      return {
+        ...product,
+        finalPrice,
+      };
+    });
     return {
-      ...product,
-      finalPrice,
+      ...catData,
+      products: productsWithPrice,
     };
   });
   
@@ -203,70 +245,85 @@ async function HomeServer() {
           })}
         </section>
 
-        {/* Premium App Products Section */}
-        {premiumAppProducts && premiumAppProducts.length > 0 && (
-          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                  <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">แอพพรีเมี่ยม</h2>
-                  <p className="text-sm text-gray-400">Premium Applications</p>
-                </div>
-              </div>
-              <Link 
-                href="/premium-app" 
-                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-              >
-                ดูทั้งหมด
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-              {premiumAppProductsWithPrice.map((product: any, index: number) => (
-                <Link 
-                  key={product.id} 
-                  href={`/premium-app/${product.id}`} 
-                  className="group block text-center"
-                  prefetch={index < 6}
-                >
-                  <div className="relative">
-                    {product.image_url || product.icon_url ? (
-                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative bg-gray-800/50 flex items-center justify-center">
-                        <Image 
-                          src={product.image_url || product.icon_url} 
-                          alt={product.display_name || product.name} 
-                          fill
-                          className="object-contain p-2 transition-transform duration-300 group-hover:scale-105" 
-                          sizes="(max-width: 640px) 160px, 176px"
-                          loading={index < 6 ? 'eager' : 'lazy'}
-                          priority={index < 3}
+        {/* Premium App Products by Category Section */}
+        {categoriesWithProductsAndPrices && categoriesWithProductsAndPrices.length > 0 && (
+          <div className="space-y-12">
+            {categoriesWithProductsAndPrices.map((catData: any) => (
+              <section key={catData.category.id} className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    {catData.category.icon_url ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={catData.category.icon_url} 
+                          alt={catData.category.display_name}
+                          className="w-full h-full object-contain p-1.5"
                         />
                       </div>
                     ) : (
-                      <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
-                        <AppWindow className="h-16 w-16 text-gray-600" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
+                        <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
                       </div>
                     )}
-                  </div>
-                  <div className="mt-3">
-                    <div className="text-sm font-semibold text-white line-clamp-2">{product.display_name || product.name}</div>
-                    <div className="text-xs text-emerald-500 font-bold mt-1">
-                      {product.finalPrice.toFixed(0)} ฿
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{catData.category.display_name}</h2>
+                      <p className="text-sm text-gray-400">Premium Applications</p>
                     </div>
-                    {product.stock > 0 && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        คงเหลือ {product.stock}
-                      </div>
-                    )}
                   </div>
-                </Link>
-              ))}
-            </div>
-          </section>
+                  <Link 
+                    href={`/premium-app?category=${catData.category.category}`} 
+                    className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+                  >
+                    ดูทั้งหมด
+                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+                  {catData.products.map((product: any, index: number) => (
+                    <Link 
+                      key={product.id} 
+                      href={`/premium-app/${product.id}`} 
+                      className="group block text-center"
+                      prefetch={index < 6}
+                    >
+                      <div className="relative">
+                        {product.image_url || product.icon_url ? (
+                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative bg-gray-800/50 flex items-center justify-center">
+                            <Image 
+                              src={product.image_url || product.icon_url} 
+                              alt={product.display_name || product.name} 
+                              fill
+                              className="object-contain p-2 transition-transform duration-300 group-hover:scale-105" 
+                              sizes="(max-width: 640px) 160px, 176px"
+                              loading={index < 6 ? 'eager' : 'lazy'}
+                              priority={index < 3}
+                            />
+                          </div>
+                        ) : (
+                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
+                            <AppWindow className="h-16 w-16 text-gray-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-3">
+                        <div className="text-sm font-semibold text-white line-clamp-2">{product.display_name || product.name}</div>
+                        <div className="text-xs text-emerald-500 font-bold mt-1">
+                          {product.finalPrice.toFixed(0)} ฿
+                        </div>
+                        {product.stock > 0 && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            คงเหลือ {product.stock}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
 
         {/* Premium Apps Categories Section */}
