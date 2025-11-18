@@ -247,9 +247,9 @@ export default function ApiKeysContent() {
     );
   }
 
-    const balanceKeys = apiKeys.filter(key => 
+  const balanceKeys = apiKeys.filter(key => 
       key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi' || key.key_name === 'OTP24HR_API_KEY'
-    );
+  );
 
   return (
     <div className="space-y-6">

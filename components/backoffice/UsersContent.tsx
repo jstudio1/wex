@@ -11,19 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Edit, Trash2, Save, X, Plus, Minus } from 'lucide-react';
 
-interface Permission {
-  id: number;
-  name: string;
-}
-
 interface User {
   id: string;
   username: string | null;
   points: number;
   created_at: string;
   is_admin: boolean;
-  permission_id: number | null;
-  permission?: Permission | null;
 }
 
 export default function UsersContent() {
@@ -35,12 +28,8 @@ export default function UsersContent() {
   const [saving, setSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string | null }>({ open: false, userId: null });
   const [pointsAdjust, setPointsAdjust] = useState<{ [key: string]: number }>({});
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
-
   useEffect(() => {
     fetchUsers();
-    fetchPermissions();
   }, []);
 
   const fetchUsers = async () => {
@@ -60,22 +49,6 @@ export default function UsersContent() {
     }
   };
 
-  const fetchPermissions = async () => {
-    try {
-      const res = await fetch('/api/admin/permissions');
-      if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลสิทธิ์ได้');
-      const json = await res.json();
-      setPermissions(json.data || []);
-    } catch (err) {
-      toast.show({
-        title: 'เกิดข้อผิดพลาด',
-        description: (err as Error).message,
-        variant: 'destructive',
-      });
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const handleEdit = (user: User) => {
     setEditingId(user.id);
@@ -83,7 +56,6 @@ export default function UsersContent() {
       username: user.username || '',
       points: user.points,
       is_admin: user.is_admin,
-      permission_id: user.permission_id ?? null,
     });
     setPointsAdjust({});
   };
@@ -106,26 +78,10 @@ export default function UsersContent() {
         finalPoints = (currentUser?.points || 0) + pointsAdjust[userId];
       }
 
-      // แปลง permission_id ให้เป็น number หรือ null
-      let permissionId: number | null = null;
-      if (formData.permission_id !== undefined && formData.permission_id !== null) {
-        if (typeof formData.permission_id === 'string') {
-          if (formData.permission_id !== '') {
-            const parsed = parseInt(formData.permission_id, 10);
-            permissionId = !isNaN(parsed) && parsed > 0 ? parsed : null;
-          }
-        } else {
-          permissionId = formData.permission_id > 0 ? formData.permission_id : null;
-        }
-      } else if (currentUser?.permission_id) {
-        permissionId = currentUser.permission_id;
-      }
-
       const updateData: any = {
         username: formData.username || null,
         points: Math.max(0, finalPoints || 0),
         is_admin: formData.is_admin ?? false,
-        permission_id: permissionId,
       };
 
       const res = await fetch(`/api/admin/users/${userId}`, {
@@ -262,7 +218,6 @@ export default function UsersContent() {
               <th className="text-left p-3">ชื่อผู้ใช้</th>
               <th className="text-left p-3">พอยต์</th>
               <th className="text-left p-3">บทบาท</th>
-              <th className="text-left p-3">สิทธิ์ส่วนลด</th>
               <th className="text-left p-3">วันที่สมัคร</th>
               <th className="text-left p-3">จัดการ</th>
             </tr>
@@ -270,7 +225,7 @@ export default function UsersContent() {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center p-8 text-gray-400">
+                <td colSpan={5} className="text-center p-8 text-gray-400">
                   ยังไม่มีผู้ใช้
                 </td>
               </tr>
@@ -278,11 +233,6 @@ export default function UsersContent() {
               users.map((user) => {
                 const isEditing = editingId === user.id;
                 const finalPoints = getFinalPoints(user);
-                
-                const currentPermissionId =
-                  editForm.permission_id !== undefined && isEditing
-                    ? editForm.permission_id
-                    : user.permission_id;
                 
                 return (
                   <tr key={user.id} className="border-b border-gray-800 hover:bg-gray-900/30">
@@ -359,34 +309,6 @@ export default function UsersContent() {
                         >
                           {user.is_admin ? 'Admin' : 'User'}
                         </Badge>
-                      )}
-                    </td>
-                    <td className="p-3 align-top">
-                      {isEditing ? (
-                        <select
-                          value={currentPermissionId === null || currentPermissionId === undefined ? '' : String(currentPermissionId)}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              permission_id: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          disabled={permissionsLoading}
-                          className="w-48 rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-600/50"
-                        >
-                          <option value="">ไม่มีสิทธิ์</option>
-                          {permissions.map((permission) => (
-                            <option key={permission.id} value={permission.id}>
-                              {permission.name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : user.permission ? (
-                        <Badge variant="outline" className="border-red-600 text-red-400 bg-red-900/30">
-                          {user.permission.name}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-gray-500">ไม่มีสิทธิ์</span>
                       )}
                     </td>
                     <td className="p-3 align-top text-gray-400">

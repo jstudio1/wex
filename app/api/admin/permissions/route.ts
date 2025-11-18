@@ -29,20 +29,34 @@ const permissionSchema = z.object({
 });
 
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const sb = createServiceClient();
-  const { data, error } = await sb
-    .from('permissions')
-    .select('*')
-    .order('created_at', { ascending: false });
+    const sb = createServiceClient();
+    const { data, error } = await sb
+      .from('permissions')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });
+    if (error) {
+      // If table doesn't exist (code PGRST205 or 42P01), return empty array instead of error
+      if (error.code === 'PGRST205' || error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('Could not find the table')) {
+        console.warn('[GET /api/admin/permissions] Permissions table does not exist, returning empty array');
+        return NextResponse.json({ data: [] });
+      }
+      console.error('[GET /api/admin/permissions] Database error:', error);
+      return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data: data || [] });
+  } catch (err) {
+    console.error('[GET /api/admin/permissions] Unexpected error:', err);
+    return NextResponse.json({ 
+      error: 'unexpected', 
+      detail: err instanceof Error ? err.message : String(err) 
+    }, { status: 500 });
   }
-
-  return NextResponse.json({ data });
 }
 
 export async function POST(req: Request) {
