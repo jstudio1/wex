@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus } from 'lucide-react';
+import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ type NavbarMenus = {
   games: boolean;
   premiumApp: boolean;
   cashcard: boolean;
+  contact: boolean;
 };
 
 type Props = {
@@ -26,9 +27,15 @@ type Props = {
   username?: string | null;
   navbarMenus: NavbarMenus;
   navbarMenuOrder?: string[];
+  navbarMenuLabels?: {
+    products?: string;
+    premiumApp?: string;
+    social?: string;
+    contact?: string;
+  };
 };
 
-export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus, navbarMenuOrder }: Props) {
+export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus, navbarMenuOrder, navbarMenuLabels }: Props) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -191,43 +198,67 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
               <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เมนูหลัก</div>
               {(() => {
                 const allItemsMap: Record<string, { href: string; label: string; icon: typeof Gamepad2; key: keyof NavbarMenus; requireAuth?: boolean }> = {
-                  home: { href: '/', label: 'หน้าแรก', icon: Home, key: 'home' },
-                  products: { href: '/products', label: 'เติมเกม', icon: Gamepad2, key: 'products' },
-                  premiumApp: { href: '/premium-app', label: 'แอพพรีเมี่ยม', icon: Smartphone, key: 'premiumApp' },
-                  categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Package, key: 'categories' },
-                  social: { href: '/social', label: 'ปั้มโซเชียล', icon: Share2, key: 'social' },
-                  games: { href: '/games', label: 'สุ่มรางวัล', icon: Trophy, key: 'games', requireAuth: true },
-                  cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' }
+                  home: { href: '/', label: 'หน้าหลัก', icon: Home, key: 'home' },
+                  products: { href: '/products', label: navbarMenuLabels?.products || 'เติมเกม', icon: Gamepad2, key: 'products' },
+                  premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
+                  social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
                 };
 
-                const desiredOrder = ['home', 'products', 'premiumApp', 'categories', 'social', 'games', 'cashcard'] as const;
-                const order = desiredOrder;
+                const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'contact'];
+                const order = navbarMenuOrder || defaultOrder;
 
                 const items = order
+                  .filter(key => key !== 'contact')
                   .map(key => allItemsMap[key])
                   .filter(item => {
                     if (!item) return false;
                     // Filter by navbar menu setting
                     if (navbarMenus[item.key] === false) return false;
-                    // Filter by auth requirement - games menu requires login
+                    // Filter by auth requirement
                     if (item.requireAuth && !isLoggedIn) return false;
                     return true;
                   });
 
-                return items.map((item) => {
+                const menuItems = items.map((item) => {
                   const Icon = item.icon;
                   return (
-              <Link 
+                    <Link 
                       key={item.href}
-                onClick={() => setOpen(false)} 
-                className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                      onClick={() => setOpen(false)} 
+                      className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
                       href={item.href}
-              >
+                    >
                       <Icon className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
                       {item.label}
-              </Link>
+                    </Link>
                   );
                 });
+
+                // Add contact menu if enabled and in order
+                if (order.includes('contact') && navbarMenus.contact !== false) {
+                  menuItems.push(
+                    <div key="contact-menu" className="space-y-1">
+                      <Link 
+                        onClick={() => setOpen(false)} 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        href="/contact"
+                      >
+                        <Mail className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                        {navbarMenuLabels?.contact || 'ติดต่อเรา'}
+                      </Link>
+                      <Link 
+                        onClick={() => setOpen(false)} 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11" 
+                        href="/terms-policy"
+                      >
+                        <FileText className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
+                        ข้อกำหนดการใช้งาน
+                      </Link>
+                    </div>
+                  );
+                }
+
+                return menuItems;
               })()}
 
               {isLoggedIn && (

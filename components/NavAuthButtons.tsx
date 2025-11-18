@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LogIn, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/use-toast';
+import ReCaptcha from '@/components/ReCaptcha';
 
 export default function NavAuthButtons() {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -17,23 +19,75 @@ export default function NavAuthButtons() {
   const [repassword, setRepassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // reCaptcha states
+  const [recaptchaEnabled, setRecaptchaEnabled] = useState(false);
+  const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
+  const [loginRecaptchaToken, setLoginRecaptchaToken] = useState<string | null>(null);
+  const [registerRecaptchaToken, setRegisterRecaptchaToken] = useState<string | null>(null);
+  const [loginRecaptchaKey, setLoginRecaptchaKey] = useState(0);
+  const [registerRecaptchaKey, setRegisterRecaptchaKey] = useState(0);
+  
+  // Register enabled state
+  const [registerEnabled, setRegisterEnabled] = useState(true);
+  const toast = useToast();
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/recaptcha/config', { cache: 'no-store' }).then((res) => res.json()),
+      fetch('/api/site', { cache: 'no-store' }).then((res) => res.json())
+    ])
+      .then(([recaptchaData, siteData]) => {
+        setRecaptchaEnabled(recaptchaData.enabled === true);
+        setRecaptchaSiteKey(recaptchaData.siteKey || '');
+        setRegisterEnabled(siteData.registerEnabled !== false); // default true
+      })
+      .catch(() => {
+        setRecaptchaEnabled(false);
+        setRegisterEnabled(true);
+      });
+  }, []);
 
   async function onLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Check reCaptcha if enabled
+    if (recaptchaEnabled && !loginRecaptchaToken) {
+      setError('กรุณายืนยัน reCaptcha');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ 
+          username, 
+          password,
+          ...(loginRecaptchaToken && { recaptchaToken: loginRecaptchaToken })
+        })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!res.ok) {
+        if (json?.error === 'recaptcha_failed') {
+          throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+        }
+        if (json?.error === 'account_disabled') {
+          throw new Error(json?.message || 'บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+        }
+        throw new Error(json?.message || json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      }
       window.dispatchEvent(new Event('wallet:changed'));
       window.location.reload();
     } catch (err: unknown) {
       setError((err as Error).message);
+      // Reset reCaptcha on error
+      if (recaptchaEnabled) {
+        setLoginRecaptchaToken(null);
+        setLoginRecaptchaKey((prev) => prev + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -45,16 +99,32 @@ export default function NavAuthButtons() {
       setError('รหัสผ่านไม่ตรงกัน');
       return;
     }
+
+    // Check reCaptcha if enabled
+    if (recaptchaEnabled && !registerRecaptchaToken) {
+      setError('กรุณายืนยัน reCaptcha');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ 
+          username, 
+          password,
+          ...(registerRecaptchaToken && { recaptchaToken: registerRecaptchaToken })
+        })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'สมัครสมาชิกไม่สำเร็จ');
+      if (!res.ok) {
+        if (json?.error === 'recaptcha_failed') {
+          throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+        }
+        throw new Error(json?.error || 'สมัครสมาชิกไม่สำเร็จ');
+      }
       // Close register dialog and open login
       setRegisterOpen(false);
       resetRegisterState();
@@ -62,6 +132,11 @@ export default function NavAuthButtons() {
       setError('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
     } catch (err: unknown) {
       setError((err as Error).message);
+      // Reset reCaptcha on error
+      if (recaptchaEnabled) {
+        setRegisterRecaptchaToken(null);
+        setRegisterRecaptchaKey((prev) => prev + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -71,7 +146,9 @@ export default function NavAuthButtons() {
     setUsername(''); 
     setPassword(''); 
     setError(null); 
-    setLoading(false); 
+    setLoading(false);
+    setLoginRecaptchaToken(null);
+    setLoginRecaptchaKey((prev) => prev + 1);
   };
 
   const resetRegisterState = () => { 
@@ -79,7 +156,9 @@ export default function NavAuthButtons() {
     setPassword(''); 
     setRepassword('');
     setError(null); 
-    setLoading(false); 
+    setLoading(false);
+    setRegisterRecaptchaToken(null);
+    setRegisterRecaptchaKey((prev) => prev + 1);
   };
 
   return (
@@ -94,7 +173,17 @@ export default function NavAuthButtons() {
           <span style={{ color: 'white' }}>เข้าสู่ระบบ</span>
         </button>
         <button
-          onClick={() => setRegisterOpen(true)}
+          onClick={() => {
+            if (!registerEnabled) {
+              toast.show({
+                title: 'การสมัครสมาชิกถูกปิดใช้งาน',
+                description: 'ขณะนี้ไม่สามารถสมัครสมาชิกใหม่ได้',
+                variant: 'destructive'
+              });
+              return;
+            }
+            setRegisterOpen(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2 font-medium transition-opacity duration-200 hover:opacity-80 [&]:!text-white"
           style={{ color: 'white !important' }}
         >
@@ -158,6 +247,21 @@ export default function NavAuthButtons() {
                   <span className="text-sm text-gray-300">จดจำการเข้าสู่ระบบ</span>
                 </label>
               </div>
+              {recaptchaEnabled && recaptchaSiteKey && loginOpen && (
+                <div className="flex justify-center" key={`login-recaptcha-${loginRecaptchaKey}`}>
+                  <ReCaptcha
+                    key={loginRecaptchaKey}
+                    siteKey={recaptchaSiteKey}
+                    onVerify={(token) => setLoginRecaptchaToken(token)}
+                    onExpire={() => setLoginRecaptchaToken(null)}
+                    onError={() => {
+                      setLoginRecaptchaToken(null);
+                      setError('เกิดข้อผิดพลาดกับ reCaptcha');
+                    }}
+                    disabled={loading}
+                  />
+                </div>
+              )}
               {error && (
                 <div className="bg-red-900/30 border border-red-800 text-red-400 px-4 py-3 rounded-lg text-sm font-medium">
                   {error}
@@ -184,6 +288,14 @@ export default function NavAuthButtons() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!registerEnabled) {
+                      toast.show({
+                        title: 'การสมัครสมาชิกถูกปิดใช้งาน',
+                        description: 'ขณะนี้ไม่สามารถสมัครสมาชิกใหม่ได้',
+                        variant: 'destructive'
+                      });
+                      return;
+                    }
                     setLoginOpen(false);
                     resetLoginState();
                     setRegisterOpen(true);
@@ -201,6 +313,14 @@ export default function NavAuthButtons() {
 
       {/* Register Dialog */}
       <Dialog open={registerOpen} onOpenChange={(open) => {
+        if (open && !registerEnabled) {
+          toast.show({
+            title: 'การสมัครสมาชิกถูกปิดใช้งาน',
+            description: 'ขณะนี้ไม่สามารถสมัครสมาชิกใหม่ได้',
+            variant: 'destructive'
+          });
+          return;
+        }
         setRegisterOpen(open);
         if (!open) resetRegisterState();
       }}>
@@ -260,6 +380,21 @@ export default function NavAuthButtons() {
                   className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/30 h-11 rounded-lg"
                 />
               </div>
+              {recaptchaEnabled && recaptchaSiteKey && registerOpen && (
+                <div className="flex justify-center" key={`register-recaptcha-${registerRecaptchaKey}`}>
+                  <ReCaptcha
+                    key={registerRecaptchaKey}
+                    siteKey={recaptchaSiteKey}
+                    onVerify={(token) => setRegisterRecaptchaToken(token)}
+                    onExpire={() => setRegisterRecaptchaToken(null)}
+                    onError={() => {
+                      setRegisterRecaptchaToken(null);
+                      setError('เกิดข้อผิดพลาดกับ reCaptcha');
+                    }}
+                    disabled={loading}
+                  />
+                </div>
+              )}
               {error && (
                 <div className="bg-red-900/30 border border-red-800 text-red-400 px-4 py-3 rounded-lg text-sm font-medium">
                   {error}

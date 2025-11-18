@@ -28,6 +28,7 @@ import AppPremiumContent from '@/components/backoffice/AppPremiumContent';
 import CashcardContent from '@/components/backoffice/CashcardContent';
 import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
 import TopupHistoryContent from '@/components/backoffice/TopupHistoryContent';
+import AdminLoginForm from '@/components/backoffice/AdminLoginForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Empty,
@@ -288,20 +289,26 @@ export default function BackofficePage() {
   const [selectedMenu, setSelectedMenu] = useState<string>('dashboard');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
 
   useEffect(() => {
-    // ตรวจสอบว่าเป็น admin หรือไม่
+    // ตรวจสอบว่าเป็น admin และล็อคอินอยู่แล้วหรือไม่
     fetch('/api/admin/check')
       .then((res) => res.json())
       .then((data) => {
         if (!data.isAdmin) {
-          router.push('/');
+          // Not admin, show login form
+          setIsAdmin(false);
         } else {
+          // Is admin and logged in
           setIsAdmin(true);
         }
+        setCheckingAuth(false);
       })
       .catch(() => {
-        router.push('/');
+        // Error checking, show login form
+        setIsAdmin(false);
+        setCheckingAuth(false);
       });
   }, [router]);
 
@@ -317,7 +324,7 @@ export default function BackofficePage() {
     return () => clearTimeout(timer);
   }, [selectedMenu]);
 
-  if (isAdmin === null) {
+  if (checkingAuth) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
         <div className="space-y-4 w-full max-w-4xl p-4">
@@ -329,7 +336,7 @@ export default function BackofficePage() {
   }
 
   if (!isAdmin) {
-    return null;
+    return <AdminLoginForm />;
   }
 
   // หา current item (อาจจะเป็น parent หรือ sub-item)

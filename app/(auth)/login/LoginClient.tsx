@@ -1,38 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import ReCaptcha from '@/components/ReCaptcha';
 
 export default function LoginClient() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaEnabled, setRecaptchaEnabled] = useState(false);
+  const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
+  const [recaptchaKey, setRecaptchaKey] = useState(0); // Force re-render
   const toast = useToast();
+
+  useEffect(() => {
+    fetch('/api/recaptcha/config', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('[Login] reCaptcha config:', data);
+        setRecaptchaEnabled(data.enabled === true);
+        setRecaptchaSiteKey(data.siteKey || '');
+      })
+      .catch((err) => {
+        console.error('[Login] Error fetching reCaptcha config:', err);
+        setRecaptchaEnabled(false);
+      });
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check reCaptcha if enabled
+    if (recaptchaEnabled && !recaptchaToken) {
+      setError('กรุณายืนยัน reCaptcha');
+      toast.show({ title: 'เกิดข้อผิดพลาด', description: 'กรุณายืนยัน reCaptcha', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ 
+          username, 
+          password,
+          ...(recaptchaToken && { recaptchaToken })
+        })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!res.ok) {
+        if (json?.error === 'recaptcha_failed') {
+          throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+        }
+        throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      }
       toast.show({ title: 'สำเร็จ', description: 'เข้าสู่ระบบเรียบร้อย' });
       window.location.href = '/products';
     } catch (err: unknown) {
       const msg = (err as Error).message;
       setError(msg);
       toast.show({ title: 'เกิดข้อผิดพลาด', description: msg, variant: 'destructive' });
+      // Reset reCaptcha on error
+      if (recaptchaEnabled) {
+        setRecaptchaToken(null);
+        setRecaptchaKey((prev) => prev + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +93,21 @@ export default function LoginClient() {
             <Label htmlFor="password" className="text-[color:var(--text)]">รหัสผ่าน</Label>
             <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          {recaptchaEnabled && recaptchaSiteKey && (
+            <div className="mb-4">
+              <ReCaptcha
+                key={recaptchaKey}
+                siteKey={recaptchaSiteKey}
+                onVerify={(token) => setRecaptchaToken(token)}
+                onExpire={() => setRecaptchaToken(null)}
+                onError={() => {
+                  setRecaptchaToken(null);
+                  setError('เกิดข้อผิดพลาดกับ reCaptcha');
+                }}
+                disabled={loading}
+              />
+            </div>
+          )}
           {error && <p className="-mt-4 mb-4 text-sm text-red-400">{error}</p>}
           <button type="submit" className="group/btn relative block h-10 w-full rounded-md bg-gradient-to-br from-accent to-accent/80 font-medium text-[color:var(--text)] shadow-lg disabled:opacity-60">
             {loading ? (<span className="inline-flex items-center gap-2"><Spinner /> กำลังเข้าสู่ระบบ...</span>) : 'เข้าสู่ระบบ →'}

@@ -8,6 +8,8 @@ export default function AnnouncementBar() {
   const [text, setText] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const speed = 60; // ตั้งค่าคงที่ 60 วินาที
   
   // แสดงเฉพาะหน้าแรกเท่านั้น
@@ -15,9 +17,33 @@ export default function AnnouncementBar() {
 
   useEffect(() => {
     fetchAnnouncement();
+    fetchMaintenanceMode();
+    checkAdmin();
     const interval = setInterval(fetchAnnouncement, 30000); // รีเฟรชทุก 30 วินาที
     return () => clearInterval(interval);
   }, []);
+
+  const fetchMaintenanceMode = async () => {
+    try {
+      const res = await fetch('/api/site', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      setMaintenanceMode(json.maintenanceMode === true);
+    } catch {
+      // ignore
+    }
+  };
+
+  const checkAdmin = async () => {
+    try {
+      const res = await fetch('/api/admin/check', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      setIsAdmin(json.isAdmin === true);
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchAnnouncement = async () => {
     try {
@@ -36,8 +62,8 @@ export default function AnnouncementBar() {
     }
   };
 
-  // แสดงเฉพาะหน้าแรกเท่านั้น
-  if (!isHomePage) {
+  // แสดงเฉพาะหน้าแรกเท่านั้น และไม่แสดงเมื่อ maintenance mode เปิดอยู่ (ยกเว้นแอดมิน)
+  if (!isHomePage || (maintenanceMode && !isAdmin)) {
     return null;
   }
   

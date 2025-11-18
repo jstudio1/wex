@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 type SiteData = { 
@@ -29,8 +29,15 @@ type SiteData = {
     games: boolean;
     premiumApp: boolean;
     cashcard: boolean;
+    contact: boolean;
   };
   navbarMenuOrder?: string[];
+  navbarMenuLabels?: {
+    products?: string;
+    premiumApp?: string;
+    social?: string;
+    contact?: string;
+  };
   paymentMethods?: {
     code: boolean;
     qr: boolean;
@@ -60,6 +67,15 @@ type SiteData = {
     facebook?: string;
     email?: string;
   };
+  siteBrandName?: string;
+  siteTitle?: string;
+  siteMetaDescription?: string;
+  maintenanceMode?: boolean;
+  registerEnabled?: boolean;
+  recaptchaSiteKey?: string;
+  recaptchaSecretKey?: string;
+  recaptchaEnabled?: boolean;
+  termsPolicy?: string;
 };
 type AnnouncementData = { text: string; enabled: boolean };
 
@@ -77,8 +93,15 @@ export default function AdminSiteForm() {
       games: true,
       premiumApp: true,
       cashcard: true,
+      contact: true,
     },
-    navbarMenuOrder: ['products', 'social', 'categories', 'games', 'premiumApp', 'cashcard'],
+    navbarMenuOrder: ['products', 'premiumApp', 'social', 'contact'],
+    navbarMenuLabels: {
+      products: 'เติมเกม',
+      premiumApp: 'แอพ',
+      social: 'ปั้ม',
+      contact: 'ติดต่อเรา'
+    },
     paymentMethods: {
       code: true,
       qr: true,
@@ -102,7 +125,16 @@ export default function AdminSiteForm() {
       phone: '',
       facebook: '',
       email: ''
-    }
+    },
+    siteBrandName: '',
+    siteTitle: '',
+    siteMetaDescription: '',
+    maintenanceMode: false,
+    registerEnabled: true,
+    recaptchaSiteKey: '',
+    recaptchaSecretKey: '',
+    recaptchaEnabled: false,
+    termsPolicy: ''
   });
   const [postersText, setPostersText] = useState<string>('');
   const [announcement, setAnnouncement] = useState<AnnouncementData>({ text: '', enabled: false });
@@ -137,7 +169,13 @@ export default function AdminSiteForm() {
             premiumApp: true,
             cashcard: true,
           },
-          navbarMenuOrder: json.navbarMenuOrder || ['products', 'social', 'categories', 'games', 'premiumApp', 'cashcard'],
+          navbarMenuOrder: json.navbarMenuOrder || ['products', 'premiumApp', 'social', 'contact'],
+          navbarMenuLabels: json.navbarMenuLabels || {
+            products: 'เติมเกม',
+            premiumApp: 'แอพ',
+            social: 'ปั้ม',
+            contact: 'ติดต่อเรา'
+          },
           paymentMethods: json.paymentMethods || {
             code: true,
             qr: true,
@@ -161,7 +199,16 @@ export default function AdminSiteForm() {
             phone: '',
             facebook: '',
             email: ''
-          }
+          },
+          siteBrandName: json.siteBrandName || '',
+          siteTitle: json.siteTitle || '',
+          siteMetaDescription: json.siteMetaDescription || '',
+          maintenanceMode: json.maintenanceMode === true,
+          registerEnabled: json.registerEnabled !== false,
+          recaptchaSiteKey: json.recaptchaSiteKey || '',
+          recaptchaSecretKey: json.recaptchaSecretKey || '',
+          recaptchaEnabled: json.recaptchaEnabled === true,
+          termsPolicy: json.termsPolicy || ''
         });
         setPostersText((json.posters || []).join('\n'));
         
@@ -244,7 +291,17 @@ export default function AdminSiteForm() {
           ...form,
           posters: sanitizedPosters,
           navbarMenuOrder: form.navbarMenuOrder,
+          navbarMenuLabels: form.navbarMenuLabels,
           bankAccounts: sanitizedBankAccounts,
+          siteBrandName: form.siteBrandName || '',
+          siteTitle: form.siteTitle || '',
+          siteMetaDescription: form.siteMetaDescription || '',
+          maintenanceMode: form.maintenanceMode === true,
+          registerEnabled: form.registerEnabled !== false,
+          recaptchaSiteKey: form.recaptchaSiteKey || '',
+          recaptchaSecretKey: form.recaptchaSecretKey || '',
+          recaptchaEnabled: form.recaptchaEnabled === true,
+          termsPolicy: form.termsPolicy || ''
         })
       });
       if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
@@ -314,7 +371,7 @@ export default function AdminSiteForm() {
     )}
 
     <Tabs defaultValue="homepage" className="w-full">
-      <TabsList className="w-full mb-6 grid grid-cols-2 sm:grid-cols-5 gap-2 h-auto">
+      <TabsList className="w-full mb-6 grid grid-cols-2 sm:grid-cols-6 gap-2 h-auto">
         <TabsTrigger value="homepage" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
           <Home className="size-4 shrink-0" />
           <span className="hidden sm:inline">หน้าแรก</span>
@@ -339,6 +396,10 @@ export default function AdminSiteForm() {
           <Share2 className="size-4 shrink-0" />
           <span className="hidden sm:inline">ติดต่อ</span>
         </TabsTrigger>
+        <TabsTrigger value="site-settings" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
+          <Wrench className="size-4 shrink-0" />
+          <span className="hidden sm:inline">ตั้งค่าเว็บ</span>
+        </TabsTrigger>
       </TabsList>
 
       {/* หน้าแรก */}
@@ -348,6 +409,54 @@ export default function AdminSiteForm() {
             <h2 className="text-lg font-semibold mb-1">การตั้งค่าหน้าแรก</h2>
             <p className="text-sm text-[color:var(--text)]/60">ปรับแต่งหัวข้อ, คำอธิบาย, และรูปภาพ</p>
           </div>
+          
+          {/* Site Branding Settings */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2">ข้อมูลเว็บไซต์</h3>
+              <p className="text-sm text-[color:var(--text)]/60 mb-4">ตั้งค่าชื่อแบรนด์, ชื่อเว็บไซต์ และคำอธิบายสำหรับ SEO</p>
+            </div>
+            
+            <div>
+              <Label htmlFor="site-brand-name">ชื่อเว็บหรือชื่อแบรนด์</Label>
+              <Input 
+                id="site-brand-name"
+                className="mt-1" 
+                value={form.siteBrandName || ''} 
+                onChange={(e) => setForm({ ...form, siteBrandName: e.target.value })} 
+                placeholder="เช่น WeXPlus"
+              />
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">ชื่อแบรนด์ที่ใช้แสดงบนหน้าเว็บ (เช่น NavBar, Footer)</p>
+            </div>
+            
+            <div>
+              <Label htmlFor="site-title">ชื่อเว็บไซต์ (Title)</Label>
+              <Input 
+                id="site-title"
+                className="mt-1" 
+                value={form.siteTitle || ''} 
+                onChange={(e) => setForm({ ...form, siteTitle: e.target.value })} 
+                placeholder="เช่น WeXPlus - เติมเกม ราคาถูก เว็บตรง รวดเร็ว ปลอดภัย 24 ชั่วโมง"
+              />
+              <p className="text-xs text-[color:var(--text)]/60 mt-1">ชื่อเว็บไซต์ที่แสดงบนแท็บเบราว์เซอร์และผลการค้นหา (SEO)</p>
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">💡 ควรมีความยาว 50-60 ตัวอักษร</p>
+            </div>
+            
+            <div>
+              <Label htmlFor="site-meta-description">คำอธิบายเว็บ (Meta Description)</Label>
+              <Textarea
+                id="site-meta-description"
+                className="mt-1 h-24" 
+                value={form.siteMetaDescription || ''} 
+                onChange={(e) => setForm({ ...form, siteMetaDescription: e.target.value })} 
+                placeholder="เช่น เว็บเติมเกมอันดับ 1 ราคาถูกที่สุด เติมเร็ว ปลอดภัย บริการตลอด 24 ชั่วโมง รองรับทุกเกมดัง พร้อมโปรโมชั่นสุดคุ้ม"
+                maxLength={160}
+              />
+              <p className="text-xs text-[color:var(--text)]/60 mt-1">คำอธิบายที่แสดงในผลการค้นหา Google (SEO)</p>
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">💡 ควรมีความยาว 120-160 ตัวอักษร ({form.siteMetaDescription?.length || 0}/160)</p>
+            </div>
+          </div>
+          
           <div>
             <Label>หัวเรื่องหน้าแรก</Label>
             <Input 
@@ -453,10 +562,11 @@ export default function AdminSiteForm() {
         {(() => {
           const menuInfo: Record<string, { label: string; key: string }> = {
             products: { label: 'เติมเกม', key: 'products' },
-            social: { label: 'ปั้มโซเชียล', key: 'social' },
+            premiumApp: { label: 'แอพ', key: 'premiumApp' },
+            social: { label: 'ปั้ม', key: 'social' },
+            contact: { label: 'ติดต่อเรา', key: 'contact' },
             categories: { label: 'สินค้าอื่นๆ', key: 'categories' },
             games: { label: 'สุ่มรางวัล', key: 'games' },
-            premiumApp: { label: 'แอพพรีเมี่ยม', key: 'premiumApp' },
             cashcard: { label: 'บัตรเติมเงิน', key: 'cashcard' }
           };
           
@@ -504,24 +614,54 @@ export default function AdminSiteForm() {
             setDragOverIndex(null);
           };
           
-          return (form.navbarMenuOrder || []).map((menuKey, index) => {
+          // Show all menus from menuInfo
+          const allMenuKeys = Object.keys(menuInfo);
+          const currentOrder = form.navbarMenuOrder || [];
+          
+          // Combine: menus in order first, then menus not in order
+          const allMenus = [
+            ...currentOrder.filter(key => allMenuKeys.includes(key)),
+            ...allMenuKeys.filter(key => !currentOrder.includes(key))
+          ];
+          
+          return allMenus.map((menuKey, index) => {
             const menu = menuInfo[menuKey];
             if (!menu) return null;
+            
+            // Use custom label if available, otherwise use default
+            const customLabel = form.navbarMenuLabels?.[menu.key as keyof typeof form.navbarMenuLabels];
+            const displayLabel = customLabel || menu.label;
             
             const isEnabled = form.navbarMenus?.[menu.key as keyof typeof form.navbarMenus] !== false;
             const isDragging = draggedIndex === index;
             const isDragOver = dragOverIndex === index;
+            const isInOrder = currentOrder.includes(menuKey);
+            const orderIndex = isInOrder ? currentOrder.indexOf(menuKey) : -1;
             
             return (
               <div
                 key={menuKey}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
+                draggable={isInOrder}
+                onDragStart={(e) => {
+                  if (isInOrder && orderIndex !== -1) {
+                    handleDragStart(e, orderIndex);
+                  }
+                }}
                 onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, index)}
+                onDragOver={(e) => {
+                  if (isInOrder && orderIndex !== -1) {
+                    handleDragOver(e, orderIndex);
+                  }
+                }}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
-                className={`flex items-center gap-3 p-3 border rounded-lg transition-all duration-200 cursor-move ${
+                onDrop={(e) => {
+                  if (isInOrder && orderIndex !== -1) {
+                    handleDrop(e, orderIndex);
+                  }
+                }}
+                className={`flex flex-col gap-3 p-4 border rounded-lg transition-all duration-200 ${
+                  isInOrder ? 'cursor-move' : 'cursor-default'
+                } ${
                   isDragging 
                     ? 'opacity-50 border-accent/50 bg-accent/10 scale-95' 
                     : isDragOver
@@ -529,35 +669,62 @@ export default function AdminSiteForm() {
                     : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
                 }`}
               >
-                <div 
-                  className="flex items-center gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <GripVertical className={`size-5 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
-        </div>
-                
-                <div className="flex-1 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-          <div>
-                    <Label className="font-medium">เมนู "{menu.label}"</Label>
-                    <p className="text-xs text-[color:var(--text)]/50 mt-0.5">
-                      {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
-                    </p>
-          </div>
-          <Switch
-                    checked={isEnabled}
-                    onCheckedChange={(checked) => {
-                      const key = menu.key as keyof typeof form.navbarMenus;
-                      setForm({
-              ...form,
-              navbarMenus: { 
-                          ...(form.navbarMenus || {}),
-                          [key]: checked
-                        } as typeof form.navbarMenus
-                      });
-                    }}
-          />
-        </div>
-          </div>
+                <div className="flex items-center gap-3">
+                  {isInOrder && (
+                    <div 
+                      className="flex items-center gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className={`size-5 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 space-y-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <Label htmlFor={`menu-label-${menuKey}`} className="text-xs text-[color:var(--text)]/60 mb-1 block">ชื่อเมนู</Label>
+                        <Input
+                          id={`menu-label-${menuKey}`}
+                          value={displayLabel}
+                          onChange={(e) => {
+                            const newLabels = {
+                              ...(form.navbarMenuLabels || {}),
+                              [menu.key]: e.target.value
+                            };
+                            setForm({
+                              ...form,
+                              navbarMenuLabels: newLabels
+                            });
+                          }}
+                          placeholder={menu.label}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-[color:var(--text)]/50">
+                          {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
+                          {isInOrder && ` • ลำดับที่ ${orderIndex + 1}`}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => {
+                          const key = menu.key as keyof typeof form.navbarMenus;
+                          setForm({
+                            ...form,
+                            navbarMenus: { 
+                              ...(form.navbarMenus || {}),
+                              [key]: checked
+                            } as typeof form.navbarMenus
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             );
           });
         })()}
@@ -1049,6 +1216,149 @@ export default function AdminSiteForm() {
             </div>
           </div>
           
+          <Button disabled={saving} type="submit" className="w-full sm:w-auto">
+            {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+          </Button>
+        </form>
+      </TabsContent>
+
+      {/* ตั้งค่าเว็บไซต์ */}
+      <TabsContent value="site-settings" className="space-y-4">
+        <form onSubmit={onSubmit} className="card p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">ตั้งค่าเว็บไซต์</h2>
+            <p className="text-sm text-[color:var(--text)]/60">จัดการโหมดปรับปรุงเว็บไซต์และการสมัครสมาชิก</p>
+          </div>
+
+          {/* Maintenance Mode */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800">
+              <div className="space-y-0.5">
+                <Label htmlFor="maintenance-mode" className="text-sm font-medium cursor-pointer">
+                  โหมดปรับปรุงเว็บไซต์
+                </Label>
+                <p className="text-xs text-gray-400">
+                  {form.maintenanceMode 
+                    ? 'เว็บไซต์จะแสดงหน้าประกาศว่ากำลังปรับปรุง ผู้ใช้ทั่วไปไม่สามารถเข้าถึงได้ แต่แอดมินสามารถเข้าถึงได้' 
+                    : 'เว็บไซต์ทำงานปกติ ผู้ใช้ทุกคนสามารถเข้าถึงได้'}
+                </p>
+                {form.maintenanceMode && (
+                  <p className="text-xs text-amber-400 mt-1">
+                    ⚠️ แอดมินสามารถเข้าถึงได้ผ่าน /backoffice
+                  </p>
+                )}
+              </div>
+              <Switch
+                id="maintenance-mode"
+                checked={form.maintenanceMode === true}
+                onCheckedChange={(checked) => setForm({ ...form, maintenanceMode: checked })}
+              />
+            </div>
+          </div>
+
+          {/* Register Enabled */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800">
+              <div className="space-y-0.5">
+                <Label htmlFor="register-enabled" className="text-sm font-medium cursor-pointer">
+                  เปิดใช้งานหน้าสมัครสมาชิก
+                </Label>
+                <p className="text-xs text-gray-400">
+                  {form.registerEnabled 
+                    ? 'ผู้ใช้สามารถสมัครสมาชิกใหม่ได้' 
+                    : 'ปิดการสมัครสมาชิก ผู้ใช้ไม่สามารถสร้างบัญชีใหม่ได้'}
+                </p>
+              </div>
+              <Switch
+                id="register-enabled"
+                checked={form.registerEnabled !== false}
+                onCheckedChange={(checked) => setForm({ ...form, registerEnabled: checked })}
+              />
+            </div>
+          </div>
+
+          {/* Google reCaptcha */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-base font-semibold mb-2">Google reCaptcha</h3>
+              <p className="text-xs text-gray-400 mb-4">ตั้งค่า Google reCaptcha สำหรับหน้า login และ register</p>
+            </div>
+            
+            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800">
+              <div className="space-y-0.5">
+                <Label htmlFor="recaptcha-enabled" className="text-sm font-medium cursor-pointer">
+                  เปิดใช้งาน reCaptcha
+                </Label>
+                <p className="text-xs text-gray-400">
+                  {form.recaptchaEnabled 
+                    ? 'เปิดใช้งาน reCaptcha ในหน้า login และ register' 
+                    : 'ปิดการใช้งาน reCaptcha'}
+                </p>
+              </div>
+              <Switch
+                id="recaptcha-enabled"
+                checked={form.recaptchaEnabled === true}
+                onCheckedChange={(checked) => setForm({ ...form, recaptchaEnabled: checked })}
+              />
+            </div>
+
+            {form.recaptchaEnabled && (
+              <div className="space-y-4 p-4 rounded-lg border border-gray-800 bg-gray-900/30">
+                <div className="grid gap-2">
+                  <Label htmlFor="recaptcha-site-key" className="text-sm font-medium">
+                    Site Key
+                  </Label>
+                  <Input
+                    id="recaptcha-site-key"
+                    value={form.recaptchaSiteKey || ''}
+                    onChange={(e) => setForm({ ...form, recaptchaSiteKey: e.target.value })}
+                    placeholder="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                  />
+                  <p className="text-xs text-gray-400">reCaptcha Site Key (Public Key)</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="recaptcha-secret-key" className="text-sm font-medium">
+                    Secret Key
+                  </Label>
+                  <Input
+                    id="recaptcha-secret-key"
+                    type="password"
+                    value={form.recaptchaSecretKey || ''}
+                    onChange={(e) => setForm({ ...form, recaptchaSecretKey: e.target.value })}
+                    placeholder="6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"
+                  />
+                  <p className="text-xs text-gray-400">reCaptcha Secret Key (Private Key)</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Policy Pages */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-base font-semibold mb-2">หน้าข้อกำหนดและนโยบาย</h3>
+              <p className="text-xs text-gray-400 mb-4">ตั้งค่าเนื้อหาสำหรับหน้า Terms Policy</p>
+            </div>
+
+            <div className="space-y-4 p-4 rounded-lg border border-gray-800 bg-gray-900/30">
+              <div className="grid gap-2">
+                <Label htmlFor="terms-policy" className="text-sm font-medium">
+                  Terms Policy (ข้อกำหนดการใช้งาน)
+                </Label>
+                <Textarea
+                  id="terms-policy"
+                  value={form.termsPolicy || ''}
+                  onChange={(e) => setForm({ ...form, termsPolicy: e.target.value })}
+                  placeholder="กรอกเนื้อหา Terms Policy..."
+                  rows={10}
+                  className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/30"
+                />
+                <p className="text-xs text-gray-400">เนื้อหาจะแสดงในหน้า /terms-policy</p>
+              </div>
+            </div>
+          </div>
+
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
           </Button>

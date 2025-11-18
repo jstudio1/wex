@@ -9,12 +9,9 @@ const updateUserSchema = z.object({
   username: z.string().min(1).max(50).nullable().optional(),
   points: z.number().optional(),
   is_admin: z.boolean().optional(),
-  permission_id: z.union([
-    z.number().int().positive(),
-    z.null(),
-    z.literal(''),
-  ]).optional().transform((val) => val === '' ? null : val),
+  is_active: z.boolean().optional(),
   reset_password: z.boolean().optional(),
+  new_password: z.string().min(6).max(100).optional(),
 });
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -24,12 +21,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('users')
-    .select('id, username, points, created_at, is_admin, permission_id, permission:permissions(id, name)')
+    .select('id, username, points, created_at, is_admin, is_active')
     .eq('id', params.id)
     .single();
 
   if (error) {
-    return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    console.error('[GET /api/admin/users/[id]] Database error:', error);
+    return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ data });
@@ -86,12 +84,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       updateData.is_admin = parsed.is_admin;
     }
 
-    if (parsed.permission_id !== undefined) {
-      updateData.permission_id = parsed.permission_id;
+    // อนุญาตให้แก้ไข is_active ได้
+    if (parsed.is_active !== undefined) {
+      updateData.is_active = parsed.is_active;
     }
 
-    // รีเซ็ตรหัสผ่านเป็น "123456" ถ้าต้องการ
-    if (parsed.reset_password) {
+    // รีเซ็ตรหัสผ่าน
+    if (parsed.reset_password && parsed.new_password) {
+      const hashedPassword = await hashPassword(parsed.new_password);
+      updateData.password_hash = hashedPassword;
+    } else if (parsed.reset_password) {
+      // ถ้า reset_password เป็น true แต่ไม่มี new_password ให้ใช้ "123456" เป็น default
       const hashedPassword = await hashPassword('123456');
       updateData.password_hash = hashedPassword;
     }
@@ -101,25 +104,32 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .from('users')
       .update(updateData)
       .eq('id', userId)
-      .select('id, username, points, created_at, is_admin, permission_id, permission:permissions(id, name)')
+      .select('id, username, points, created_at, is_admin, is_active')
       .single();
 
     if (error) {
+      console.error('[PUT /api/admin/users/[id]] Database error:', error);
+      console.error('[PUT /api/admin/users/[id]] Update data:', updateData);
+      console.error('[PUT /api/admin/users/[id]] User ID:', userId);
       return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ data });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      console.error('Validation error:', err.issues);
+      console.error('[PUT /api/admin/users/[id]] Validation error:', err.issues);
       return NextResponse.json({ 
         error: 'validation_error', 
         details: err.issues,
         message: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลที่ส่งมา'
       }, { status: 400 });
     }
-    console.error('Update user error:', err);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    console.error('[PUT /api/admin/users/[id]] Unexpected error:', err);
+    console.error('[PUT /api/admin/users/[id]] Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+    return NextResponse.json({ 
+      error: 'unexpected', 
+      detail: err instanceof Error ? err.message : String(err) 
+    }, { status: 500 });
   }
 }
 

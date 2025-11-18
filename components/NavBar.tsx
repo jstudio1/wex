@@ -18,15 +18,22 @@ const NAVBAR_MENU_KEYS = [
   'NAVBAR_MENU_GAMES',
   'NAVBAR_MENU_PREMIUM_APP',
   'NAVBAR_MENU_CASHCARD',
+  'NAVBAR_MENU_CONTACT',
   'NAVBAR_MENU_ORDER',
 ];
 
-const DEFAULT_MENU_ORDER = ['home', 'products', 'social', 'categories', 'games', 'premiumApp', 'cashcard'] as const;
+const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'contact'] as const;
 
 async function getNavbarMenus() {
   try {
     const sb = createServiceClient();
-    const { data } = await sb.from('settings').select('key, value').in('key', NAVBAR_MENU_KEYS);
+    const { data } = await sb.from('settings').select('key, value').in('key', [
+      ...NAVBAR_MENU_KEYS,
+      'NAVBAR_MENU_LABEL_PRODUCTS',
+      'NAVBAR_MENU_LABEL_PREMIUM_APP',
+      'NAVBAR_MENU_LABEL_SOCIAL',
+      'NAVBAR_MENU_LABEL_CONTACT',
+    ]);
     const map: Record<string, string> = {};
     for (const row of data || []) map[row.key as string] = row.value as string;
     
@@ -66,7 +73,14 @@ async function getNavbarMenus() {
       games: getNavbarSetting('NAVBAR_MENU_GAMES', true),
       premiumApp: getNavbarSetting('NAVBAR_MENU_PREMIUM_APP', true),
       cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', true),
+      contact: getNavbarSetting('NAVBAR_MENU_CONTACT', true),
       menuOrder,
+      menuLabels: {
+        products: map.NAVBAR_MENU_LABEL_PRODUCTS || 'เติมเกม',
+        premiumApp: map.NAVBAR_MENU_LABEL_PREMIUM_APP || 'แอพ',
+        social: map.NAVBAR_MENU_LABEL_SOCIAL || 'ปั้ม',
+        contact: map.NAVBAR_MENU_LABEL_CONTACT || 'ติดต่อเรา',
+      },
     };
   } catch {
     return {
@@ -77,7 +91,14 @@ async function getNavbarMenus() {
       games: true,
       premiumApp: true,
       cashcard: true,
+      contact: true,
       menuOrder: [...DEFAULT_MENU_ORDER],
+      menuLabels: {
+        products: 'เติมเกม',
+        premiumApp: 'แอพ',
+        social: 'ปั้ม',
+        contact: 'ติดต่อเรา',
+      },
     };
   }
 }
@@ -86,6 +107,21 @@ export default async function NavBar() {
   const user = await getAuthUser();
   const adminUser = await requireAdmin();
   const navbarMenus = await getNavbarMenus();
+  
+  // Check maintenance mode
+  const sb = createServiceClient();
+  const { data: maintenanceData } = await sb
+    .from('settings')
+    .select('value')
+    .eq('key', 'MAINTENANCE_MODE')
+    .maybeSingle();
+  
+  const isMaintenanceMode = maintenanceData?.value === 'true';
+  
+  // Hide navbar if maintenance mode is on (unless user is admin)
+  if (isMaintenanceMode && !adminUser) {
+    return null;
+  }
   
   const isLoggedIn = !!user;
 
@@ -142,6 +178,7 @@ export default async function NavBar() {
                 isAdmin={!!adminUser}
                 navbarMenus={navbarMenus}
                 navbarMenuOrder={navbarMenus.menuOrder}
+                navbarMenuLabels={navbarMenus.menuLabels}
                 isLoggedIn={isLoggedIn}
               />
             </div>
@@ -164,6 +201,7 @@ export default async function NavBar() {
                 username={user?.username || null}
                 navbarMenus={navbarMenus}
                 navbarMenuOrder={navbarMenus.menuOrder}
+                navbarMenuLabels={navbarMenus.menuLabels}
               />
             </div>
           </div>

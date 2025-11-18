@@ -6,10 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Edit, Trash2, Save, X, Plus, Minus } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Edit, Trash2, Save, X, Plus, Lock, Coins } from 'lucide-react';
 
 interface User {
   id: string;
@@ -17,17 +20,21 @@ interface User {
   points: number;
   created_at: string;
   is_admin: boolean;
+  is_active: boolean;
 }
 
 export default function UsersContent() {
   const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<User>>({});
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState<Partial<User & { newPassword: string; topupPoints: number; topupNote: string }>>({});
   const [saving, setSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; userId: string | null }>({ open: false, userId: null });
-  const [pointsAdjust, setPointsAdjust] = useState<{ [key: string]: number }>({});
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showTopupDialog, setShowTopupDialog] = useState(false);
+  const [topupSaving, setTopupSaving] = useState(false);
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -49,42 +56,39 @@ export default function UsersContent() {
     }
   };
 
-
   const handleEdit = (user: User) => {
-    setEditingId(user.id);
+    setEditingUser(user);
     setEditForm({
       username: user.username || '',
       points: user.points,
       is_admin: user.is_admin,
+      is_active: user.is_active,
+      newPassword: '',
+      topupPoints: 0,
+      topupNote: '',
     });
-    setPointsAdjust({});
   };
 
-  const handleCancel = () => {
-    setEditingId(null);
+  const handleCloseModal = () => {
+    setEditingUser(null);
     setEditForm({});
-    setPointsAdjust({});
+    setShowPasswordDialog(false);
+    setShowTopupDialog(false);
   };
 
-  const handleSave = async (userId: string) => {
+  const handleSave = async () => {
+    if (!editingUser) return;
+    
     setSaving(true);
     try {
-      const formData = editForm;
-      const currentUser = users.find((u) => u.id === userId);
-      
-      // คำนวณ points ใหม่ถ้ามีการปรับ
-      let finalPoints = formData.points;
-      if (pointsAdjust[userId] !== undefined) {
-        finalPoints = (currentUser?.points || 0) + pointsAdjust[userId];
-      }
-
       const updateData: any = {
-        username: formData.username || null,
-        points: Math.max(0, finalPoints || 0),
-        is_admin: formData.is_admin ?? false,
+        username: editForm.username?.trim() || null,
+        points: Math.max(0, editForm.points || 0),
+        is_admin: editForm.is_admin ?? false,
+        is_active: editForm.is_active ?? true,
       };
 
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -98,9 +102,7 @@ export default function UsersContent() {
 
       toast.show({ title: 'สำเร็จ', description: 'บันทึกข้อมูลเรียบร้อย' });
       await fetchUsers();
-      setEditingId(null);
-      setEditForm({});
-      setPointsAdjust({});
+      handleCloseModal();
     } catch (err) {
       toast.show({
         title: 'เกิดข้อผิดพลาด',
@@ -109,6 +111,96 @@ export default function UsersContent() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!editingUser) return;
+    
+    if (!editForm.newPassword || editForm.newPassword.length < 6) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reset_password: true,
+          new_password: editForm.newPassword,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'รีเซ็ตรหัสผ่านไม่สำเร็จ');
+      }
+
+      toast.show({ title: 'สำเร็จ', description: 'รีเซ็ตรหัสผ่านเรียบร้อย' });
+      setEditForm({ ...editForm, newPassword: '' });
+      setShowPasswordDialog(false);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTopup = async () => {
+    if (!editingUser) return;
+    
+    if (!editForm.topupPoints || editForm.topupPoints <= 0) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'กรุณากรอกจำนวนพอยต์ที่ถูกต้อง',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setTopupSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users/${editingUser.id}/topup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          points: editForm.topupPoints,
+          note: editForm.topupNote || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || json.message || 'เพิ่มพอยต์ไม่สำเร็จ');
+      }
+
+      const json = await res.json();
+      toast.show({ 
+        title: 'สำเร็จ', 
+        description: `เพิ่มพอยต์สำเร็จ (พอยต์ใหม่: ${json.newPoints?.toFixed(2) || '0.00'})` 
+      });
+      await fetchUsers();
+      // อัปเดต points ใน form
+      setEditForm({ ...editForm, points: json.newPoints || editingUser.points, topupPoints: 0, topupNote: '' });
+      setShowTopupDialog(false);
+    } catch (err) {
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setTopupSaving(false);
     }
   };
 
@@ -140,61 +232,20 @@ export default function UsersContent() {
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
-    if (!confirm('ต้องการรีเซ็ตรหัสผ่านเป็น "123456" ใช่หรือไม่?')) return;
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reset_password: true }),
-      });
-
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || 'รีเซ็ตรหัสผ่านไม่สำเร็จ');
-      }
-
-      toast.show({ title: 'สำเร็จ', description: 'รีเซ็ตรหัสผ่านเป็น "123456" เรียบร้อย' });
-    } catch (err) {
-      toast.show({
-        title: 'เกิดข้อผิดพลาด',
-        description: (err as Error).message,
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePointsAdjust = (userId: string, delta: number) => {
-    setPointsAdjust((prev) => {
-      const current = prev[userId] || 0;
-      return { ...prev, [userId]: current + delta };
-    });
-  };
-
-  const getFinalPoints = (user: User) => {
-    if (editingId !== user.id) return user.points;
-    const adjust = pointsAdjust[user.id] || 0;
-    return (editForm.points ?? user.points) + adjust;
-  };
-
   if (loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-32" />
         <div className="card p-4 overflow-x-auto">
           <div className="w-full space-y-2">
-            <div className="grid grid-cols-5 gap-2 pb-2 border-b border-border">
-              {Array.from({ length: 5 }).map((_, i) => (
+            <div className="grid grid-cols-6 gap-2 pb-2 border-b border-border">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-5 gap-2 py-2 border-b border-border/50">
-                {Array.from({ length: 5 }).map((_, j) => (
+              <div key={i} className="grid grid-cols-6 gap-2 py-2 border-b border-border/50">
+                {Array.from({ length: 6 }).map((_, j) => (
                   <Skeleton key={j} className="h-6 w-full" />
                 ))}
               </div>
@@ -217,6 +268,7 @@ export default function UsersContent() {
             <tr className="border-b border-gray-800 bg-gray-900/50 text-gray-300">
               <th className="text-left p-3">ชื่อผู้ใช้</th>
               <th className="text-left p-3">พอยต์</th>
+              <th className="text-left p-3">สถานะ</th>
               <th className="text-left p-3">บทบาท</th>
               <th className="text-left p-3">วันที่สมัคร</th>
               <th className="text-left p-3">จัดการ</th>
@@ -225,161 +277,278 @@ export default function UsersContent() {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center p-8 text-gray-400">
+                <td colSpan={6} className="text-center p-8 text-gray-400">
                   ยังไม่มีผู้ใช้
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
-                const isEditing = editingId === user.id;
-                const finalPoints = getFinalPoints(user);
-                
-                return (
-                  <tr key={user.id} className="border-b border-gray-800 hover:bg-gray-900/30">
-                    <td className="p-3 align-top">
-                      {isEditing ? (
-                        <Input
-                          value={editForm.username ?? ''}
-                          onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                          placeholder="ชื่อผู้ใช้"
-                          className="w-40 border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-500"
-                        />
-                      ) : (
-                        <span className="text-white">{user.username || '-'}</span>
-                      )}
-                    </td>
-                    <td className="p-3 align-top">
-                      {isEditing ? (
-                        <div className="flex items-center gap-3">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={editForm.points ?? user.points}
-                            onChange={(e) => setEditForm({ ...editForm, points: parseFloat(e.target.value) || 0 })}
-                            className="w-24 border-gray-700 bg-[#1a1a1a] text-white"
-                          />
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePointsAdjust(user.id, -10)}
-                              className="h-6 w-6 p-0 border-gray-700 hover:bg-gray-800 text-gray-300"
-                            >
-                              <Minus className="size-3" />
-                            </Button>
-                            <span className="text-xs text-gray-400 min-w-[40px] text-center">
-                              {pointsAdjust[user.id] ? `${pointsAdjust[user.id] >= 0 ? '+' : ''}${pointsAdjust[user.id]}` : '±0'}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePointsAdjust(user.id, 10)}
-                              className="h-6 w-6 p-0 border-gray-700 hover:bg-gray-800 text-gray-300"
-                            >
-                              <Plus className="size-3" />
-                            </Button>
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            = {finalPoints.toFixed(2)}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-white">{Number(user.points || 0).toFixed(2)}</span>
-                      )}
-                    </td>
-                    <td className="p-3 align-top">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={editForm.is_admin ?? false}
-                            onCheckedChange={(checked) => setEditForm({ ...editForm, is_admin: checked })}
-                          />
-                          <span className="text-xs text-gray-300">{editForm.is_admin ? 'Admin' : 'User'}</span>
-                        </div>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className={
-                            user.is_admin
-                              ? 'border-purple-600 text-purple-400 bg-purple-900/30'
-                              : 'border-gray-700 text-gray-300 bg-gray-800'
-                          }
-                        >
-                          {user.is_admin ? 'Admin' : 'User'}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-3 align-top text-gray-400">
-                      {new Date(user.created_at).toLocaleDateString('th-TH')}
-                    </td>
-                    <td className="p-3 align-top">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleSave(user.id)}
-                            disabled={saving}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            {saving ? (
-                              <Spinner className="size-3" />
-                            ) : (
-                              <>
-                                <Save className="size-3 mr-1" />
-                                บันทึก
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancel}
-                            disabled={saving}
-                            className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                          >
-                            <X className="size-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(user)}
-                            className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                          >
-                            <Edit className="size-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleResetPassword(user.id)}
-                            disabled={saving}
-                            className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                          >
-                            รีเซ็ตรหัส
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setDeleteDialog({ open: true, userId: user.id })}
-                            className="border-red-800 text-red-400 hover:bg-red-900/30"
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+              users.map((user) => (
+                <tr key={user.id} className="border-b border-gray-800 hover:bg-gray-900/30">
+                  <td className="p-3">
+                    <span className="text-white">{user.username || '-'}</span>
+                  </td>
+                  <td className="p-3">
+                    <span className="text-white">{Number(user.points || 0).toFixed(2)}</span>
+                  </td>
+                  <td className="p-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        user.is_active
+                          ? 'border-green-600 text-green-400 bg-green-900/30'
+                          : 'border-red-600 text-red-400 bg-red-900/30'
+                      }
+                    >
+                      {user.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                    </Badge>
+                  </td>
+                  <td className="p-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        user.is_admin
+                          ? 'border-purple-600 text-purple-400 bg-purple-900/30'
+                          : 'border-gray-700 text-gray-300 bg-gray-800'
+                      }
+                    >
+                      {user.is_admin ? 'Admin' : 'User'}
+                    </Badge>
+                  </td>
+                  <td className="p-3 text-gray-400">
+                    {new Date(user.created_at).toLocaleDateString('th-TH')}
+                  </td>
+                  <td className="p-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(user)}
+                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                    >
+                      <Edit className="size-3 mr-1" />
+                      แก้ไข
+                    </Button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
+      {/* Edit User Modal */}
+      <Dialog open={editingUser !== null} onOpenChange={(open) => !open && handleCloseModal()}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>แก้ไขผู้ใช้: {editingUser?.username || '-'}</DialogTitle>
+            <DialogDescription>แก้ไขข้อมูลผู้ใช้และจัดการสิทธิ์</DialogDescription>
+          </DialogHeader>
+
+          {editingUser && (
+            <div className="space-y-4 py-4">
+              {/* Username */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-username">ชื่อผู้ใช้</Label>
+                <Input
+                  id="edit-username"
+                  value={editForm.username ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  placeholder="ชื่อผู้ใช้"
+                  className="bg-[#1a1a1a] border-gray-700 text-white"
+                />
+              </div>
+
+              {/* Points */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-points">พอยต์</Label>
+                <Input
+                  id="edit-points"
+                  type="number"
+                  step="0.01"
+                  value={editForm.points ?? 0}
+                  onChange={(e) => setEditForm({ ...editForm, points: parseFloat(e.target.value) || 0 })}
+                  className="bg-[#1a1a1a] border-gray-700 text-white"
+                />
+              </div>
+
+              {/* Status & Role */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-is-active">สถานะ</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="edit-is-active"
+                      checked={editForm.is_active ?? true}
+                      onCheckedChange={(checked) => setEditForm({ ...editForm, is_active: checked })}
+                    />
+                    <span className="text-sm text-gray-300">
+                      {editForm.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-is-admin">บทบาท</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="edit-is-admin"
+                      checked={editForm.is_admin ?? false}
+                      onCheckedChange={(checked) => setEditForm({ ...editForm, is_admin: checked })}
+                    />
+                    <span className="text-sm text-gray-300">
+                      {editForm.is_admin ? 'Admin' : 'User'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t border-gray-800">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPasswordDialog(true)}
+                  className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                >
+                  <Lock className="size-4 mr-2" />
+                  รีเซ็ตรหัสผ่าน
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTopupDialog(true)}
+                  className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                >
+                  <Coins className="size-4 mr-2" />
+                  เพิ่มยอดเติมเงิน
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" className="border-gray-700 text-gray-300">
+                <X className="size-4 mr-2" />
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {saving ? (
+                <Spinner className="size-4 mr-2" />
+              ) : (
+                <Save className="size-4 mr-2" />
+              )}
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>รีเซ็ตรหัสผ่าน</DialogTitle>
+            <DialogDescription>กำหนดรหัสผ่านใหม่สำหรับผู้ใช้</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">รหัสผ่านใหม่</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={editForm.newPassword || ''}
+                onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                placeholder="กรุณากรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"
+                className="bg-[#1a1a1a] border-gray-700 text-white"
+              />
+              <p className="text-xs text-gray-400">รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" className="border-gray-700 text-gray-300">
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={handleResetPassword}
+              disabled={saving || !editForm.newPassword || editForm.newPassword.length < 6}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {saving ? <Spinner className="size-4 mr-2" /> : <Lock className="size-4 mr-2" />}
+              รีเซ็ตรหัสผ่าน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Topup Dialog */}
+      <Dialog open={showTopupDialog} onOpenChange={setShowTopupDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>เพิ่มพอยต์</DialogTitle>
+            <DialogDescription>เพิ่มพอยต์ให้ผู้ใช้ (จะบันทึกประวัติการเติมเงินอัตโนมัติ)</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="p-3 rounded-lg bg-blue-900/20 border border-blue-800/50">
+              <p className="text-xs text-blue-200/80">
+                💡 การเพิ่มพอยต์จะบันทึกประวัติการเติมเงินอัตโนมัติ (ประเภท: Admin)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="topup-points">จำนวนพอยต์</Label>
+              <Input
+                id="topup-points"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editForm.topupPoints || 0}
+                onChange={(e) => setEditForm({ ...editForm, topupPoints: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+                className="bg-[#1a1a1a] border-gray-700 text-white"
+              />
+              <p className="text-xs text-gray-400">จำนวนพอยต์ที่จะเพิ่มให้ผู้ใช้ (จะบันทึกประวัติการเติมเงินอัตโนมัติ)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="topup-note">หมายเหตุ (ไม่บังคับ)</Label>
+              <Textarea
+                id="topup-note"
+                value={editForm.topupNote || ''}
+                onChange={(e) => setEditForm({ ...editForm, topupNote: e.target.value })}
+                placeholder="หมายเหตุเพิ่มเติม..."
+                rows={3}
+                className="bg-[#1a1a1a] border-gray-700 text-white"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" className="border-gray-700 text-gray-300">
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={handleTopup}
+              disabled={topupSaving || !editForm.topupPoints || editForm.topupPoints <= 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {topupSaving ? <Spinner className="size-4 mr-2" /> : <Coins className="size-4 mr-2" />}
+              เพิ่มพอยต์
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={deleteDialog.open}
         onOpenChange={(open) => {

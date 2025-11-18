@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const admin = await requireAdmin();
@@ -12,7 +14,7 @@ export async function GET() {
     // Fetch users (without permission_id since column doesn't exist)
     const { data: users, error: usersError } = await sb
       .from('users')
-      .select('id, username, points, created_at, is_admin')
+      .select('id, username, points, created_at, is_admin, is_active')
       .order('created_at', { ascending: false });
 
     if (usersError) {

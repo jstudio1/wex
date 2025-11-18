@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin';
+import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 
 type RawUser = {
@@ -19,7 +19,6 @@ type RawSlip = {
   status: string | null;
   error_message?: string | null;
   created_at: string;
-  users?: RawUser | null;
 };
 
 type RawTrueWallet = {
@@ -31,7 +30,6 @@ type RawTrueWallet = {
   status: string | null;
   error_message?: string | null;
   created_at: string;
-  users?: RawUser | null;
 };
 
 type RawRedeem = {
@@ -45,7 +43,6 @@ type RawRedeem = {
     code?: string | null;
     description?: string | null;
   } | null;
-  users?: RawUser | null;
 };
 
 type RawAdminTopup = {
@@ -56,7 +53,6 @@ type RawAdminTopup = {
   points_added: number | string | null;
   note: string | null;
   created_at: string;
-  users?: RawUser | null;
   admin?: RawUser | null;
 };
 
@@ -72,39 +68,36 @@ type TopupRecord = {
   reference: string;
   note: string | null;
   created_at: string;
-  user: {
-    id: number | string | null;
-    username: string | null;
-    email: string | null;
-  };
 };
 
-const normalizeNumber = (value: unknown): number => {
-  if (value === null || value === undefined) return 0;
-  const num = typeof value === 'string' ? parseFloat(value) : Number(value);
-  return Number.isFinite(num) ? num : 0;
-};
+function normalizeNumber(val: number | string | null | undefined): number {
+  if (val === null || val === undefined) return 0;
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  return isNaN(num) ? 0 : num;
+}
 
-const normalizeStatus = (raw: string | null | undefined): TopupRecord['state'] => {
-  const value = (raw || '').toLowerCase();
-  if (['success', 'successful', 'completed', 'redeemed'].includes(value)) return 'success';
-  if (['pending', 'processing', 'waiting'].includes(value)) return 'pending';
-  if (['failed', 'error', 'rejected', 'cancelled'].includes(value)) return 'failed';
+function normalizeStatus(raw: string | null | undefined): TopupRecord['state'] {
+  if (!raw) return 'unknown';
+  const lower = raw.toLowerCase();
+  if (lower.includes('success') || lower.includes('completed') || lower.includes('สำเร็จ')) return 'success';
+  if (lower.includes('fail') || lower.includes('error') || lower.includes('ไม่สำเร็จ')) return 'failed';
+  if (lower.includes('pending') || lower.includes('waiting') || lower.includes('รอดำเนินการ')) return 'pending';
   return 'unknown';
-};
+}
 
-const normalizeStatusLabel = (raw: string | null | undefined): string => {
-  const value = (raw || '').toLowerCase();
-  if (['success', 'successful', 'completed', 'redeemed'].includes(value)) return 'สำเร็จ';
-  if (['pending', 'processing', 'waiting'].includes(value)) return 'รอดำเนินการ';
-  if (['failed', 'error', 'rejected', 'cancelled'].includes(value)) return 'ไม่สำเร็จ';
+function normalizeStatusLabel(raw: string | null | undefined): string {
+  if (!raw) return 'ไม่ทราบสถานะ';
+  const lower = raw.toLowerCase();
+  if (lower.includes('success') || lower.includes('completed') || lower.includes('สำเร็จ')) return 'สำเร็จ';
+  if (lower.includes('fail') || lower.includes('error') || lower.includes('ไม่สำเร็จ')) return 'ไม่สำเร็จ';
+  if (lower.includes('pending') || lower.includes('waiting') || lower.includes('รอดำเนินการ')) return 'รอดำเนินการ';
   return 'ไม่ทราบสถานะ';
-};
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const admin = await requireAdmin();
-    if (!admin) {
+    const user = await getAuthUser();
+    if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
@@ -114,57 +107,40 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, limitParam > 0 ? limitParam : 25);
     const methodFilter = (url.searchParams.get('method') || 'all').toLowerCase();
     const statusFilter = (url.searchParams.get('status') || 'all').toLowerCase();
-    const searchTerm = (url.searchParams.get('search') || '').trim().toLowerCase();
 
     const fetchCount = Math.min(1000, limit * Math.max(page, 4));
 
     const sb = createServiceClient();
+    const userId = user.id;
+
     const [slipResult, truewalletResult, redeemResult, adminTopupResult] = await Promise.all([
       sb
         .from('slip_history')
-        .select('id, user_id, transaction_id, amount, points_added, status, error_message, created_at, users:users(id, username, email)')
+        .select('id, user_id, transaction_id, amount, points_added, status, error_message, created_at')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(fetchCount),
       sb
         .from('truewallet_topup')
-        .select('id, user_id, voucher_code, amount, points, status, error_message, created_at, users:users(id, username, email)')
+        .select('id, user_id, voucher_code, amount, points, status, error_message, created_at')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(fetchCount),
       sb
         .from('redeem_code_usage')
-        .select('id, user_id, code_id, points, created_at, redeemed_at, redeem_codes:redeem_codes(code, description), users:users(id, username, email)')
+        .select('id, user_id, code_id, points, created_at, redeemed_at, redeem_codes:redeem_codes(code, description)')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(fetchCount),
       sb
         .from('admin_topup_history')
-        .select('id, user_id, admin_id, amount, points_added, note, created_at, users:users!admin_topup_history_user_id_fkey(id, username, email), admin:users!admin_topup_history_admin_id_fkey(id, username, email)')
+        .select('id, user_id, admin_id, amount, points_added, note, created_at, admin:users!admin_topup_history_admin_id_fkey(id, username, email)')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(fetchCount),
     ]);
 
-    if (slipResult.error) {
-      console.error('[GET /api/admin/topup-history] slip history error:', slipResult.error);
-      return NextResponse.json({ error: 'db_error', detail: slipResult.error.message }, { status: 500 });
-    }
-    if (truewalletResult.error) {
-      console.error('[GET /api/admin/topup-history] truewallet history error:', truewalletResult.error);
-      return NextResponse.json({ error: 'db_error', detail: truewalletResult.error.message }, { status: 500 });
-    }
-    if (redeemResult.error) {
-      console.error('[GET /api/admin/topup-history] redeem history error:', redeemResult.error);
-      return NextResponse.json({ error: 'db_error', detail: redeemResult.error.message }, { status: 500 });
-    }
-    if (adminTopupResult.error) {
-      console.error('[GET /api/admin/topup-history] admin topup history error:', adminTopupResult.error);
-      // ไม่ return error เพราะอาจจะยังไม่มีตาราง
-    }
-
-    const mapUser = (raw?: RawUser | null) => ({
-      id: raw?.id ?? null,
-      username: raw?.username ?? null,
-      email: raw?.email ?? null,
-    });
-
+    // Gracefully handle missing tables
     const slipRecords: TopupRecord[] = ((slipResult.data as unknown) as RawSlip[] | null || []).map((item) => ({
       id: `slip-${item.id}`,
       sourceId: item.id,
@@ -177,7 +153,6 @@ export async function GET(req: NextRequest) {
       reference: item.transaction_id || '-',
       note: item.error_message || null,
       created_at: item.created_at,
-      user: mapUser(item.users),
     }));
 
     const truewalletRecords: TopupRecord[] = ((truewalletResult.data as unknown) as RawTrueWallet[] | null || []).map((item) => ({
@@ -192,7 +167,6 @@ export async function GET(req: NextRequest) {
       reference: item.voucher_code || '-',
       note: item.error_message || null,
       created_at: item.created_at,
-      user: mapUser(item.users),
     }));
 
     const adminTopupRecords: TopupRecord[] = ((adminTopupResult.data as unknown) as RawAdminTopup[] | null || []).map((item) => ({
@@ -207,7 +181,6 @@ export async function GET(req: NextRequest) {
       reference: item.admin?.username || `Admin #${item.admin_id}`,
       note: item.note || null,
       created_at: item.created_at,
-      user: mapUser(item.users),
     }));
 
     const redeemRecords: TopupRecord[] = ((redeemResult.data as unknown) as RawRedeem[] | null || []).map((item) => ({
@@ -219,10 +192,9 @@ export async function GET(req: NextRequest) {
       points: normalizeNumber(item.points),
       status: normalizeStatusLabel('redeemed'),
       state: 'success',
-      reference: item.redeem_codes?.code || `CODE#${item.code_id}`,
+      reference: item.redeem_codes?.code || '-',
       note: item.redeem_codes?.description || null,
       created_at: item.created_at || item.redeemed_at || new Date().toISOString(),
-      user: mapUser(item.users),
     }));
 
     const combined = [...slipRecords, ...truewalletRecords, ...redeemRecords, ...adminTopupRecords].sort(
@@ -230,38 +202,31 @@ export async function GET(req: NextRequest) {
     );
 
     const filtered = combined.filter((record) => {
-      const matchesMethod = methodFilter === 'all' || record.type === methodFilter;
+      const matchesMethod = methodFilter === 'all' || record.type === methodFilter || (methodFilter === 'admin' && record.type === 'admin');
       const matchesStatus = statusFilter === 'all' || record.state === statusFilter;
-      const matchesSearch =
-        !searchTerm ||
-        (record.user.username && record.user.username.toLowerCase().includes(searchTerm)) ||
-        (record.user.email && record.user.email.toLowerCase().includes(searchTerm)) ||
-        (record.user.id && String(record.user.id).toLowerCase().includes(searchTerm)) ||
-        record.reference.toLowerCase().includes(searchTerm) ||
-        (record.note && record.note.toLowerCase().includes(searchTerm));
-      return matchesMethod && matchesStatus && matchesSearch;
+      return matchesMethod && matchesStatus;
     });
 
     const total = filtered.length;
-    const totalAmount = filtered.reduce((sum, rec) => sum + (Number.isFinite(rec.amount) ? rec.amount : rec.points), 0);
-    const totalPoints = filtered.reduce((sum, rec) => sum + (Number.isFinite(rec.points) ? rec.points : rec.amount), 0);
-    const successCount = filtered.filter((rec) => rec.state === 'success').length;
-    const failedCount = filtered.filter((rec) => rec.state === 'failed').length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginated = filtered.slice(startIndex, endIndex);
 
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    const pageItems = filtered.slice(start, end);
+    const totalAmount = filtered.reduce((sum, r) => sum + r.amount, 0);
+    const totalPoints = filtered.reduce((sum, r) => sum + r.points, 0);
+    const successCount = filtered.filter((r) => r.state === 'success').length;
+    const failedCount = filtered.filter((r) => r.state === 'failed').length;
 
     return NextResponse.json({
-      data: pageItems,
+      data: paginated,
       pagination: {
-        total,
         page,
         limit,
-        totalPages: Math.max(1, Math.ceil(total / limit)),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
       summary: {
-        totalRecords: total,
+        total,
         totalAmount,
         totalPoints,
         successCount,
@@ -269,7 +234,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error('[GET /api/admin/topup-history] Unexpected error:', err);
+    console.error('[GET /api/user/topup-history] Unexpected error:', err);
     return NextResponse.json(
       {
         error: 'unexpected',
@@ -279,5 +244,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
 

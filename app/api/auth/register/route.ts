@@ -2,16 +2,37 @@ import { NextResponse } from 'next/server';
 import { registerSchema } from '@/lib/validators';
 import { hashPassword } from '@/lib/hash';
 import { createServiceClient } from '@/lib/supabase';
+import { verifyRecaptcha } from '@/lib/recaptcha';
 
 export async function POST(req: Request) {
   try {
+    // Check if registration is enabled
+    const sb = createServiceClient();
+    const { data: registerSetting } = await sb
+      .from('settings')
+      .select('value')
+      .eq('key', 'REGISTER_ENABLED')
+      .maybeSingle();
+    
+    const isRegisterEnabled = registerSetting?.value !== 'false'; // default true
+    if (!isRegisterEnabled) {
+      return NextResponse.json({ error: 'registration_disabled' }, { status: 403 });
+    }
+
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
 
-    const { username, password } = parsed.data;
+    const { username, password, recaptchaToken } = parsed.data;
+
+    // Verify reCaptcha if enabled
+    if (recaptchaToken) {
+      const isValid = await verifyRecaptcha(recaptchaToken);
+      if (!isValid) {
+        return NextResponse.json({ error: 'recaptcha_failed' }, { status: 400 });
+      }
+    }
     const password_hash = await hashPassword(password);
-    const sb = createServiceClient();
 
     const { data: existing, error: findErr } = await sb
       .from('users')

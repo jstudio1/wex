@@ -11,8 +11,10 @@ import { Spinner, SpinnerCustom } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RefreshCw, Save, Search, Globe, Plus, Trash2, Package } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { RefreshCw, Save, Search, Globe, Plus, Trash2, Package, Edit, X, Eye, EyeOff } from 'lucide-react';
 import {
   Empty,
   EmptyContent,
@@ -84,6 +86,10 @@ export default function AppPremiumContent() {
   const [categoryKeywordsInput, setCategoryKeywordsInput] = useState<Record<number, string>>({});
   const [editingSubCategory, setEditingSubCategory] = useState<{ categoryId: number; oldValue: string; newValue: string } | null>(null);
   const itemsPerPage = 50;
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const [editingProduct, setEditingProduct] = useState<DraftProduct | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [globalMarkup, setGlobalMarkup] = useState({ percent: '0', fixed: '0' });
   const [loadingGlobalMarkup, setLoadingGlobalMarkup] = useState(true);
   const [savingGlobalMarkup, setSavingGlobalMarkup] = useState(false);
@@ -393,9 +399,18 @@ export default function AppPremiumContent() {
         prod.app_category,
         prod.sub_category
       ].some((v) => v?.toLowerCase().includes(text));
-      return matchText;
+      
+      const matchCategory = selectedCategoryFilter === 'all' || prod.app_category?.toLowerCase() === selectedCategoryFilter.toLowerCase();
+      
+      const matchStatus = selectedStatusFilter === 'all' 
+        ? true 
+        : selectedStatusFilter === 'published' 
+        ? prod.is_published 
+        : !prod.is_published;
+      
+      return matchText && matchCategory && matchStatus;
     });
-  }, [products, filterText]);
+  }, [products, filterText, selectedCategoryFilter, selectedStatusFilter]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -412,7 +427,96 @@ export default function AppPremiumContent() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterText]);
+  }, [filterText, selectedCategoryFilter, selectedStatusFilter]);
+
+  const handleSaveProduct = async () => {
+    if (!editingProduct) return;
+    
+    setSavingProduct(true);
+    try {
+      const initial = initialProductsRef.current.find((p) => p.id === editingProduct.id);
+      if (!initial) throw new Error('ไม่พบข้อมูลเริ่มต้น');
+
+      const payload: Record<string, unknown> = {};
+      if (editingProduct.display_name !== initial.display_name) payload.display_name = editingProduct.display_name;
+      if (editingProduct.markup_percent !== initial.markup_percent) payload.markup_percent = Number(editingProduct.markup_percent) || 0;
+      if (editingProduct.markup_fixed !== initial.markup_fixed) payload.markup_fixed = Number(editingProduct.markup_fixed) || 0;
+      if (editingProduct.is_published !== initial.is_published) payload.is_published = editingProduct.is_published;
+      if (editingProduct.show_on_homepage !== initial.show_on_homepage) payload.show_on_homepage = editingProduct.show_on_homepage;
+
+      if (Object.keys(payload).length === 0) {
+        setEditingProduct(null);
+        return;
+      }
+
+      const res = await fetch(`/api/admin/app-premium/products/${editingProduct.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'บันทึกไม่สำเร็จ');
+
+      initialProductsRef.current = initialProductsRef.current.map((prod) =>
+        prod.id === editingProduct.id
+          ? {
+              id: editingProduct.id,
+              display_name: editingProduct.display_name,
+              markup_percent: Number(editingProduct.markup_percent) || 0,
+              markup_fixed: Number(editingProduct.markup_fixed) || 0,
+              is_published: editingProduct.is_published,
+              show_on_homepage: editingProduct.show_on_homepage
+            }
+          : prod
+      );
+
+      setProducts((prev) => prev.map((prod) => (prod.id === editingProduct.id ? { ...editingProduct, __dirty: false } : prod)));
+      setEditingProduct(null);
+      toast.show({ title: 'บันทึกสำเร็จ' });
+    } catch (error: any) {
+      console.error(error);
+      toast.show({ title: 'บันทึกไม่สำเร็จ', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  const handleTogglePublish = async (productId: number, newStatus: boolean) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+
+    setSavingProductIds((prev) => new Set(prev).add(productId));
+    try {
+      const res = await fetch(`/api/admin/app-premium/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: newStatus })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'บันทึกไม่สำเร็จ');
+
+      initialProductsRef.current = initialProductsRef.current.map((prod) =>
+        prod.id === productId ? { ...prod, is_published: newStatus } : prod
+      );
+
+      setProducts((prev) => prev.map((prod) => (prod.id === productId ? { ...prod, is_published: newStatus, __dirty: false } : prod)));
+      toast.show({ title: newStatus ? 'เปิดขายแล้ว' : 'ปิดขายแล้ว' });
+    } catch (error: any) {
+      console.error(error);
+      toast.show({ title: 'บันทึกไม่สำเร็จ', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingProductIds((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
+    }
+  };
+
+  const uniqueCategories = useMemo(() => {
+    const cats = Array.from(new Set(products.map((p) => p.app_category).filter(Boolean))) as string[];
+    return cats.sort();
+  }, [products]);
 
   const calculateFinalPrice = (basePrice: number, markupPercent: number, markupFixed: number) => {
     return computePrice(basePrice, markupPercent, markupFixed, Number(globalMarkup.percent) || 0, Number(globalMarkup.fixed) || 0);
@@ -541,60 +645,19 @@ export default function AppPremiumContent() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-lg font-semibold">จัดการสินค้าแอพพรีเมี่ยม</h2>
-            <p className="text-sm text-[color:var(--text)]/60">ปรับแต่งชื่อแสดงและกำไร ก่อนเผยแพร่ขึ้นหน้าเว็บ</p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {totalPages > 1 && (
-              <div className="text-sm text-[color:var(--text)]/70">
-                หน้า {currentPage} / {totalPages}
-              </div>
-            )}
-            <Button
-              onClick={handlePublishAll}
-              disabled={savingProductIds.size > 0 || products.filter((prod) => !prod.is_published).length === 0}
-              variant="outline"
-              className="gap-2"
-            >
-              {savingProductIds.size > 0 && products.filter((prod) => !prod.is_published && savingProductIds.has(prod.id)).length > 0 ? (
-                <>
-                  <Spinner className="size-4" />
-                  กำลังเผยแพร่...
-                </>
-              ) : (
-                <>
-                  <Globe className="size-4" />
-                  เผยแพร่สินค้าทั้งหมด ({products.filter((prod) => !prod.is_published).length})
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={handleSaveSelected}
-              disabled={savingProductIds.size > 0 || products.filter((prod) => prod.__dirty).length === 0}
-              className="gap-2 text-white"
-            >
-              {savingProductIds.size > 0 ? (
-                <>
-                  <Spinner className="size-4" />
-                  กำลังบันทึก...
-                </>
-              ) : (
-                <>
-                  <Save className="size-4" />
-                  บันทึกทั้งหมด ({products.filter((prod) => prod.__dirty).length})
-                </>
-              )}
-            </Button>
+            <p className="text-sm text-[color:var(--text)]/60">คลิกที่ card เพื่อแก้ไขสินค้า</p>
           </div>
         </div>
 
-        {/* Search Input */}
+        {/* Filters */}
+        <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="search-products">ค้นหาสินค้า</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[color:var(--text)]/40" />
             <Input
               id="search-products"
-              placeholder="ค้นหาจากชื่อสินค้า, ID, หมวดหมู่หลัก, หรือหมวดหมู่ย่อย"
+                placeholder="ค้นหาจากชื่อสินค้า, ID, หมวดหมู่"
               className="pl-9"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
@@ -602,100 +665,151 @@ export default function AppPremiumContent() {
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[calc(100vh-450px)] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}>
+          <div className="space-y-2">
+            <Label htmlFor="category-filter">หมวดหมู่</Label>
+            <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+              <SelectTrigger id="category-filter" className="w-full">
+                <SelectValue placeholder="เลือกหมวดหมู่" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด</SelectItem>
+                {uniqueCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="status-filter">สถานะ</Label>
+            <Select 
+              value={selectedStatusFilter} 
+              onValueChange={(v) => setSelectedStatusFilter(v as 'all' | 'published' | 'unpublished')}
+            >
+              <SelectTrigger id="status-filter" className="w-full">
+                <SelectValue placeholder="เลือกสถานะ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด</SelectItem>
+                <SelectItem value="published">เปิดใช้งาน</SelectItem>
+                <SelectItem value="unpublished">ปิดใช้งาน</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {paginatedProducts.map((prod) => {
             const basePrice = currencyFormatter.format(prod.base_price || 0);
             const finalPrice = calculateFinalPrice(prod.base_price, prod.markup_percent, prod.markup_fixed);
             const finalPriceFormatted = currencyFormatter.format(finalPrice);
+            const isSaving = savingProductIds.has(prod.id);
+            
             return (
-              <div key={prod.id} className={`rounded-lg border p-4 space-y-4 transition-colors ${prod.__dirty ? 'border-accent/50 bg-accent/5' : 'border-border bg-muted/50'}`}>
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm text-[color:var(--text)]/60">Product ID #{prod.provider_product_id}</div>
-                      <h4 
-                        className="text-lg font-semibold"
-                        dangerouslySetInnerHTML={{ __html: prod.name || '' }}
-                        suppressHydrationWarning
-                      />
-                      {prod.description && (
-                        <div 
-                          className="text-xs text-[color:var(--text)]/40 mt-1"
-                          dangerouslySetInnerHTML={{ __html: prod.description }}
-                          suppressHydrationWarning
-                        />
-                      )}
+              <div
+                key={prod.id}
+                className="group relative bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] border border-gray-800/50 rounded-xl overflow-hidden hover:border-emerald-500/50 transition-all duration-300 cursor-pointer"
+                onClick={() => setEditingProduct(prod)}
+              >
+                {/* Status Badge */}
+                <div className="absolute top-2 right-2 z-10">
+                  {prod.is_published ? (
+                    <div className="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs font-medium flex items-center gap-1">
+                      <Eye className="size-3" />
+                      เปิดขาย
                     </div>
-                    <div className="text-right text-sm text-[color:var(--text)]/70">
-                      <div>ราคาต้นทุน: {basePrice}</div>
-                      <div className="text-accent font-semibold">ราคาสุดท้าย: {finalPriceFormatted}</div>
-                      <div>คงเหลือ: {prod.stock || 0} ชิ้น</div>
+                  ) : (
+                    <div className="px-2 py-1 rounded-md bg-gray-500/20 border border-gray-500/50 text-gray-400 text-xs font-medium flex items-center gap-1">
+                      <EyeOff className="size-3" />
+                      ปิดขาย
                     </div>
+                  )}
                   </div>
 
+                {/* Image */}
                   {prod.image_url && (
-                    <div className="flex items-center gap-2">
-                      <img src={prod.image_url} alt={prod.name} className="h-20 w-20 rounded object-cover" />
+                  <div className="aspect-square w-full bg-gray-900/50 flex items-center justify-center p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={prod.image_url} 
+                      alt={prod.display_name || prod.name} 
+                      className="w-full h-full object-contain"
+                      suppressHydrationWarning
+                    />
                     </div>
                   )}
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label>ชื่อแสดง (หน้าเว็บ)</Label>
-                      <Input value={prod.display_name ?? ''} onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, display_name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>หมวดหมู่หลัก</Label>
-                      <Input value={prod.app_category ?? ''} disabled className="bg-muted/30" />
-                    </div>
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">ID: {prod.provider_product_id}</div>
+                    <h4 
+                      className="text-sm font-semibold text-white line-clamp-2 min-h-[2.5rem]"
+                      dangerouslySetInnerHTML={{ __html: prod.display_name || prod.name || '' }}
+                      suppressHydrationWarning
+                    />
+                    {prod.app_category && (
+                      <div className="text-xs text-gray-400 mt-1">{prod.app_category}</div>
+                    )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="space-y-1">
-                      <Label>กำไร (%)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={prod.markup_percent}
-                        onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, markup_percent: Number(e.target.value) }))}
-                      />
+                  <div className="space-y-1 pt-2 border-t border-gray-800">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">ต้นทุน:</span>
+                      <span className="text-gray-400">{basePrice}</span>
                     </div>
-                    <div className="space-y-1">
-                      <Label>กำไรคงที่ (บาท)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={prod.markup_fixed}
-                        onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, markup_fixed: Number(e.target.value) }))}
-                      />
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">ราคาขาย:</span>
+                      <span className="text-emerald-400 font-semibold">{finalPriceFormatted}</span>
                     </div>
-                    <div className="space-y-2">
-                    <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-3">
-                      <Checkbox 
-                        id={`publish-${prod.id}`}
-                        checked={prod.is_published} 
-                        onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, is_published: e.target.checked }))} 
-                      />
-                      <Label htmlFor={`publish-${prod.id}`} className="text-sm font-medium cursor-pointer">
-                        {prod.is_published ? 'เปิดขาย' : 'ซ่อนอยู่'}
-                      </Label>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">คงเหลือ:</span>
+                      <span className="text-gray-400">{prod.stock || 0} ชิ้น</span>
                       </div>
-                      <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-3">
-                        <Checkbox 
-                          id={`homepage-${prod.id}`}
-                          checked={prod.show_on_homepage} 
-                          onChange={(e) => markProductDirty(prod.id, (prev) => ({ ...prev, show_on_homepage: e.target.checked }))} 
-                        />
-                        <Label htmlFor={`homepage-${prod.id}`} className="text-sm font-medium cursor-pointer">
-                          แสดงหน้าแรก
-                        </Label>
                       </div>
-                    </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-800">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingProduct(prod);
+                      }}
+                    >
+                      <Edit className="size-3 mr-1" />
+                      แก้ไข
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      disabled={isSaving}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePublish(prod.id, !prod.is_published);
+                      }}
+                    >
+                      {isSaving ? (
+                        <Spinner className="size-3" />
+                      ) : prod.is_published ? (
+                        <EyeOff className="size-3" />
+                      ) : (
+                        <Eye className="size-3" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               </div>
             );
           })}
+
+        </div>
 
           {paginatedProducts.length === 0 && (
             <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-10">
@@ -710,7 +824,6 @@ export default function AppPremiumContent() {
               </EmptyHeader>
             </Empty>
           )}
-        </div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 pt-4 border-t border-border">
@@ -1301,6 +1414,221 @@ export default function AppPremiumContent() {
           </TabsContent>
         </Tabs>
       </section>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={!!editingProduct} onOpenChange={(open) => {
+        if (!open) setEditingProduct(null);
+      }}>
+        <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-y-auto bg-[#0a0a0a] border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-white">แก้ไขสินค้า</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Product ID: {editingProduct?.provider_product_id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingProduct && (
+            <div className="grid gap-3 py-2">
+              {/* Top Row: Image and Basic Info - Horizontal Layout */}
+              <div className="grid gap-3 lg:grid-cols-12">
+                {/* Left: Image */}
+                {editingProduct.image_url && (
+                  <div className="lg:col-span-2 flex justify-center items-start">
+                    <div className="w-20 h-20 bg-gray-900/50 rounded-lg flex items-center justify-center p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                        src={editingProduct.image_url} 
+                        alt={editingProduct.display_name || editingProduct.name} 
+                        className="w-full h-full object-contain"
+                        suppressHydrationWarning
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Right: Basic Info */}
+                <div className={`grid gap-3 ${editingProduct.image_url ? 'lg:col-span-10' : 'lg:col-span-12'} md:grid-cols-2`}>
+                  {/* Original Name */}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-name" className="text-xs">ชื่อสินค้า (จาก Provider)</Label>
+                    <Input 
+                      id="edit-name"
+                      value={editingProduct.name || ''} 
+                      disabled 
+                      className="bg-muted/30 text-gray-500 h-8 text-sm"
+                    />
+                  </div>
+
+                  {/* Display Name */}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-display-name" className="text-xs">ชื่อแสดง (หน้าเว็บ)</Label>
+                    <Input 
+                      id="edit-display-name"
+                      value={editingProduct.display_name ?? ''} 
+                      onChange={(e) => setEditingProduct({ ...editingProduct, display_name: e.target.value })}
+                      placeholder="กรอกชื่อที่ต้องการแสดงบนหน้าเว็บ"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Category and Pricing Row - Horizontal Layout */}
+              <div className="grid gap-3 lg:grid-cols-6">
+                {/* Category */}
+                <div className="lg:col-span-2 grid gap-1.5">
+                  <Label htmlFor="edit-category" className="text-xs">หมวดหมู่หลัก</Label>
+                  <Input 
+                    id="edit-category"
+                    value={editingProduct.app_category ?? ''} 
+                    disabled 
+                    className="bg-muted/30 text-gray-500 h-8 text-sm"
+                  />
+                </div>
+
+                {editingProduct.sub_category && (
+                  <div className="lg:col-span-2 grid gap-1.5">
+                    <Label htmlFor="edit-sub-category" className="text-xs">หมวดหมู่ย่อย</Label>
+                    <Input 
+                      id="edit-sub-category"
+                      value={editingProduct.sub_category} 
+                      disabled 
+                      className="bg-muted/30 text-gray-500 h-8 text-sm"
+                    />
+                  </div>
+                )}
+
+                {/* Stock */}
+                <div className="lg:col-span-2 grid gap-1.5">
+                  <Label htmlFor="edit-stock" className="text-xs">คงเหลือ</Label>
+                  <Input 
+                    id="edit-stock"
+                    value={editingProduct.stock || 0} 
+                    disabled 
+                    className="bg-muted/30 text-gray-500 h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Pricing Row - All in one row */}
+              <div className="grid gap-3 lg:grid-cols-5">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-base-price" className="text-xs">ราคาต้นทุน</Label>
+                  <Input 
+                    id="edit-base-price"
+                    value={currencyFormatter.format(editingProduct.base_price || 0)} 
+                    disabled 
+                    className="bg-muted/30 text-gray-500 h-8 text-sm"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-markup-percent" className="text-xs">กำไร (%)</Label>
+                  <Input
+                    id="edit-markup-percent"
+                    type="number"
+                    step="0.1"
+                    value={editingProduct.markup_percent}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, markup_percent: Number(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-markup-fixed" className="text-xs">กำไรคงที่ (บาท)</Label>
+                  <Input
+                    id="edit-markup-fixed"
+                    type="number"
+                    step="0.1"
+                    value={editingProduct.markup_fixed}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, markup_fixed: Number(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="lg:col-span-2 grid gap-1.5">
+                  <Label className="text-xs">ราคาขายสุดท้าย</Label>
+                  <div className="p-2 rounded-lg border border-emerald-800/50 bg-emerald-900/10">
+                    <span className="text-base font-bold text-emerald-400">
+                    {currencyFormatter.format(calculateFinalPrice(editingProduct.base_price, editingProduct.markup_percent, editingProduct.markup_fixed))}
+                  </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Toggles Row - Horizontal */}
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-gray-800">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="edit-publish" className="text-xs font-medium cursor-pointer">
+                      เปิดขายสินค้า
+                    </Label>
+                    <p className="text-[10px] text-gray-400">
+                      {editingProduct.is_published ? 'สินค้าจะแสดงบนหน้าเว็บ' : 'สินค้าจะไม่แสดงบนหน้าเว็บ'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="edit-publish"
+                    checked={editingProduct.is_published}
+                    onCheckedChange={(checked) => setEditingProduct({ ...editingProduct, is_published: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border border-gray-800">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="edit-homepage" className="text-xs font-medium cursor-pointer">
+                      แสดงหน้าแรก
+                    </Label>
+                    <p className="text-[10px] text-gray-400">
+                      {editingProduct.show_on_homepage ? 'สินค้าจะแสดงบนหน้าแรก' : 'สินค้าจะไม่แสดงบนหน้าแรก'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="edit-homepage"
+                    checked={editingProduct.show_on_homepage}
+                    onCheckedChange={(checked) => setEditingProduct({ ...editingProduct, show_on_homepage: checked })}
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              {editingProduct.description && (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">คำอธิบาย</Label>
+                  <div 
+                    className="p-2 rounded-lg border border-gray-800 bg-gray-900/30 text-xs text-gray-300 max-h-24 overflow-y-auto"
+                    dangerouslySetInnerHTML={{ __html: editingProduct.description }}
+                    suppressHydrationWarning
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={savingProduct}>
+                <X className="size-4 mr-2" />
+                ยกเลิก
+              </Button>
+            </DialogClose>
+            <Button 
+              onClick={handleSaveProduct} 
+              disabled={savingProduct}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {savingProduct ? (
+                <>
+                  <Spinner className="size-4 mr-2" />
+                  กำลังบันทึก...
+                </>
+              ) : (
+                <>
+                  <Save className="size-4 mr-2" />
+                  บันทึก
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Category Dialog */}
       <Dialog open={showAddCategoryDialog} onOpenChange={setShowAddCategoryDialog}>
