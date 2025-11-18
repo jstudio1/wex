@@ -2,7 +2,12 @@ import { createServiceClient } from './supabase';
 
 export async function getGlobalMarkup() {
   const sb = createServiceClient();
-  const { data } = await sb.from('settings').select('key, value').in('key', ['PRICING_MARKUP_PERCENT', 'PRICING_MARKUP_FIXED']);
+  const { data, error } = await sb.from('settings').select('key, value').in('key', ['PRICING_MARKUP_PERCENT', 'PRICING_MARKUP_FIXED']);
+  if (error) {
+    console.error('[getGlobalMarkup] Error fetching settings:', error);
+    // Return default values on error
+    return { pct: 0, fix: 0 };
+  }
   const map = new Map<string, string>();
   for (const row of data || []) map.set(row.key as string, row.value as string);
   const pct = Number(map.get('PRICING_MARKUP_PERCENT') || '0');

@@ -456,7 +456,7 @@ export default function ProductDetailPage() {
               sizes="100vw"
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-red-900 via-red-600 to-red-800" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950" />
           )}
         </div>
         
