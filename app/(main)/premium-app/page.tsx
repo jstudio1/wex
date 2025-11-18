@@ -4,6 +4,15 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import AppPremiumProductsList from '@/components/AppPremiumProductsList';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Package } from 'lucide-react';
 
 // Force dynamic rendering to avoid stale cache
 export const dynamic = 'force-dynamic';
@@ -115,27 +124,38 @@ export default async function PremiumAppPage({
 
   const data = await fetchAppPremiumProducts();
   
-  // แสดงข้อความเตือนถ้ายังไม่ได้ sync
+  // แสดง empty state ถ้ายังไม่มีสินค้า
   if (data.products.length === 0) {
     return (
-      <div className="min-h-screen bg-black">
-        <div className="container mx-auto px-4 py-8">
-          <div className="card p-12 text-center max-w-md mx-auto bg-[#0a0a0a] border-emerald-800 shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-emerald-900/20 mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+        <div className="relative mb-8">
+          <div className="relative bg-[#0a0a0a] border border-emerald-800 rounded-2xl p-6 lg:p-8 shadow-sm">
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/20 border border-emerald-800 mb-4">
+                <span className="text-xs font-medium text-emerald-600">แอพพรีเมี่ยม</span>
+              </div>
+              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
+                แอพพรีเมี่ยม
+              </h1>
+              <p className="text-sm lg:text-base text-gray-300">
+                รายการสินค้าแอพพรีเมี่ยมที่เปิดขาย - Netflix, Disney+, Bilibili, Canva, CAPCUT และอื่นๆ
+              </p>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">ยังไม่มีสินค้าแอพพรีเมี่ยม</h1>
-            <p className="text-gray-300 mb-2">
-              กรุณาไปที่ Backoffice → แอพพรีเมี่ยม → กดปุ่ม "ซิงก์จากผู้ให้บริการ" เพื่อดึงข้อมูลล่าสุด
-            </p>
-            <p className="text-sm text-gray-400">
-              (Sync จะดึงข้อมูลจาก External API ลง Database)
-            </p>
           </div>
         </div>
-      </div>
+
+        <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-12">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Package className="size-8 text-gray-400" />
+            </EmptyMedia>
+            <EmptyTitle className="text-white">ยังไม่มีบริการ</EmptyTitle>
+            <EmptyDescription className="text-gray-400">
+              บริการจะแสดงที่นี่เมื่อมีการเพิ่มบริการใหม่
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </main>
     );
   }
 

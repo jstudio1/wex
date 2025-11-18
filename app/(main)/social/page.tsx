@@ -1,5 +1,14 @@
 import SocialServicesBrowser from '@/components/SocialServicesBrowser';
 import { getBaseUrl } from '@/lib/url';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { Share2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,19 +28,21 @@ async function fetchSocialServices() {
 export default async function SocialPage() {
   const data = await fetchSocialServices();
   
-  // แสดงข้อความเตือนถ้ายังไม่ได้ sync
+  // แสดง empty state ถ้ายังไม่มีบริการ
   if (data.services.length === 0) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-        <div className="card p-8 text-center space-y-4">
-          <h1 className="text-2xl font-bold text-[color:var(--text)]/90">ยังไม่มีบริการปั้มโซเชียล</h1>
-          <p className="text-[color:var(--text)]/70">
-            กรุณาไปที่ Backoffice → จัดการบริการโซเชียล → กดปุ่ม "ซิงก์จากผู้ให้บริการ" เพื่อดึงข้อมูลล่าสุด
-          </p>
-          <p className="text-sm text-[color:var(--text)]/50">
-            (Sync จะดึงข้อมูลจาก External API ลง Database)
-          </p>
-        </div>
+        <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-12">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Share2 className="size-8 text-gray-400" />
+            </EmptyMedia>
+            <EmptyTitle className="text-white">ยังไม่มีบริการ</EmptyTitle>
+            <EmptyDescription className="text-gray-400">
+              บริการจะแสดงที่นี่เมื่อมีการเพิ่มบริการใหม่
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </main>
     );
   }

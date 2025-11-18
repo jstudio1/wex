@@ -1,5 +1,14 @@
 import { createServiceClient } from '@/lib/supabase';
 import { CashcardCategoryCardNew } from '@/components/CashcardCategoryCardNew';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { CreditCard } from 'lucide-react';
 
 // Force dynamic rendering to avoid stale cache
 export const dynamic = 'force-dynamic';
@@ -77,15 +86,17 @@ export default async function CashcardPage() {
 
         {/* Categories Grid */}
         {categories.length === 0 ? (
-          <div className="card p-12 text-center max-w-md mx-auto bg-black/50 border-white/10">
-            <div className="w-16 h-16 rounded-full bg-purple-600/20 mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2 text-white">ยังไม่มีหมวดหมู่บัตรเติมเงิน</h3>
-            <p className="text-white/60">กรุณาไปที่ Backoffice เพื่อเพิ่มหมวดหมู่</p>
-          </div>
+          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-12">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <CreditCard className="size-8 text-gray-400" />
+              </EmptyMedia>
+              <EmptyTitle className="text-white">ยังไม่มีบริการ</EmptyTitle>
+              <EmptyDescription className="text-gray-400">
+                บริการจะแสดงที่นี่เมื่อมีการเพิ่มบริการใหม่
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {categories.map((cat, index) => (
