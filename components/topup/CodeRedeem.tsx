@@ -59,18 +59,18 @@ export default function CodeRedeem() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-red-50 border border-red-200">
-          <Gift className="h-5 w-5 text-red-600" />
+        <div className="p-2 rounded-lg bg-emerald-900/30 border border-emerald-700">
+          <Gift className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">ใช้โค้ดเติมพอยต์</h2>
-          <p className="text-sm text-gray-600">ใส่โค้ดเติมพอยต์ของคุณเพื่อรับพอยต์เข้าบัญชี</p>
+          <h2 className="text-xl font-semibold text-white">ใช้โค้ดเติมพอยต์</h2>
+          <p className="text-sm text-gray-400">ใส่โค้ดเติมพอยต์ของคุณเพื่อรับพอยต์เข้าบัญชี</p>
         </div>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="code" className="block text-sm font-medium text-gray-300 mb-2">
             โค้ดเติมพอยต์
           </label>
           <Input
@@ -80,13 +80,13 @@ export default function CodeRedeem() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             disabled={loading}
-            className="text-lg font-mono [&::placeholder]:!font-sans h-12 border-2 border-gray-400 bg-white focus:border-red-500 focus:ring-2 focus:ring-red-200 shadow-sm"
+            className="text-lg font-mono [&::placeholder]:!font-sans h-12 border-2 border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
           />
         </div>
         <Button
           type="submit"
           disabled={loading || !code.trim()}
-          className="w-full h-11 bg-red-600 hover:bg-red-700 text-white"
+          className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
@@ -103,11 +103,13 @@ export default function CodeRedeem() {
       </form>
 
       {msg && (
-        <div className={`p-4 rounded-lg text-sm border ${
-          msg.includes('สำเร็จ') 
-            ? 'bg-green-50 border-green-200 text-green-700' 
-            : 'bg-red-50 border-red-200 text-red-700'
-        }`}>
+        <div
+          className={`p-4 rounded-lg text-sm border ${
+            msg.includes('สำเร็จ')
+              ? 'bg-emerald-900/30 border-emerald-700 text-emerald-400'
+              : 'bg-red-900/30 border-red-800 text-red-400'
+          }`}
+        >
           {msg}
         </div>
       )}

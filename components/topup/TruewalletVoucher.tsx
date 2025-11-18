@@ -68,30 +68,30 @@ export default function TruewalletVoucher() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-orange-50 border border-orange-200">
-          <Gift className="h-5 w-5 text-orange-600" />
+        <div className="p-2 rounded-lg bg-emerald-900/30 border border-emerald-700">
+          <Gift className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">เติมเงินด้วยซองอั่งเปา TrueWallet</h2>
-          <p className="text-sm text-gray-600">แลกซองและรับพ้อยต์ทันที</p>
+          <h2 className="text-xl font-semibold text-white">เติมเงินด้วยซองอั่งเปา TrueWallet</h2>
+          <p className="text-sm text-gray-400">แลกซองและรับพ้อยต์ทันที</p>
         </div>
       </div>
 
       {/* Info Box */}
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+      <div className="bg-[#0f0f0f] border border-gray-800 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
-          <div className="space-y-1 text-sm text-orange-800">
-            <p className="font-semibold">วิธีใช้งาน:</p>
-            <ol className="list-decimal list-inside space-y-1 text-orange-700">
+          <Info className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+          <div className="space-y-1 text-sm text-gray-300">
+            <p className="font-semibold text-white">วิธีใช้งาน:</p>
+            <ol className="list-decimal list-inside space-y-1 text-gray-300">
               <li>รับซองอั่งเปา TrueWallet จากเพื่อนหรือโปรโมชั่น</li>
               <li>คัดลอกลิงก์หรือรหัสซอง</li>
               <li>วางในช่องด้านล่างและกดปุ่ม "แลกซองและรับพ้อยต์"</li>
             </ol>
-            <p className="text-xs text-orange-600 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               💡 <strong>ตัวอย่าง:</strong> https://gift.truemoney.com/campaign/?v=abc123xyz789 หรือแค่ abc123xyz789
             </p>
-            <p className="text-xs text-orange-600 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               ระบบจะแลกซองอัตโนมัติและเติมเงินทันที (1 บาท = 1 พ้อยต์)
             </p>
           </div>
@@ -101,7 +101,7 @@ export default function TruewalletVoucher() {
       {/* Voucher Input Form */}
       <form onSubmit={handleRedeemVoucher} className="space-y-4">
         <div>
-          <Label htmlFor="voucher_input" className="text-gray-700 font-medium">
+          <Label htmlFor="voucher_input" className="text-gray-300 font-medium">
             ลิงก์ซองหรือรหัสซอง
           </Label>
           
@@ -112,10 +112,10 @@ export default function TruewalletVoucher() {
             onChange={(e) => setVoucherInput(e.target.value)}
             placeholder="วางลิงก์หรือรหัสซองที่นี่..."
             disabled={redeeming}
-            className="mt-2 h-12 text-base"
+            className="mt-2 h-12 text-base bg-[#1a1a1a] border border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
           />
 
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-400 mt-2">
             คุณสามารถวางลิงก์เต็ม (https://gift.truemoney.com/campaign/?v=...) หรือแค่รหัสซอง (abc123xyz789) ได้
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function TruewalletVoucher() {
         <Button
           type="submit"
           disabled={redeeming || !voucherInput.trim()}
-          className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {redeeming ? (
             <span className="inline-flex items-center gap-2">
@@ -140,10 +140,10 @@ export default function TruewalletVoucher() {
       </form>
 
       {/* Benefits Box */}
-      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
+      <div className="bg-gradient-to-r from-emerald-900/20 via-emerald-900/10 to-emerald-900/20 border border-emerald-800 rounded-lg p-4">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-orange-900">✨ ข้อดีของการเติมด้วยซองอั่งเปา:</p>
-          <ul className="text-xs text-orange-800 space-y-1 ml-4">
+          <p className="text-sm font-semibold text-white">✨ ข้อดีของการเติมด้วยซองอั่งเปา:</p>
+          <ul className="text-xs text-gray-300 space-y-1 ml-4">
             <li>• ไม่มีค่าธรรมเนียม</li>
             <li>• ได้พ้อยต์ทันที (1 บาท = 1 พ้อยต์)</li>
             <li>• รองรับทุกขนาดของซอง</li>

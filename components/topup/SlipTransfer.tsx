@@ -194,24 +194,24 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-blue-50 border border-blue-200">
-          <QrCode className="h-5 w-5 text-blue-600" />
+        <div className="p-2 rounded-lg bg-emerald-900/30 border border-emerald-700">
+          <QrCode className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">เติมเงินด้วยสลิปโอนเงิน</h2>
-          <p className="text-sm text-gray-600">อัปโหลดสลิปและตรวจสอบอัตโนมัติ</p>
+          <h2 className="text-xl font-semibold text-white">เติมเงินด้วยสลิปโอนเงิน</h2>
+          <p className="text-sm text-gray-400">อัปโหลดสลิปและตรวจสอบอัตโนมัติ</p>
         </div>
       </div>
 
       {/* Bank Account Info */}
       {accounts.length > 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+        <div className="bg-[#0f0f0f] border border-gray-800 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-blue-700 font-semibold">บัญชีรับโอน</Label>
+            <Label className="text-emerald-400 font-semibold">บัญชีรับโอน</Label>
             <select
               value={selectedBank}
               onChange={(e) => setSelectedBank(parseInt(e.target.value, 10))}
-              className="bg-white border border-gray-300 rounded px-3 py-1 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+              className="bg-[#0a0a0a] border border-gray-700 rounded px-3 py-1 text-sm text-white focus:border-emerald-500 focus:ring-emerald-500"
             >
               {accounts.map((b, idx) => (
                 <option key={`${b.bankName}-${idx}`} value={idx}>
@@ -223,28 +223,28 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
           {bank && (
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">ธนาคาร:</span>
-                <span className="text-gray-900 font-medium">{bank.bankName}</span>
+                <span className="text-gray-400">ธนาคาร:</span>
+                <span className="text-white font-medium">{bank.bankName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">ชื่อบัญชี:</span>
-                <span className="text-gray-900 font-medium">{bank.accountName}</span>
+                <span className="text-gray-400">ชื่อบัญชี:</span>
+                <span className="text-white font-medium">{bank.accountName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">เลขที่บัญชี:</span>
-                <span className="text-gray-900 font-mono font-medium">{bank.accountNumber}</span>
+                <span className="text-gray-400">เลขที่บัญชี:</span>
+                <span className="text-white font-mono font-medium">{bank.accountNumber}</span>
               </div>
               {bank.branch && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">สาขา:</span>
-                  <span className="text-gray-900 font-medium">{bank.branch}</span>
+                  <span className="text-gray-400">สาขา:</span>
+                  <span className="text-white font-medium">{bank.branch}</span>
                 </div>
               )}
             </div>
           )}
         </div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-2 text-sm text-yellow-800">
+        <div className="bg-amber-900/20 border border-amber-700 rounded-lg p-4 space-y-2 text-sm text-amber-200">
           <div className="flex items-center gap-2 font-semibold">
             <Info className="h-4 w-4" />
             ยังไม่มีข้อมูลบัญชีธนาคาร
@@ -254,18 +254,18 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
       )}
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-[#0f0f0f] border border-gray-800 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="space-y-1 text-sm text-blue-800">
-            <p className="font-semibold">วิธีใช้งาน:</p>
-            <ol className="list-decimal list-inside space-y-1 text-blue-700">
+          <Info className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+          <div className="space-y-1 text-sm text-gray-300">
+            <p className="font-semibold text-white">วิธีใช้งาน:</p>
+            <ol className="list-decimal list-inside space-y-1 text-gray-300">
               <li>โอนเงินเข้าบัญชีธนาคารด้านบน</li>
               <li>เปิดสลิปโอนเงินจากแอปธนาคาร</li>
               <li>อัปโหลดรูปสลิปโอนเงิน (ระบบจะอ่าน QR Code อัตโนมัติ)</li>
               <li>กดปุ่ม "ตรวจสอบสลิปและเติมเงิน"</li>
             </ol>
-            <p className="text-xs text-blue-600 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               ระบบจะตรวจสอบสลิปอัตโนมัติและเติมเงินทันที (1 บาท = 1 พ้อยต์)
             </p>
           </div>
@@ -275,7 +275,7 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
       {/* Upload Slip Form */}
       <form onSubmit={handleVerifySlip} className="space-y-4">
         <div>
-          <Label htmlFor="slip_image" className="text-gray-700 font-medium">
+          <Label htmlFor="slip_image" className="text-gray-300 font-medium">
             อัปโหลดสลิปโอนเงิน
           </Label>
           
@@ -283,11 +283,11 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
             <div className="mt-2">
               <label
                 htmlFor="slip_image"
-                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:bg-emerald-900/10 hover:border-emerald-600/60 transition-colors"
               >
                 <div className="flex flex-col items-center gap-2 p-4">
                   <Upload className="h-10 w-10 text-gray-400" />
-                  <span className="text-sm text-gray-600 font-medium">คลิกเพื่ออัปโหลดสลิป</span>
+                  <span className="text-sm text-gray-300 font-medium">คลิกเพื่ออัปโหลดสลิป</span>
                   <span className="text-xs text-gray-500">รองรับไฟล์รูปภาพขนาดไม่เกิน 5 MB</span>
                 </div>
                 <input
@@ -303,39 +303,39 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
             </div>
           ) : (
             <div className="mt-2 relative">
-              <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
+              <div className="relative border-2 border-gray-700 rounded-lg overflow-hidden bg-black">
                 <img
                   src={imagePreview}
                   alt="Slip preview"
-                  className="w-full h-auto max-h-96 object-contain bg-gray-50"
+                  className="w-full h-auto max-h-96 object-contain"
                 />
                 <button
                   type="button"
                   onClick={handleRemoveImage}
                   disabled={verifying}
-                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors disabled:opacity-50"
+                  className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
               
               {extractedQrPayload ? (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700">
+                <div className="mt-3 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg">
+                  <div className="flex items-center gap-2 text-emerald-400">
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-sm font-medium">อ่าน QR Code สำเร็จ</span>
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-emerald-300 mt-1">
                     พร้อมตรวจสอบสลิปและเติมเงิน
                   </p>
                 </div>
               ) : (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="mt-3 p-3 bg-amber-900/20 border border-amber-700 rounded-lg">
+                  <div className="flex items-center gap-2 text-amber-200">
                     <Info className="h-4 w-4" />
                     <span className="text-sm font-medium">ไม่พบ QR Code</span>
                   </div>
-                  <p className="text-xs text-yellow-600 mt-1">
+                  <p className="text-xs text-amber-200 mt-1">
                     กรุณาตรวจสอบว่าสลิปมี QR Code ชัดเจน หรือลองอัปโหลดใหม่
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
         <Button
           type="submit"
           disabled={verifying || !slipImage || !extractedQrPayload}
-          className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {verifying ? (
             <span className="inline-flex items-center gap-2">

@@ -27,6 +27,7 @@ import GamePrizesContent from '@/components/backoffice/GamePrizesContent';
 import AppPremiumContent from '@/components/backoffice/AppPremiumContent';
 import CashcardContent from '@/components/backoffice/CashcardContent';
 import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
+import TopupHistoryContent from '@/components/backoffice/TopupHistoryContent';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Empty,
@@ -130,6 +131,7 @@ const menuSections: MenuSection[] = [
     label: 'คำสั่งซื้อ',
     items: [
       { id: 'orders', label: 'คำสั่งซื้อ', icon: ShoppingCart },
+      { id: 'topup-history', label: 'ประวัติเติมเงิน', icon: Coins },
     ]
   },
   {
@@ -445,6 +447,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <PricingContent />;
     case 'orders':
       return <OrdersContentWrapper />;
+    case 'topup-history':
+      return <TopupHistoryContent />;
     case 'users':
       return <UsersContentWrapper />;
     case 'coupons':

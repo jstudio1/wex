@@ -67,10 +67,10 @@ export default function TopupPage() {
       icon: Gift,
       iconImage: null,
       description: 'ใช้โค้ดเติมพอยต์',
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-300',
-      activeColor: 'bg-red-50',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-900/30',
+      borderColor: 'border-emerald-600',
+      activeColor: 'bg-emerald-900/20',
     },
     {
       id: 'qr' as PaymentMethod,
@@ -78,10 +78,10 @@ export default function TopupPage() {
       icon: QrCode,
       iconImage: 'https://img5.pic.in.th/file/secure-sv1/webpqr.webp',
       description: 'ชำระผ่าน PromptPay',
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-300',
-      activeColor: 'bg-red-50',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-900/30',
+      borderColor: 'border-emerald-600',
+      activeColor: 'bg-emerald-900/20',
     },
     {
       id: 'slip' as PaymentMethod,
@@ -89,10 +89,10 @@ export default function TopupPage() {
       icon: Receipt,
       iconImage: 'https://img5.pic.in.th/file/secure-sv1/webpbank.webp',
       description: 'อัปโหลดสลิปตรวจสอบอัตโนมัติ',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-300',
-      activeColor: 'bg-blue-50',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-900/30',
+      borderColor: 'border-emerald-600',
+      activeColor: 'bg-emerald-900/20',
     },
     {
       id: 'truewallet' as PaymentMethod,
@@ -100,10 +100,10 @@ export default function TopupPage() {
       icon: Gift,
       iconImage: 'https://img2.pic.in.th/pic/wepwallet.webp',
       description: 'แลกซอง TrueWallet',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-300',
-      activeColor: 'bg-orange-50',
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-900/30',
+      borderColor: 'border-emerald-600',
+      activeColor: 'bg-emerald-900/20',
     },
   ];
 
@@ -130,20 +130,20 @@ export default function TopupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <Spinner />
-          </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Spinner />
+      </div>
     );
   }
 
   if (methods.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 relative">
+      <div className="min-h-screen bg-black relative">
         <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
           <div 
             className="absolute inset-0" 
             style={{
-              backgroundImage: `radial-gradient(circle at 2px 2px, rgb(220, 38, 38) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
               backgroundSize: '40px 40px'
             }}
           />
@@ -152,14 +152,14 @@ export default function TopupPage() {
         <main className="relative mx-auto max-w-4xl px-4 py-8">
           <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-700 shadow-lg">
+              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-lg">
                 <Wallet className="h-8 w-8 text-white" />
               </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">เติมพอยต์</h1>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-              <p className="text-gray-600">ขณะนี้ไม่มีช่องทางการเติมพอยต์ที่เปิดใช้งาน</p>
-              <p className="text-sm text-gray-500 mt-2">กรุณาติดต่อผู้ดูแลระบบ</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-white">เติมพอยต์</h1>
+            <div className="bg-[#0a0a0a] rounded-2xl shadow-sm border border-gray-800 p-8 text-center">
+              <p className="text-gray-300">ขณะนี้ไม่มีช่องทางการเติมพอยต์ที่เปิดใช้งาน</p>
+              <p className="text-sm text-gray-400 mt-2">กรุณาติดต่อผู้ดูแลระบบ</p>
             </div>
           </div>
         </main>
@@ -168,13 +168,13 @@ export default function TopupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
+    <div className="min-h-screen bg-black relative">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
         <div 
           className="absolute inset-0" 
           style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(220, 38, 38) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
             backgroundSize: '40px 40px'
           }}
         />
@@ -182,21 +182,21 @@ export default function TopupPage() {
       
       {/* Decorative Shapes */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-red-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-red-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-pink-500/5 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-emerald-400/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
       </div>
 
       <main className="relative mx-auto max-w-4xl px-4 py-8 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2 mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-700 shadow-lg">
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-lg">
               <Wallet className="h-8 w-8 text-white" />
         </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">เติมพอยต์</h1>
-          <p className="text-gray-600 text-sm md:text-base">เลือกวิธีเติมพอยต์ที่คุณต้องการ</p>
+          <h1 className="text-3xl md:text-4xl font-bold text-white">เติมพอยต์</h1>
+          <p className="text-gray-300 text-sm md:text-base">เลือกวิธีเติมพอยต์ที่คุณต้องการ</p>
           </div>
 
       {/* Payment Method Selection */}
@@ -211,11 +211,11 @@ export default function TopupPage() {
               className={`relative p-6 rounded-2xl border-2 transition-all duration-200 ${
                 isActive
                   ? `${m.activeColor} ${m.borderColor} shadow-lg scale-[1.02]`
-                  : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
+                  : 'bg-[#0a0a0a] border-gray-800 hover:border-emerald-600/50 hover:shadow-md'
               }`}
             >
               <div className="flex flex-col items-center gap-3">
-                <div className={`p-4 rounded-xl ${isActive ? m.bgColor : 'bg-gray-50'} transition-colors flex items-center justify-center`}>
+                <div className={`p-4 rounded-xl ${isActive ? m.bgColor : 'bg-gray-900/50'} transition-colors flex items-center justify-center`}>
                   {m.iconImage ? (
                     <img 
                       src={m.iconImage} 
@@ -223,24 +223,22 @@ export default function TopupPage() {
                       className="h-12 w-12 object-contain"
                     />
                   ) : (
-                    <Icon className={`h-8 w-8 ${isActive ? m.color : 'text-gray-400'} transition-colors`} />
+                    <Icon className={`h-8 w-8 ${isActive ? m.color : 'text-gray-200'} transition-colors`} />
                   )}
                 </div>
                 <div className="text-center">
-                  <div className={`font-bold text-base ${isActive ? 'text-gray-900' : 'text-gray-600'}`}>
+                  <div className={`font-bold text-base ${isActive ? 'text-white' : 'text-gray-200'}`}>
                     {m.name}
                   </div>
-                  <div className={`text-xs mt-1 ${isActive ? 'text-gray-600' : 'text-gray-500'}`}>
+                  <div className={`text-xs mt-1 ${isActive ? 'text-gray-300' : 'text-gray-400'}`}>
                     {m.description}
                   </div>
                 </div>
                 {isActive && (
                   <Badge 
                     className={`shadow-md font-semibold !border-0 ${
-                      m.id === 'code' ? '!bg-red-600 !text-white' :
-                      m.id === 'qr' ? '!bg-red-600 !text-white' :
-                      m.id === 'slip' ? '!bg-blue-600 !text-white' :
-                      '!bg-orange-600 !text-white'
+                      m.id === 'slip' ? '!bg-sky-500 !text-white' :
+                      '!bg-emerald-600 !text-white'
                     }`}
                   >
                     ฟรีค่าธรรมเนียม
@@ -253,7 +251,7 @@ export default function TopupPage() {
       </div>
 
       {/* Content Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+        <div className="bg-[#0a0a0a] rounded-2xl shadow-sm border border-gray-800 p-6 md:p-8">
         {method === 'code' && <CodeRedeem />}
         {method === 'qr' && <QrPayment />}
         {method === 'slip' && <SlipTransfer accounts={bankAccounts} />}
