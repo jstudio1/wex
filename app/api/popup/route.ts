@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const sb = createServiceClient();
@@ -9,10 +11,15 @@ export async function GET() {
       .select('id, image_url, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      return NextResponse.json({ image_url: null, created_at: null });
+    if (error) {
+      console.error('[GET /api/popup] Database error:', error);
+      return NextResponse.json({ image_url: null, created_at: null, id: null });
+    }
+
+    if (!data) {
+      return NextResponse.json({ image_url: null, created_at: null, id: null });
     }
 
     return NextResponse.json({
@@ -21,8 +28,8 @@ export async function GET() {
       id: data.id,
     });
   } catch (err) {
-    console.error('Popup API error:', err);
-    return NextResponse.json({ image_url: null, created_at: null });
+    console.error('[GET /api/popup] Unexpected error:', err);
+    return NextResponse.json({ image_url: null, created_at: null, id: null });
   }
 }
 

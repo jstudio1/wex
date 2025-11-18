@@ -31,20 +31,27 @@ export default function PopupContent() {
 
   const fetchPopups = async () => {
     try {
-      const res = await fetch('/api/admin/popup');
+      const res = await fetch('/api/admin/popup', { cache: 'no-store' });
       if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลได้');
       const json = await res.json();
-      if (json.image_url) {
-        setPopups([{ id: json.id, image_url: json.image_url, created_at: json.created_at, updated_at: json.created_at }]);
+      if (json.image_url && json.id) {
+        setPopups([{ 
+          id: json.id, 
+          image_url: json.image_url, 
+          created_at: json.created_at, 
+          updated_at: json.updated_at || json.created_at 
+        }]);
       } else {
         setPopups([]);
       }
     } catch (err) {
+      console.error('Fetch popups error:', err);
       toast.show({
         title: 'เกิดข้อผิดพลาด',
         description: (err as Error).message,
         variant: 'destructive',
       });
+      setPopups([]);
     } finally {
       setLoading(false);
     }

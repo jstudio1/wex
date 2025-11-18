@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { createServiceClient } from '@/lib/supabase';
 const BackgroundParticles = dynamic(() => import('@/components/BackgroundParticles'), { ssr: false });
 const ContactAdminButton = dynamic(() => import('@/components/ContactAdminButton'), { ssr: false });
+const PopupNotification = dynamic(() => import('@/components/PopupNotification'), { ssr: false });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BackgroundParticles />
         <Toaster>
           {children}
+          <PopupNotification />
         </Toaster>
         <SonnerToaster position="top-right" richColors className="top-24" />
         <ContactAdminButton />
