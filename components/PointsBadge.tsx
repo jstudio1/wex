@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Wallet } from 'lucide-react';
 import Link from 'next/link';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 function useAnimatedNumber(value: number, durationMs = 600) {
   const [display, setDisplay] = useState(value);
@@ -30,41 +31,7 @@ function useAnimatedNumber(value: number, durationMs = 600) {
 }
 
 export default function PointsBadge() {
-  const [points, setPoints] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchBalance = useCallback(async () => {
-    try {
-      setLoading(true);
-      // User-specific data should be fresh but can use short browser cache
-      const res = await fetch('/api/wallet/balance', { 
-        cache: 'default',
-        headers: { 'Cache-Control': 'max-age=10' }
-      });
-      if (!res.ok) throw new Error('balance');
-      const json = await res.json();
-      setPoints(Number(json.points) || 0);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBalance();
-    const onChanged = () => fetchBalance();
-    const onFocus = () => fetchBalance();
-    window.addEventListener('wallet:changed', onChanged);
-    window.addEventListener('focus', onFocus);
-    const iv = setInterval(fetchBalance, 15000);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener('wallet:changed', onChanged);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [fetchBalance]);
-
+  const { points, loading } = useWalletBalance();
   const animated = useAnimatedNumber(points ?? 0);
 
   return (

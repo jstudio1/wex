@@ -9,7 +9,7 @@ import {
 describe('loginSchema', () => {
   it('ควร validate login data ที่ถูกต้อง', () => {
     const validData = {
-      username: 'testuser',
+      usernameOrEmail: 'testuser',
       password: 'password123'
     };
     expect(() => loginSchema.parse(validData)).not.toThrow();
@@ -17,7 +17,7 @@ describe('loginSchema', () => {
 
   it('ควร validate login data พร้อม recaptchaToken', () => {
     const validData = {
-      username: 'testuser',
+      usernameOrEmail: 'testuser',
       password: 'password123',
       recaptchaToken: 'token123'
     };
@@ -26,7 +26,7 @@ describe('loginSchema', () => {
 
   it('ควร reject username ที่สั้นเกินไป', () => {
     const invalidData = {
-      username: 'ab',
+      usernameOrEmail: 'ab',
       password: 'password123'
     };
     expect(() => loginSchema.parse(invalidData)).toThrow();
@@ -34,7 +34,7 @@ describe('loginSchema', () => {
 
   it('ควร reject password ที่สั้นเกินไป', () => {
     const invalidData = {
-      username: 'testuser',
+      usernameOrEmail: 'testuser',
       password: '12345'
     };
     expect(() => loginSchema.parse(invalidData)).toThrow();
@@ -49,7 +49,7 @@ describe('loginSchema', () => {
 
   it('ควร reject เมื่อไม่มี password', () => {
     const invalidData = {
-      username: 'testuser'
+      usernameOrEmail: 'testuser'
     };
     expect(() => loginSchema.parse(invalidData)).toThrow();
   });
@@ -59,7 +59,11 @@ describe('registerSchema', () => {
   it('ควร validate register data ที่ถูกต้อง', () => {
     const validData = {
       username: 'newuser',
-      password: 'password123'
+      password: 'password123',
+      firstName: 'สมชาย',
+      lastName: 'ใจดี',
+      email: 'user@example.com',
+      phone: '0812345678'
     };
     expect(() => registerSchema.parse(validData)).not.toThrow();
   });
@@ -68,6 +72,10 @@ describe('registerSchema', () => {
     const validData = {
       username: 'newuser',
       password: 'password123',
+      firstName: 'สมหญิง',
+      lastName: 'ใจดี',
+      email: 'user@example.com',
+      phone: '0812345678',
       recaptchaToken: 'token123'
     };
     expect(() => registerSchema.parse(validData)).not.toThrow();
@@ -76,7 +84,10 @@ describe('registerSchema', () => {
   it('ควร reject username ที่สั้นเกินไป', () => {
     const invalidData = {
       username: 'ab',
-      password: 'password123'
+      password: 'password123',
+      firstName: 'สมชาย',
+      lastName: 'ใจดี',
+      email: 'user@example.com'
     };
     expect(() => registerSchema.parse(invalidData)).toThrow();
   });
@@ -84,7 +95,10 @@ describe('registerSchema', () => {
   it('ควร reject password ที่สั้นเกินไป', () => {
     const invalidData = {
       username: 'newuser',
-      password: '12345'
+      password: '12345',
+      firstName: 'สมชาย',
+      lastName: 'ใจดี',
+      email: 'user@example.com'
     };
     expect(() => registerSchema.parse(invalidData)).toThrow();
   });

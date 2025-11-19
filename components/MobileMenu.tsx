@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 type NavbarMenus = {
   home: boolean;
@@ -41,44 +42,9 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
   const [mounted, setMounted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
-  const [points, setPoints] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
-
-  const fetchBalance = useCallback(async () => {
-    if (!isLoggedIn) return;
-    try {
-      setLoading(true);
-      const res = await fetch('/api/wallet/balance', { 
-        cache: 'default',
-        headers: { 'Cache-Control': 'max-age=10' }
-      });
-      if (!res.ok) throw new Error('balance');
-      const json = await res.json();
-      setPoints(Number(json.points) || 0);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchBalance();
-      const onChanged = () => fetchBalance();
-      const onFocus = () => fetchBalance();
-      window.addEventListener('wallet:changed', onChanged);
-      window.addEventListener('focus', onFocus);
-      const iv = setInterval(fetchBalance, 15000);
-      return () => {
-        clearInterval(iv);
-        window.removeEventListener('wallet:changed', onChanged);
-        window.removeEventListener('focus', onFocus);
-      };
-    }
-  }, [fetchBalance, isLoggedIn]);
+  const { points, loading } = useWalletBalance({ enabled: isLoggedIn });
   
   // Get first letter of username for avatar
   const avatarLetter = username?.charAt(0).toUpperCase() || 'U';
@@ -155,7 +121,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                     {avatarUrl ? (
                       <img src={avatarUrl} alt={username || 'User'} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-xl font-bold text-white">{avatarLetter}</span>
+                    <span className="text-xl font-bold text-white">{avatarLetter}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

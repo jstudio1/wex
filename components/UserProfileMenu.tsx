@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { UserCircle, ShoppingBag, Wallet, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 type Props = {
   username: string;
@@ -28,41 +29,7 @@ type Permission = {
 } | null;
 
 export default function UserProfileMenu({ username, isAdmin = false, avatarUrl }: Props) {
-  const [points, setPoints] = useState<number | null>(null);
-  const [permission, setPermission] = useState<Permission>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchBalance = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/wallet/balance', { 
-        cache: 'default',
-        headers: { 'Cache-Control': 'max-age=10' }
-      });
-      if (!res.ok) throw new Error('balance');
-      const json = await res.json();
-      setPoints(Number(json.points) || 0);
-      setPermission(json.permission || null);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBalance();
-    const onChanged = () => fetchBalance();
-    const onFocus = () => fetchBalance();
-    window.addEventListener('wallet:changed', onChanged);
-    window.addEventListener('focus', onFocus);
-    const iv = setInterval(fetchBalance, 15000);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener('wallet:changed', onChanged);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [fetchBalance]);
+  const { points, permission, loading } = useWalletBalance();
 
   // Get first letter of username for avatar
   const avatarLetter = username.charAt(0).toUpperCase();

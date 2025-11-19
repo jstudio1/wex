@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { applyPermissionDiscount, type Permission } from '@/lib/pricing';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 type GameAccount = {
   id: number;
@@ -89,52 +90,34 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
   const [permissionName, setPermissionName] = useState<string | null>(initialPermission?.name || null);
   const [quickBuyCustomPrice, setQuickBuyCustomPrice] = useState<number | null>(null);
   const itemsPerPage = 24;
+  const { permission: walletPermission, permissionId: walletPermissionId } = useWalletBalance();
 
   // Use initialPermissionId from server or fetch from client
   const [userPermissionId, setUserPermissionId] = useState<number | null>(initialPermissionId);
   
   useEffect(() => {
-    // If we already have permission from server, use it
-    if (initialPermission) {
+    if (walletPermission) {
+      setPermission(walletPermission);
+      setPermissionName(walletPermission.name || initialPermission?.name || null);
+    } else if (initialPermission) {
       setPermissionName(initialPermission.name);
-      // Permission type doesn't include id/name, so we don't set it here
-      // We'll fetch the full permission data if needed
-    } else if (initialPermissionId) {
-      // If we only have permission_id, fetch permission details
-      fetch('/api/wallet/balance')
-        .then(res => res.json())
-        .then(data => {
-          if (data.permission) {
-            setPermission(data.permission);
-            setPermissionName(data.permission.name || null);
-          }
-        })
-        .catch(() => {
-          // ignore
-        });
     } else {
-      // Otherwise fetch both permission and permission_id
-      fetch('/api/wallet/balance')
-        .then(res => res.json())
-        .then(data => {
-          if (data.permission) {
-            setPermission(data.permission);
-            setPermissionName(data.permission.name || null);
-            const permId = data.permission_id || (data.permission as any)?.id;
-            if (permId) {
-              setUserPermissionId(Number(permId));
-            }
-          } else {
-            setPermission(null);
-            setPermissionName(null);
-            setUserPermissionId(null);
-          }
-        })
-        .catch(() => {
-          // ignore
-        });
+      setPermission(null);
+      setPermissionName(null);
     }
-  }, [initialPermissionId, initialPermission]);
+  }, [initialPermission, walletPermission]);
+
+  useEffect(() => {
+    if (initialPermissionId) {
+      setUserPermissionId(initialPermissionId);
+      return;
+    }
+    if (walletPermissionId) {
+      setUserPermissionId(walletPermissionId);
+    } else if (!walletPermission && !initialPermission) {
+      setUserPermissionId(null);
+    }
+  }, [initialPermission, initialPermissionId, walletPermissionId, walletPermission]);
 
   // Fetch custom price when quick buy account or permission changes
   useEffect(() => {
