@@ -20,22 +20,22 @@ export type TicketStatus = (typeof TICKET_STATUS)[number];
 export const ADMIN_TICKET_STATUS_OPTIONS: { value: TicketStatus; label: string; description: string }[] = [
   {
     value: 'open',
-    label: 'Open',
+    label: 'เปิด',
     description: 'Ticket ใหม่ที่ยังไม่ได้รับการจัดการ',
   },
   {
     value: 'in_progress',
-    label: 'In Progress',
+    label: 'กำลังดำเนินการ',
     description: 'แอดมินกำลังจัดการอยู่',
   },
   {
     value: 'waiting_customer',
-    label: 'Waiting for Customer',
+    label: 'รอลูกค้า',
     description: 'ต้องการข้อมูลเพิ่มเติมจากลูกค้า',
   },
   {
     value: 'closed',
-    label: 'Closed',
+    label: 'ปิด',
     description: 'ปิดงานเรียบร้อยแล้ว',
   },
 ];

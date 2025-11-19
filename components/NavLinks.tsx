@@ -83,7 +83,7 @@ export default function NavLinks({
     }
   });
 
-  const baseClasses = 'group relative inline-flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 !text-white overflow-hidden';
+  const baseClasses = 'group relative inline-flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 !text-white overflow-hidden focus:outline-none focus-visible:outline-none';
 
   return (
     <nav
@@ -94,13 +94,13 @@ export default function NavLinks({
         if (menuItem.type === 'contact') {
           return (
             <DropdownMenu key="contact" modal={false}>
-              <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger asChild>
                 <button
                   className={`${baseClasses} ${
                     isContactActive
                       ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-600/30 shadow-lg shadow-emerald-500/20 border border-emerald-400/30'
                       : 'hover:bg-white/10 hover:border-white/20 border border-transparent'
-                  }`}
+                  } focus:outline-none focus-visible:outline-none`}
                 >
                   {isContactActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
@@ -118,7 +118,7 @@ export default function NavLinks({
                 <DropdownMenuItem asChild>
                   <Link 
                     href="/contact" 
-                    className={`flex items-center gap-2 cursor-pointer ${
+                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
                       pathname === '/contact' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
                     }`}
                   >
@@ -130,7 +130,7 @@ export default function NavLinks({
                   <DropdownMenuItem asChild>
                     <Link 
                       href="/account/tickets" 
-                      className={`flex items-center gap-2 cursor-pointer ${
+                      className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
                         pathname === '/account/tickets' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
                       }`}
                     >
@@ -142,7 +142,7 @@ export default function NavLinks({
                 <DropdownMenuItem asChild>
                   <Link 
                     href="/terms-policy" 
-                    className={`flex items-center gap-2 cursor-pointer ${
+                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
                       pathname === '/terms-policy' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
                     }`}
                   >
@@ -164,7 +164,7 @@ export default function NavLinks({
                     isToolsActive
                       ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-600/30 shadow-lg shadow-emerald-500/20 border border-emerald-400/30'
                       : 'hover:bg-white/10 hover:border-white/20 border border-transparent'
-                  }`}
+                  } focus:outline-none focus-visible:outline-none`}
                 >
                   {isToolsActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
@@ -182,7 +182,7 @@ export default function NavLinks({
                 <DropdownMenuItem asChild>
                   <Link 
                     href="/tools/2fa" 
-                    className={`flex items-center gap-2 cursor-pointer ${
+                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
                       pathname === '/tools/2fa' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
                     }`}
                   >

@@ -163,7 +163,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">บัญชี</div>
                   <Link 
                     onClick={() => setOpen(false)} 
-                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                     href="/account"
                   >
                     <UserCircle className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -171,7 +171,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   </Link>
                   <Link 
                     onClick={() => setOpen(false)} 
-                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                     href="/wallet/topup"
                   >
                     <Wallet className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -179,7 +179,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   </Link>
                   <Link 
                     onClick={() => setOpen(false)} 
-                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                     href="/orders"
                   >
                     <Receipt className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -227,7 +227,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
               <Link 
                       key={item.href}
                 onClick={() => setOpen(false)} 
-                className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                       href={item.href}
               >
                       <Icon className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -243,7 +243,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                       <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เครื่องมือ</div>
                       <Link 
                         onClick={() => setOpen(false)} 
-                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                         href="/tools/2fa"
                       >
                         <Shield className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -259,7 +259,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                     <div key="contact-menu" className="space-y-1">
                       <Link 
                         onClick={() => setOpen(false)} 
-                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                         href="/contact"
                       >
                         <Mail className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
@@ -268,7 +268,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                       {isLoggedIn && (
                         <Link 
                           onClick={() => setOpen(false)} 
-                          className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11" 
+                          className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11 focus:outline-none focus-visible:outline-none" 
                           href="/account/tickets"
                         >
                           <MessageSquare className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
@@ -277,7 +277,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                       )}
                       <Link 
                         onClick={() => setOpen(false)} 
-                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11" 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11 focus:outline-none focus-visible:outline-none" 
                         href="/terms-policy"
                       >
                         <FileText className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
@@ -297,7 +297,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                       <div className="my-4 h-px bg-gray-800" />
                       <Link 
                         onClick={() => setOpen(false)} 
-                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
                         href="/backoffice"
                       >
                         <Settings className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />

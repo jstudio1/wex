@@ -23,11 +23,11 @@ type AdminTicket = TicketSummary & {
 };
 
 const STATUS_FILTERS = [
+  { value: 'all', label: 'ทั้งหมด' },
   { value: 'open', label: 'เปิด' },
   { value: 'in_progress', label: 'กำลังดำเนินการ' },
   { value: 'waiting_customer', label: 'รอลูกค้า' },
   { value: 'closed', label: 'ปิด' },
-  { value: 'all', label: 'ทั้งหมด' },
 ] as const;
 
 export default function TicketsContent() {
@@ -407,7 +407,7 @@ useEffect(() => {
           <h2 className="text-xl font-semibold text-white">จัดการ Ticket ลูกค้า</h2>
         </div>
         <div className="flex flex-wrap gap-3">
-          {STATUS_FILTERS.slice(0, 4).map((item) => (
+          {STATUS_FILTERS.filter(item => item.value !== 'all').map((item) => (
             <div key={item.value} className="rounded-md border border-white/10 bg-white/5 px-4 py-2 text-center">
               <p className="text-xs text-white/50">{item.label}</p>
               <p className="text-lg font-semibold text-white">{stats[item.value] ?? 0}</p>
