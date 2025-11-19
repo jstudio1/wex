@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { getApiKey } from '@/lib/api-keys';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://x.24payseller.com';
+import { getWepayOrderOutput, toWepayState, WepayError } from '@/lib/providers/wepay';
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const API_KEY = await getApiKey('API_KEY_24PAY');
-  if (!API_KEY) return NextResponse.json({ error: 'missing_api_key' }, { status: 500 });
 
   try {
     const body = await req.json();
@@ -38,23 +33,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'no_valid_orders' }, { status: 400 });
     }
 
-    // ดึงสถานะจาก External API สำหรับแต่ละ transaction_id
+    // ดึงสถานะจาก wePAY สำหรับแต่ละ transaction_id
     const updates: Promise<unknown>[] = [];
 
     for (const txId of validTransactionIds) {
       updates.push(
         (async () => {
           try {
-            const res = await fetch(`${API_BASE}/agent/orders/${txId}`, {
-              headers: { 'X-Api-Key': API_KEY }
-            });
-
-            if (!res.ok) {
-              console.error(`Failed to fetch order ${txId}:`, res.status);
-              return;
-            }
-
-            const orderData = await res.json();
+            const orderData = await getWepayOrderOutput(txId);
+            if (!orderData) return;
+            console.log('[ORDERS][STATUS] fetched from wepay', txId, orderData);
 
             // อ่านสถานะเดิม
             const { data: existing } = await sb
@@ -64,35 +52,68 @@ export async function POST(req: Request) {
               .eq('user_id', user.id)
               .maybeSingle();
 
-            const newState = orderData.state || null;
+            const { state: newState, isTerminal } = toWepayState(orderData.status);
 
             // อัพเดทสถานะใน database
-            await sb
+            const updatePayload: Record<string, any> = {
+              state: newState,
+              result_code: orderData.status === '00000' ? null : String(orderData.status || ''),
+              updated_at: new Date().toISOString()
+            };
+            if (isTerminal) {
+              updatePayload.finished_at = new Date().toISOString();
+            }
+
+            const { error: updateErr, count } = await sb
               .from('orders')
-              .update({
-                state: newState,
-                result_code: orderData.result_code || null,
-                finished_at: orderData.finishedAt || null,
-                updated_at: new Date().toISOString()
-              })
+              .update(updatePayload, { count: 'exact' })
               .eq('transaction_id', txId)
               .eq('user_id', user.id);
 
+            if (updateErr) {
+              console.error('[ORDERS][STATUS] update failed', txId, updateErr);
+              return;
+            }
+            if (!count) {
+              console.warn('[ORDERS][STATUS] update matched 0 rows', txId);
+            } else {
+              console.log('[ORDERS][STATUS] updated order state in DB', txId, updatePayload);
+            }
+
             // ถ้ามีการเปลี่ยนสถานะ ให้เขียน log (ถ้ามีตาราง)
             if (existing?.state !== newState) {
+              console.log('[ORDERS][STATUS] state changed', txId, 'from', existing?.state, 'to', newState);
               try {
+                const { data: lastLog } = await sb
+                  .from('order_status_logs')
+                  .select('state')
+                  .eq('transaction_id', txId)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (!lastLog || lastLog.state !== newState) {
                 await sb
                   .from('order_status_logs')
                   .insert({
                     transaction_id: txId,
                     state: newState,
-                    message: orderData.message || null
+                      message: orderData.sms || orderData.operator_trxnsid || null
                   });
+                } else {
+                  console.log('[ORDERS][STATUS] skip log insert, same state as last log');
+                }
               } catch (e) {
-                // ignore if table not exists
+                console.warn('[ORDERS][STATUS] log insert skipped', e);
               }
+            } else {
+              console.log('[ORDERS][STATUS] state unchanged', txId, newState);
             }
           } catch (err) {
+            if (err instanceof WepayError) {
+              console.error(`wePAY status error for ${txId}:`, err.response);
+              return;
+            }
             console.error(`Error fetching order ${txId}:`, err);
           }
         })()

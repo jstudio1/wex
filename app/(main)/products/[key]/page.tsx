@@ -823,11 +823,11 @@ export default function ProductDetailPage() {
       </Dialog>
     
       <Dialog open={resultOpen} onOpenChange={setResultOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-[#080808] border border-gray-800 text-white">
           <DialogHeader>
-            <DialogTitle>สถานะคำสั่งซื้อ</DialogTitle>
+            <DialogTitle className="text-white">สถานะคำสั่งซื้อ</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+          <div className="text-sm text-gray-200 whitespace-pre-wrap break-words">
             {submitMsg || '—'}
           </div>
           <DialogFooterUI>

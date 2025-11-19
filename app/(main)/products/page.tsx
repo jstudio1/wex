@@ -3,7 +3,6 @@ import PublicProductsSearch from '@/components/PublicProductsSearch';
 import ProductsHeroBanner from '@/components/ProductsHeroBanner';
 import ProductsBreadcrumb from '@/components/ProductsBreadcrumb';
 import { cache } from 'react';
-import { CACHE_CONFIG } from '@/lib/cache';
 import type { Metadata } from 'next';
 import { Gamepad2 } from 'lucide-react';
 
@@ -18,14 +17,14 @@ type ProductCard = {
 
 const fetchProducts = cache(async (): Promise<ProductCard[]> => {
   const base = getBaseUrl();
-  const p = await fetch(`${base}/api/products`, { next: { revalidate: 120, tags: ['products'] } });
+  const p = await fetch(`${base}/api/products`, { cache: 'no-store' });
   const products = p.ok ? (await p.json()).data : [];
   return products;
 });
 
 const fetchSite = cache(async () => {
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { next: { revalidate: 120, tags: ['site'] } });
+  const res = await fetch(`${base}/api/site`, { cache: 'no-store' });
   return res.ok ? res.json() : { flashStart: null, flashEnd: null };
 });
 
@@ -71,7 +70,6 @@ export default async function ProductsPage() {
           {/* Products Grid */}
           <PublicProductsSearch 
             products={products} 
-            hideSearch={true}
             flashStart={site.flashStart} 
             flashEnd={site.flashEnd} 
           />

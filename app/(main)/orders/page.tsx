@@ -66,7 +66,7 @@ export default function OrdersPage() {
             }`}
           >
               <ShoppingBag className="h-5 w-5" />
-            สินค้าทั่วไป
+            เติมเกม
           </button>
           <button
             onClick={() => setActiveTab('premium-app')}

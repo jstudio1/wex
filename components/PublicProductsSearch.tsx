@@ -110,10 +110,17 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
   return (
     <div>
       {!hideSearch && (
-        <div className="flex justify-center mb-4">
-          <InputGroup>
-            <InputGroupInput placeholder="ค้นหาเกม..." value={q} onChange={(e) => (controlledQuery !== undefined ? onQueryChange?.(e.target.value) : setInternal(e.target.value))} />
-            <InputGroupAddon>
+        <div className="flex justify-start mb-4">
+          <InputGroup className="max-w-md border border-gray-800 rounded-xl bg-[#050505] transition-colors focus-within:border-emerald-500 focus-within:shadow-[0_0_0_1px_rgba(16,185,129,0.4)]">
+            <InputGroupInput
+              placeholder="ค้นหาเกม..."
+              value={q}
+              className="text-white placeholder:text-gray-500 bg-transparent border-none focus:ring-0 focus:border-none"
+              onChange={(e) =>
+                controlledQuery !== undefined ? onQueryChange?.(e.target.value) : setInternal(e.target.value)
+              }
+            />
+            <InputGroupAddon className="text-emerald-400">
               <SearchIcon size={16} />
             </InputGroupAddon>
           </InputGroup>

@@ -1,42 +1,103 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { getApiKey } from '@/lib/api-keys';
+import wepayCatalog from '../../../../wepay.json';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://x.24payseller.com';
+type WepayGame = {
+  company_id: string;
+  company_name: string;
+  fee?: number;
+  denomination?: Array<{ price: number; description: string | null }>;
+  gameservers?: Array<{ value: string; name: string }>;
+  refs_format?: { ref1?: string };
+};
+
+const gtopupProducts: WepayGame[] = ((wepayCatalog as any)?.data?.gtopup || []) as WepayGame[];
+
+function slugifyCompany(companyId: string, companyName: string) {
+  if (companyId) {
+    return companyId.toLowerCase();
+  }
+  return companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'gtopup-item';
+}
+
+function stripHtml(text?: string | null) {
+  if (!text) return null;
+  return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function priceToSku(companyId: string, price: number) {
+  const normalized = Number(price || 0);
+  const formatted = Number.isInteger(normalized) ? normalized.toString() : normalized.toFixed(2);
+  return `${companyId}-${formatted}`;
+}
+
+function sanitizeRegex(raw?: string | null) {
+  if (!raw) return '';
+  let trimmed = raw.trim();
+  if (/^\/.*\/[a-z]*$/i.test(trimmed)) {
+    const match = trimmed.match(/^\/(.*)\/[a-z]*$/i);
+    if (match) {
+      trimmed = match[1];
+    }
+  } else {
+    if (trimmed.startsWith('/')) trimmed = trimmed.slice(1);
+    if (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed;
+}
+
+function buildUidRegex(raw?: string | null, hasServer?: boolean) {
+  const cleaned = sanitizeRegex(raw) || '^.+$';
+  if (!hasServer) return cleaned;
+  const splitIndex = (() => {
+    const spaceIndex = cleaned.indexOf(' ');
+    const slashSIndex = cleaned.indexOf('\\s');
+    const candidates = [spaceIndex, slashSIndex].filter((idx) => idx >= 0);
+    if (!candidates.length) return -1;
+    return Math.min(...candidates);
+  })();
+  if (splitIndex === -1) return cleaned;
+  let uidPart = cleaned.slice(0, splitIndex).trim();
+  if (!uidPart.endsWith('$')) {
+    uidPart = `${uidPart}$`;
+  }
+  return uidPart;
+}
 
 export async function POST(req: Request) {
   const auth = req.headers.get('authorization');
   if (!auth || auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  const API_KEY = await getApiKey('API_KEY_24PAY');
-  if (!API_KEY) return NextResponse.json({ error: 'missing_api_key' }, { status: 500 });
 
   try {
+    const sb = createServiceClient();
     let countProducts = 0;
     let countItems = 0;
     let countInputs = 0;
     let countOptions = 0;
     let countRepriced = 0;
-    const listRes = await fetch(`${API_BASE}/products/list`, {
-      headers: { 'X-Api-Key': API_KEY }
-    });
-    if (!listRes.ok) return NextResponse.json({ error: 'upstream_error' }, { status: listRes.status });
-    const products = (await listRes.json()) as any[];
-
-    const sb = createServiceClient();
 
     // รีเซ็ต Global Markup เป็น 0
-    await sb.from('settings').upsert([
+    await sb.from('settings').upsert(
+      [
       { key: 'PRICING_MARKUP_PERCENT', value: '0' },
       { key: 'PRICING_MARKUP_FIXED', value: '0' }
-    ], { onConflict: 'key' });
+      ],
+      { onConflict: 'key' }
+    );
 
     // รีเซ็ต Item Markup ทั้งหมดเป็น 0
-    await sb.from('product_items').update({
+    await sb
+      .from('product_items')
+      .update({
       markup_percent: 0,
       markup_fixed: 0
-    }).neq('id', 0); // update ทุกรายการ
+      })
+      .neq('id', 0);
 
     const { data: existingItemRows, error: existingItemsError } = await sb
       .from('product_items')
@@ -44,6 +105,7 @@ export async function POST(req: Request) {
     if (existingItemsError) {
       return NextResponse.json({ error: 'db_error', detail: existingItemsError.message }, { status: 500 });
     }
+
     const existingItemMap = new Map<string, { id: number; price: number }>();
     for (const row of existingItemRows || []) {
       const sku = row.sku as string | null;
@@ -52,41 +114,57 @@ export async function POST(req: Request) {
       existingItemMap.set(`${productId}::${sku}`, { id: row.id as number, price: Number(row.price ?? 0) });
     }
 
-    // collect keys for cleanup
     const keepProductKeys = new Set<string>();
-    const keepInputKeys = new Set<string>(); // product_key::input_key
-    const keepOptionKeys = new Set<string>(); // input_id::value (fill later)
-    const processedItemKeys = new Set<string>(); // provider_product_key::sku to dedupe within payload
+    const keepInputKeys = new Set<string>();
+    const processedItemKeys = new Set<string>();
 
-    // upsert products, items, inputs, options
-    for (const p of products) {
-      keepProductKeys.add(p.key);
-      const { data: upsertedProduct } = await sb
+    for (const product of gtopupProducts) {
+      if (!product?.company_id) continue;
+      const providerCompanyId = product.company_id.trim();
+      const productKey = slugifyCompany(providerCompanyId, product.company_name || providerCompanyId);
+      keepProductKeys.add(productKey);
+      const cleanedName = product.company_name?.trim() || providerCompanyId;
+
+      const { data: upsertedProduct, error: productUpsertError } = await sb
         .from('products')
-        .upsert({ key: p.key, name: p.name }, { onConflict: 'key' })
+        .upsert(
+          {
+            key: productKey,
+            name: cleanedName,
+            provider_company_id: providerCompanyId
+          },
+          { onConflict: 'key' }
+        )
         .select('id, key')
         .single();
+
+      if (productUpsertError) {
+        console.error('Product upsert error:', productUpsertError);
+        continue;
+      }
       if (!upsertedProduct) continue;
       countProducts++;
 
-      // items
-      for (const it of p.items || []) {
-        if (!it?.sku) continue;
-        const providerItemKey = `${p.key}::${it.sku}`;
+      for (const denom of product.denomination || []) {
+        if (typeof denom?.price !== 'number') continue;
+        const providerItemKey = `${providerCompanyId}::${denom.price}`;
         if (processedItemKeys.has(providerItemKey)) continue;
         processedItemKeys.add(providerItemKey);
-        const basePrice = Number(it.price ?? 0);
-        const sourceOriginal = Number(it.originalPrice ?? it.price ?? 0);
-        const existingKey = `${upsertedProduct.id}::${it.sku}`;
+
+        const priceValue = Number(denom.price);
+        const sku = priceToSku(providerCompanyId, priceValue);
+        const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
+        const existingKey = `${upsertedProduct.id}::${sku}`;
         const existingItem = existingItemMap.get(existingKey);
 
         if (existingItem) {
           const { error: updateError } = await sb
             .from('product_items')
             .update({
-              name: it.name,
-              price: basePrice,
-              original_price: sourceOriginal,
+              name: itemName,
+              sku,
+              price: priceValue,
+              original_price: priceValue,
               markup_percent: 0,
               markup_fixed: 0
             })
@@ -95,57 +173,21 @@ export async function POST(req: Request) {
             console.error('Product item update error', updateError);
             continue;
           }
-          if (existingItem.price !== basePrice) {
+          if (existingItem.price !== priceValue) {
             countRepriced++;
           }
           existingItemMap.delete(existingKey);
         } else {
-          const { error: insertError } = await sb
-            .from('product_items')
-            .insert({
+          const { error: insertError } = await sb.from('product_items').insert({
               product_id: upsertedProduct.id,
-              name: it.name,
-              sku: it.sku,
-              price: basePrice,
-              original_price: sourceOriginal,
+            name: itemName,
+            sku,
+            price: priceValue,
+            original_price: priceValue,
               markup_percent: 0,
               markup_fixed: 0
             });
           if (insertError) {
-            if ((insertError as any)?.code === '23505') {
-              const { data: existingRow, error: fetchError } = await sb
-                .from('product_items')
-                .select('id, price')
-                .eq('product_id', upsertedProduct.id)
-                .eq('sku', it.sku)
-                .maybeSingle();
-              if (fetchError) {
-                console.error('Product item fetch-after-duplicate error', fetchError);
-                continue;
-              }
-              if (existingRow) {
-                const { error: retryError } = await sb
-                  .from('product_items')
-                  .update({
-                    name: it.name,
-                    price: basePrice,
-                    original_price: sourceOriginal,
-                    markup_percent: 0,
-                    markup_fixed: 0
-                  })
-                  .eq('id', existingRow.id);
-                if (retryError) {
-                  console.error('Product item retry update error', retryError);
-                  continue;
-                }
-                if (Number(existingRow.price ?? 0) !== basePrice) {
-                  countRepriced++;
-                }
-                existingItemMap.delete(existingKey);
-                countItems++;
-              }
-              continue;
-            }
             console.error('Product item insert error', insertError);
             continue;
           }
@@ -154,61 +196,69 @@ export async function POST(req: Request) {
         countItems++;
       }
 
-      // inputs
-      const inputArray = p.inputs || [];
-      // ถ้า upstream ไม่ส่ง inputs มาเลย ให้ใส่ default uid input
-      if (inputArray.length === 0) {
-        const { data: upsertedInput } = await sb
+      const hasServer = Array.isArray(product.gameservers) && product.gameservers.length > 0;
+      const uidRegex = buildUidRegex(product.refs_format?.ref1, hasServer);
+      const { data: uidInput, error: uidError } = await sb
           .from('product_inputs')
-          .upsert({
+        .upsert(
+          {
             product_id: upsertedProduct.id,
             key: 'uid',
-            title: 'UID',
-            regex: '',
+            title: 'UID ผู้เล่น',
+            regex: uidRegex,
             type: 'text',
-            placeholder: 'UID'
-          }, { onConflict: 'product_id,key' })
+            placeholder: 'กรอก UID ตามในเกม'
+          },
+          { onConflict: 'product_id,key' }
+        )
           .select('id, key')
           .single();
-        keepInputKeys.add(`${p.key}::uid`);
-        countInputs++;
+      if (uidError) {
+        console.error('UID input upsert error:', uidError);
       } else {
-        // ถ้ามี inputs จาก upstream ใช้ตามปกติ
-        for (const inp of inputArray) {
-          const { data: upsertedInput } = await sb
+        keepInputKeys.add(`${productKey}::uid`);
+        countInputs++;
+      }
+
+      if (hasServer) {
+        const { data: serverInput, error: serverError } = await sb
             .from('product_inputs')
-            .upsert({
+          .upsert(
+            {
               product_id: upsertedProduct.id,
-              key: inp.key,
-              title: inp.title,
-              regex: inp.regex || '', // regex column เป็น NOT NULL ต้องใช้ empty string
-              type: inp.type || 'text',
-              placeholder: inp.placeholder || ''
-            }, { onConflict: 'product_id,key' })
+              key: 'server',
+              title: 'เซิร์ฟเวอร์',
+              regex: '',
+              type: 'select',
+              placeholder: 'เลือกเซิร์ฟเวอร์'
+            },
+            { onConflict: 'product_id,key' }
+          )
             .select('id, key')
             .single();
-          keepInputKeys.add(`${p.key}::${inp.key}`);
+        if (serverError) {
+          console.error('Server input upsert error:', serverError);
+        } else if (serverInput?.id) {
+          keepInputKeys.add(`${productKey}::server`);
           countInputs++;
-
-          if (upsertedInput) {
-            for (const opt of inp.options || []) {
-              await sb
-                .from('product_input_options')
-                .upsert({
-                  input_id: upsertedInput.id,
-                  label: opt.label,
-                  value: opt.value
-                }, { onConflict: 'input_id,value' });
-              keepOptionKeys.add(`${upsertedInput.id}::${opt.value}`);
-              countOptions++;
+          await sb.from('product_input_options').delete().eq('input_id', serverInput.id);
+          const options = (product.gameservers || []).map((server) => ({
+            input_id: serverInput.id,
+            label: server.name,
+            value: server.value
+          }));
+          if (options.length) {
+            const { error: optionError } = await sb.from('product_input_options').insert(options);
+            if (optionError) {
+              console.error('Server option insert error:', optionError);
+            } else {
+              countOptions += options.length;
             }
           }
         }
       }
     }
 
-    // cleanup removed products/items/inputs/options (hard delete)
-    // products
     const { data: existingProducts } = await sb.from('products').select('id, key');
     for (const ep of existingProducts || []) {
       if (!keepProductKeys.has(ep.key)) {
@@ -216,7 +266,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // inputs cleanup per product
     const { data: existingInputs } = await sb
       .from('product_inputs')
       .select('id, key, product_id, products!inner(key)');
@@ -227,7 +276,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // items cleanup per product
     for (const leftover of existingItemMap.values()) {
       await sb.from('product_items').delete().eq('id', leftover.id);
     }
@@ -243,6 +291,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (e) {
+    console.error('wePAY sync error:', e);
     return NextResponse.json({ error: 'unexpected' }, { status: 500 });
   }
 }

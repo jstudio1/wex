@@ -11,7 +11,10 @@ export const InputGroupInput = forwardRef<HTMLInputElement, InputHTMLAttributes<
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
-      className={clsx('w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 pr-10 text-base text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600/50', className)}
+      className={clsx(
+        'w-full rounded-md border border-gray-700 bg-[#1a1a1a] px-3 py-2 pr-10 text-base text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500',
+        className
+      )}
       style={{ fontSize: '16px' }}
       {...props}
     />

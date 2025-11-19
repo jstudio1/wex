@@ -6,7 +6,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 นาที
 
 /**
  * ดึง API key จาก database
- * @param keyName ชื่อ API key (เช่น 'API_KEY_24PAY', 'SOCIAL_API_KEY')
+ * @param keyName ชื่อ API key (เช่น 'WEPAY_USERNAME', 'SOCIAL_API_KEY')
  * @returns API key value หรือ null ถ้าไม่พบ
  */
 export async function getApiKey(keyName: string): Promise<string | null> {

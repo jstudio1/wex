@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { getApiKey } from '@/lib/api-keys';
 import { z } from 'zod';
+import { getWepayBalance, getWepayCredentials } from '@/lib/providers/wepay';
 
 const getBalanceSchema = z.object({
   key_name: z.string().min(1),
@@ -65,31 +66,18 @@ export async function POST(req: Request) {
           status: data.status
         }
       });
-    } else if (key_name === 'API_KEY_24PAY') {
-      // ดึง balance จาก 24pay API
-      const apiKey = await getApiKey('API_KEY_24PAY');
-      if (!apiKey) {
-        return NextResponse.json({ error: 'missing_api_key' }, { status: 500 });
-      }
-
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://x.24payseller.com';
-      const res = await fetch(`${API_BASE}/agent/info`, {
-        method: 'GET',
-        headers: { 'X-Api-Key': apiKey }
-      });
-
-      if (!res.ok) {
-        return NextResponse.json({ error: 'provider_error', detail: 'ไม่สามารถดึงข้อมูล balance ได้' }, { status: res.status });
-      }
-
-      const data = await res.json();
+    } else if (key_name === 'WEPAY_USERNAME' || key_name === 'WEPAY_PASSWORD') {
+      const [{ ledger, available }, creds] = await Promise.all([
+        getWepayBalance(),
+        getWepayCredentials()
+      ]);
       return NextResponse.json({ 
         ok: true, 
         data: {
-          balance: data.balance || '0',
-          balance_used: data.balance_used || '0',
-          username: data.username,
-          tier: data.tier
+          balance: available,
+          ledger_balance: ledger,
+          username: creds.username,
+          currency: 'THB'
         }
       });
     } else if (key_name === 'peamsubapi') {

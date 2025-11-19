@@ -141,7 +141,7 @@ export default function UserProfileMenu({ username, isAdmin = false, avatarUrl }
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Profile Menu"
-          className="flex items-center gap-3 text-white transition-opacity duration-200 hover:opacity-90 cursor-pointer"
+          className="flex items-center gap-3 text-white transition-opacity duration-200 hover:opacity-90 cursor-pointer focus-visible:outline-none focus-visible:ring-0"
         >
           {/* Avatar Circle with Gradient */}
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg overflow-hidden">

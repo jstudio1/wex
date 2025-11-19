@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { getApiKey } from '@/lib/api-keys';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
+import { createGtopupOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
 import { z } from 'zod';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://x.24payseller.com';
+const FALLBACK_BASE =
+  process.env.WEPAY_WEBHOOK_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
 
 const createOrderSchema = z.object({
   product_key: z.string().min(1),
@@ -53,13 +58,19 @@ export async function GET(req: Request) {
       }
     }
 
-    const ordersWithProducts = (orders || []).map((o: any) => {
-      const prod = productMap.get(o.product_id);
-      return {
-        ...o,
-        product: prod || null
-      };
-    });
+    const ordersWithProducts = (orders || [])
+      .map((o: any) => {
+        const prod = productMap.get(o.product_id);
+        return {
+          ...o,
+          product: prod || null
+        };
+      })
+      .sort((a: any, b: any) => {
+        const aDate = new Date(a.updated_at || a.finished_at || a.created_at || 0).getTime();
+        const bDate = new Date(b.updated_at || b.finished_at || b.created_at || 0).getTime();
+        return bDate - aDate;
+      });
 
     return NextResponse.json({ ok: true, data: ordersWithProducts });
   } catch (error) {
@@ -71,9 +82,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  const API_KEY = await getApiKey('API_KEY_24PAY');
-  if (!API_KEY) return NextResponse.json({ error: 'missing_api_key' }, { status: 500 });
 
   try {
     const body = await req.json();
@@ -93,7 +101,7 @@ export async function POST(req: Request) {
     // ดึง product จาก database
     const { data: product, error: productError } = await sb
       .from('products')
-      .select('id, name, key, image_url')
+      .select('id, name, key, image_url, provider_company_id')
       .eq('key', product_key)
       .eq('is_published', true)
       .maybeSingle();
@@ -176,46 +184,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'deduct_failed', detail: 'ไม่สามารถหักเงินได้' }, { status: 500 });
     }
 
-    // สร้าง webhook URL ถ้าไม่ได้ระบุ
-    const webhookUrl = webhookURL || (process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/api/webhooks/orders` : undefined);
+    const providerCompanyId = (product as any).provider_company_id || product.key;
+    const destRef = generateDestRef('GT');
+    const ref1Value = input.server ? `${input.uid.trim()} ${input.server.trim()}` : input.uid.trim();
+    const webhookUrl = webhookURL || (FALLBACK_BASE ? `${FALLBACK_BASE.replace(/\/$/, '')}/api/webhooks/wepay` : undefined);
 
-    // ส่งไปที่ External API
-    const upstreamPayload: any = {
-      product_key,
-      item_sku,
-      input
-    };
-    if (webhookUrl) {
-      upstreamPayload.webhookURL = webhookUrl;
-    }
-
-    const upstream = await fetch(`${API_BASE}/agent/orders/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': API_KEY
-      },
-      body: JSON.stringify(upstreamPayload)
-    });
-
-    const upstreamResponse = await upstream.json();
-
-    // ถ้าส่งไป External API ไม่สำเร็จ ให้คืนเงิน
-    if (!upstream.ok || !upstreamResponse.order) {
-      console.error('External API error:', {
-        status: upstream.status,
-        statusText: upstream.statusText,
-        response: upstreamResponse
-      });
+    if (!webhookUrl) {
       await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
-      return NextResponse.json({ 
-        error: 'provider_error', 
-        detail: 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง' 
-      }, { status: 502 });
+      return NextResponse.json({
+        error: 'missing_webhook',
+        detail: 'ระบบยังไม่ได้ตั้งค่า WEPAY_WEBHOOK_URL หรือ NEXT_PUBLIC_BASE_URL',
+      }, { status: 500 });
     }
 
-    const upstreamOrder = upstreamResponse.order;
-    const transactionId = upstreamOrder.transactionId || upstreamOrder.transaction_id || String(upstreamOrder.order?.id || '');
+    let upstreamOrder;
+    try {
+      upstreamOrder = await createGtopupOrder({
+        companyId: providerCompanyId,
+        amount: itemPrice,
+        ref1: ref1Value,
+        respUrl: webhookUrl,
+        destRef,
+      });
+    } catch (err) {
+      await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
+      throw err;
+    }
+
+    const transactionId = upstreamOrder.transaction_id
+      ? String(upstreamOrder.transaction_id)
+      : upstreamOrder.transactionId
+        ? String(upstreamOrder.transactionId)
+        : destRef;
 
     // บันทึกออเดอร์ลง database
     const { data: orderInsert, error: insertError } = await sb
@@ -226,10 +226,10 @@ export async function POST(req: Request) {
         product_id: product.id,
         item_id: item.id,
         price: finalPrice, // ใช้ finalPrice ที่หัก coupon แล้ว
-        state: upstreamOrder.state || 'pending',
-        result_code: upstreamOrder.result_code || null,
+        state: 'processing',
+        result_code: upstreamOrder.code === '00000' ? null : (upstreamOrder.code || null),
         input_json: input,
-        finished_at: upstreamOrder.finishedAt || null
+        finished_at: null
       })
       .select()
       .single();
@@ -257,7 +257,7 @@ export async function POST(req: Request) {
         productName: product.name,
         amount: finalPrice,
         transactionId: transactionId,
-        status: upstreamOrder.state || 'pending',
+        status: 'processing',
         imageUrl: product.image_url,
         additionalInfo: {
           '📦 สินค้า': item.name,
@@ -273,7 +273,7 @@ export async function POST(req: Request) {
     try {
       await sb.from('order_status_logs').insert({
         transaction_id: transactionId,
-        state: upstreamOrder.state || 'pending',
+        state: 'processing',
         message: 'สร้างออเดอร์'
       });
     } catch {}
@@ -284,8 +284,8 @@ export async function POST(req: Request) {
         transactionId: transactionId,
         price: String(finalPrice), // ใช้ finalPrice ที่หัก coupon แล้ว
         userId: user.id,
-        state: (upstreamOrder.state || 'pending') as 'pending' | 'completed' | 'refunded' | 'failed' | 'processing' | 'confirming',
-        result_code: upstreamOrder.result_code || undefined,
+        state: 'processing' as 'pending' | 'completed' | 'refunded' | 'failed' | 'processing' | 'confirming',
+        result_code: upstreamOrder.code === '00000' ? undefined : upstreamOrder.code,
         input: {
           uid: input.uid,
           server: input.server
@@ -299,9 +299,9 @@ export async function POST(req: Request) {
           itemName: item.name,
           itemSku: item.sku
         },
-        createdAt: upstreamOrder.createdAt || orderInsert.created_at,
-        updatedAt: upstreamOrder.updatedAt || orderInsert.updated_at,
-        finishedAt: upstreamOrder.finishedAt || orderInsert.finished_at || undefined,
+        createdAt: orderInsert.created_at,
+        updatedAt: orderInsert.updated_at,
+        finishedAt: orderInsert.finished_at || undefined,
         user: {
           id: user.id,
           username: userData.username
@@ -318,7 +318,12 @@ export async function POST(req: Request) {
     return NextResponse.json(response);
   } catch (error) {
     console.error('create order error:', error);
-    // ถ้า error เกิดจากการเรียก external API ให้แสดงข้อความทั่วไป
+    if (error instanceof WepayError) {
+      return NextResponse.json({ 
+        error: 'provider_error', 
+        detail: error.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง' 
+      }, { status: 502 });
+    }
     if (error instanceof Error && error.message.includes('fetch')) {
       return NextResponse.json({ 
         error: 'provider_error', 

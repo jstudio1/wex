@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     // ตรวจสอบว่า user เป็นเจ้าของออเดอร์
     const { data: order, error: orderErr } = await sb
       .from('orders')
-      .select('transaction_id, created_at, updated_at, finished_at, state')
+      .select('transaction_id, created_at, updated_at, finished_at, state, product_id, input_json, products!inner(name)')
       .eq('transaction_id', tx)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     try {
       const { data } = await sb
         .from('order_status_logs')
-        .select('state, message, created_at')
+        .select('id, state, message, created_at')
         .eq('transaction_id', tx)
         .order('created_at', { ascending: false });
       logs = (data || []) as any;
@@ -47,7 +47,20 @@ export async function GET(req: Request) {
       logs = items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
-    return NextResponse.json({ ok: true, data: logs });
+    const formattedLogs = logs.map((log) => {
+      if (log.message) return log;
+      const inputs = (order as any).input_json || {};
+      const inputEntries = Object.entries(inputs)
+        .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+        .map(([k, v]) => `${k.toUpperCase()}: ${v}`);
+      const productName = (order as any).products?.name || 'บริการ';
+      return {
+        ...log,
+        message: `${productName}${inputEntries.length ? ' ให้กับ ' + inputEntries.join(' ') : ''} (${log.state})`,
+      };
+    });
+
+    return NextResponse.json({ ok: true, data: formattedLogs });
   } catch (err) {
     console.error('timeline error', err);
     return NextResponse.json({ error: 'unexpected' }, { status: 500 });

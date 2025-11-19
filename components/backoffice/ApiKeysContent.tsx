@@ -156,7 +156,10 @@ export default function ApiKeysContent() {
   const fetchAllBalances = async () => {
     setLoadingAllBalances(true);
     const balanceKeys = apiKeys.filter(key => 
-      key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi' || key.key_name === 'OTP24HR_API_KEY'
+      key.key_name === 'SOCIAL_API_KEY' ||
+      key.key_name === 'peamsubapi' ||
+      key.key_name === 'OTP24HR_API_KEY' ||
+      key.key_name === 'WEPAY_USERNAME'
     );
     
     for (const apiKey of balanceKeys) {
@@ -247,8 +250,15 @@ export default function ApiKeysContent() {
     );
   }
 
-  const balanceKeys = apiKeys.filter(key => 
-      key.key_name === 'SOCIAL_API_KEY' || key.key_name === 'API_KEY_24PAY' || key.key_name === 'peamsubapi' || key.key_name === 'OTP24HR_API_KEY'
+  const wepayUsernameKey = apiKeys.find((key) => key.key_name === 'WEPAY_USERNAME');
+  const wepayPasswordKey = apiKeys.find((key) => key.key_name === 'WEPAY_PASSWORD');
+  const displayApiKeys = apiKeys.filter((key) => key.key_name !== 'WEPAY_PASSWORD');
+
+  const balanceKeys = displayApiKeys.filter(key => 
+      key.key_name === 'SOCIAL_API_KEY' ||
+      key.key_name === 'peamsubapi' ||
+      key.key_name === 'OTP24HR_API_KEY' ||
+      key.key_name === 'WEPAY_USERNAME'
   );
 
   return (
@@ -313,16 +323,22 @@ export default function ApiKeysContent() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {apiKeys.length === 0 ? (
+            {displayApiKeys.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-[color:var(--text)]/60">
                   ไม่มี API Keys
                 </TableCell>
               </TableRow>
             ) : (
-              apiKeys.map((apiKey) => {
+              displayApiKeys.map((apiKey) => {
                 const isOpen = openDialog === apiKey.key_name;
-                const canFetchBalance = apiKey.key_name === 'SOCIAL_API_KEY' || apiKey.key_name === 'API_KEY_24PAY' || apiKey.key_name === 'peamsubapi' || apiKey.key_name === 'OTP24HR_API_KEY';
+                const isWepayRow = apiKey.key_name === 'WEPAY_USERNAME';
+                const displayName = isWepayRow ? 'WEPAY (Username + Password)' : apiKey.key_name;
+                const canFetchBalance =
+                  apiKey.key_name === 'SOCIAL_API_KEY' ||
+                  apiKey.key_name === 'peamsubapi' ||
+                  apiKey.key_name === 'OTP24HR_API_KEY' ||
+                  apiKey.key_name === 'WEPAY_USERNAME';
                 const balanceInfo = balances[apiKey.key_name];
 
                 return (
@@ -333,7 +349,7 @@ export default function ApiKeysContent() {
                           <Key className="size-4 text-accent" />
                         </div>
                         <div>
-                          <div className="font-semibold text-[color:var(--text)]">{apiKey.key_name}</div>
+                          <div className="font-semibold text-[color:var(--text)]">{displayName}</div>
                           <Badge variant="outline" className="mt-1 text-xs border-green-500/30 text-green-300 bg-green-500/10">
                             Active
                           </Badge>
@@ -346,6 +362,22 @@ export default function ApiKeysContent() {
                           <span className="text-sm text-[color:var(--text)]/80">{apiKey.description}</span>
                         ) : (
                           <span className="text-sm text-[color:var(--text)]/40 italic">ไม่มีคำอธิบาย</span>
+                        )}
+                        {isWepayRow && (
+                          <div className="mt-3 rounded-lg border border-emerald-900/40 bg-emerald-900/5 p-3 text-xs text-[color:var(--text)]/70 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span>Username</span>
+                              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                                {wepayUsernameKey ? 'ตั้งค่าแล้ว' : 'ยังไม่ตั้งค่า'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>รหัสผ่าน</span>
+                              <Badge variant={wepayPasswordKey ? 'secondary' : 'destructive'} className="text-[10px] uppercase tracking-wide">
+                                {wepayPasswordKey ? 'ตั้งค่าแล้ว' : 'ยังไม่ตั้งค่า'}
+                              </Badge>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </TableCell>
@@ -426,6 +458,7 @@ export default function ApiKeysContent() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
+                      <div className="flex flex-col gap-2 items-end">
                       <Dialog open={isOpen} onOpenChange={(open) => {
                         if (open) {
                           openEditDialog(apiKey.key_name);
@@ -518,6 +551,102 @@ export default function ApiKeysContent() {
                           </form>
                         </DialogContent>
                       </Dialog>
+
+                        {isWepayRow && (
+                          <Dialog open={openDialog === 'WEPAY_PASSWORD'} onOpenChange={(open) => {
+                            if (open) {
+                              openEditDialog('WEPAY_PASSWORD');
+                            } else {
+                              closeDialog();
+                            }
+                          }}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                type="button"
+                              >
+                                <Edit className="size-4" />
+                                แก้ไขรหัสผ่าน
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[500px]">
+                              <form onSubmit={saveApiKey}>
+                                <DialogHeader>
+                                  <DialogTitle>แก้ไข wePAY Password</DialogTitle>
+                                  <DialogDescription>
+                                    ตั้งค่า API Key สำหรับ WEPAY_PASSWORD
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid gap-3">
+                                    <Label htmlFor="api-key-value-password">Password Value</Label>
+                                    <div className="relative">
+                                      <Input
+                                        id="api-key-value-password"
+                                        type={showValue ? 'text' : 'password'}
+                                        value={formData.key_value}
+                                        onChange={(e) =>
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            key_value: e.target.value
+                                          }))
+                                        }
+                                        placeholder="กรอก Password"
+                                        className="pr-10"
+                                        required
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowValue(!showValue)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text)]/60 hover:text-[color:var(--text)] transition-colors"
+                                      >
+                                        {showValue ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-3">
+                                    <Label htmlFor="api-key-desc-password">คำอธิบาย (ไม่บังคับ)</Label>
+                                    <Input
+                                      id="api-key-desc-password"
+                                      type="text"
+                                      value={formData.description}
+                                      onChange={(e) =>
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          description: e.target.value
+                                        }))
+                                      }
+                                      placeholder="คำอธิบาย API Key"
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <DialogClose asChild>
+                                    <Button type="button" variant="outline" disabled={saving}>
+                                      ยกเลิก
+                                    </Button>
+                                  </DialogClose>
+                                  <Button type="submit" disabled={saving || !formData.key_value} className="gap-2">
+                                    {saving ? (
+                                      <>
+                                        <SpinnerCustom className="size-4" />
+                                        กำลังบันทึก...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Save className="size-4" />
+                                        บันทึก
+                                      </>
+                                    )}
+                                  </Button>
+                                </DialogFooter>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
