@@ -22,12 +22,11 @@ export default function RegisterPage() {
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [recaptchaEnabled, setRecaptchaEnabled] = useState(false);
   const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
-  const [recaptchaKey, setRecaptchaKey] = useState(0); // Force re-render
+  const [recaptchaKey, setRecaptchaKey] = useState(0);
   const toast = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    // Check if registration is enabled and get reCaptcha config
     Promise.all([
       fetch('/api/site', { cache: 'no-store' }).then((res) => res.json()),
       fetch('/api/recaptcha/config', { cache: 'no-store' }).then((res) => res.json())
@@ -60,7 +59,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Check reCaptcha if enabled
     if (recaptchaEnabled && !recaptchaToken) {
       toast.show({ title: 'เกิดข้อผิดพลาด', description: 'กรุณายืนยัน reCaptcha', variant: 'destructive' });
       return;
@@ -71,8 +69,8 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username, 
+        body: JSON.stringify({
+          username,
           password,
           firstName,
           lastName,
@@ -101,7 +99,6 @@ export default function RegisterPage() {
       window.location.href = '/login';
     } catch (err: unknown) {
       toast.show({ title: 'เกิดข้อผิดพลาด', description: (err as Error).message, variant: 'destructive' });
-      // Reset reCaptcha on error
       if (recaptchaEnabled) {
         setRecaptchaToken(null);
         setRecaptchaKey((prev) => prev + 1);
@@ -180,5 +177,4 @@ export default function RegisterPage() {
     </main>
   );
 }
-
 

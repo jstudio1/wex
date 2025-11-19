@@ -69,6 +69,25 @@ const getPremiumAppCategories = cache(async () => {
   }
 });
 
+function extractDescriptionSummary(html?: string | null, limit = 2): string[] {
+  if (!html) return [];
+  const sanitized = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|li|div)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r/g, '');
+  return sanitized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
 const getPremiumAppProductsByCategory = cache(async () => {
   try {
     const sb = createServiceClient();
@@ -92,7 +111,7 @@ const getPremiumAppProductsByCategory = cache(async () => {
         // Get products for this category using app_category field
         const { data: products, error: productsError } = await sb
           .from('app_premium_products')
-          .select('id, name, display_name, image_url, icon_url, base_price, stock, is_published, app_category')
+          .select('id, name, display_name, description, image_url, icon_url, base_price, stock, is_published, app_category')
           .eq('is_published', true)
           .gt('stock', 0)
           .ilike('app_category', `%${cat.category}%`)
@@ -157,6 +176,7 @@ async function HomeServer() {
       return {
         ...product,
         finalPrice,
+        summary: extractDescriptionSummary(product.description),
       };
     });
     return {
@@ -285,38 +305,61 @@ async function HomeServer() {
                     <Link 
                       key={product.id} 
                       href={`/premium-app/${product.id}`} 
-                      className="group block text-center"
+                      className="group block h-full"
                       prefetch={index < 6}
                     >
-                      <div className="relative">
-                        {product.image_url || product.icon_url ? (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl overflow-hidden relative bg-gray-800/50 flex items-center justify-center">
+                      <div className="flex h-full flex-col rounded-3xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70">
+                        <div className="relative h-40 w-full rounded-2xl overflow-hidden bg-gray-900/60 flex items-center justify-center">
+                          {product.image_url || product.icon_url ? (
                             <Image 
                               src={product.image_url || product.icon_url} 
                               alt={product.display_name || product.name} 
                               fill
-                              className="object-contain p-2 transition-transform duration-300 group-hover:scale-105" 
-                              sizes="(max-width: 640px) 160px, 176px"
+                              className="object-contain p-3 transition-transform duration-300 group-hover:scale-105" 
+                              sizes="(max-width: 640px) 100vw, 200px"
                               loading={index < 6 ? 'eager' : 'lazy'}
                               priority={index < 3}
                             />
-                          </div>
-                        ) : (
-                          <div className="mx-auto h-40 w-40 sm:h-44 sm:w-44 rounded-xl bg-gray-800 flex items-center justify-center">
+                          ) : (
                             <AppWindow className="h-16 w-16 text-gray-600" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-3">
-                        <div className="text-sm font-semibold text-white line-clamp-2">{product.display_name || product.name}</div>
-                        <div className="text-xs text-emerald-500 font-bold mt-1">
-                          {product.finalPrice.toFixed(0)} ฿
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
-                        {product.stock > 0 && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            คงเหลือ {product.stock}
+                        <div className="mt-4 flex flex-col gap-3 flex-1">
+                          <div
+                            className="text-base font-semibold text-white line-clamp-2 min-h-[2.8rem] text-center"
+                            dangerouslySetInnerHTML={{ __html: product.display_name || product.name || '' }}
+                            suppressHydrationWarning
+                          />
+                          <div className="flex-1 rounded-2xl border border-emerald-900/40 bg-emerald-900/5 px-4 py-3 space-y-3 shadow-inner">
+                            {product.summary && product.summary.length > 0 ? (
+                              <ul className="text-xs text-gray-300 space-y-1">
+                                {product.summary.map((line: string, idx: number) => (
+                                  <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-2">
+                                    <span className="text-emerald-500 leading-5">•</span>
+                                    <span className="flex-1 leading-5">{line.replace(/^•\s*/, '')}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-gray-500">ยังไม่มีรายละเอียด</p>
+                            )}
+                            <div className="grid grid-cols-2 gap-3 text-xs text-gray-400 pt-2">
+                              <div className="rounded-xl bg-black/30 px-3 py-2 border border-white/5">
+                                <div className="text-[11px] uppercase tracking-wide text-gray-500">ราคา</div>
+                                <div className="text-lg font-bold text-emerald-400">{product.finalPrice.toFixed(0)} ฿</div>
+                              </div>
+                              <div className="rounded-xl bg-black/30 px-3 py-2 border border-white/5">
+                                <div className="text-[11px] uppercase tracking-wide text-gray-500">คงเหลือ</div>
+                                {product.stock > 0 ? (
+                                  <div className="text-base font-semibold text-white">{product.stock}</div>
+                                ) : (
+                                  <div className="text-sm font-semibold text-red-400">หมด</div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </Link>
                   ))}

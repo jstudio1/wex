@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { useToast } from '@/components/ui/use-toast';
+import ReCaptcha from '@/components/ReCaptcha';
 
 type NavbarMenus = {
   home: boolean;
@@ -45,12 +47,32 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const { points, loading } = useWalletBalance({ enabled: isLoggedIn });
+  const toast = useToast();
+  const [recaptchaEnabled, setRecaptchaEnabled] = useState(false);
+  const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
+  const [registerEnabled, setRegisterEnabled] = useState(true);
   
   // Get first letter of username for avatar
   const avatarLetter = username?.charAt(0).toUpperCase() || 'U';
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/recaptcha/config', { cache: 'no-store' }).then((res) => res.json()),
+      fetch('/api/site', { cache: 'no-store' }).then((res) => res.json())
+    ])
+      .then(([recaptchaData, siteData]) => {
+        setRecaptchaEnabled(recaptchaData.enabled === true);
+        setRecaptchaSiteKey(recaptchaData.siteKey || '');
+        setRegisterEnabled(siteData.registerEnabled !== false);
+      })
+      .catch(() => {
+        setRecaptchaEnabled(false);
+        setRegisterEnabled(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -277,6 +299,14 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   </button>
                   <button
                     onClick={() => {
+                      if (!registerEnabled) {
+                        toast.show({
+                          title: 'การสมัครสมาชิกถูกปิดใช้งาน',
+                          description: 'ขณะนี้ไม่สามารถสมัครสมาชิกใหม่ได้',
+                          variant: 'destructive'
+                        });
+                        return;
+                      }
                       setOpen(false);
                       setTimeout(() => setRegisterDialogOpen(true), 100);
                     }}
@@ -307,9 +337,19 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
             open={loginDialogOpen} 
             onOpenChange={setLoginDialogOpen}
             onSwitchToRegister={() => {
+              if (!registerEnabled) {
+                toast.show({
+                  title: 'การสมัครสมาชิกถูกปิดใช้งาน',
+                  description: 'ขณะนี้ไม่สามารถสมัครสมาชิกใหม่ได้',
+                  variant: 'destructive'
+                });
+                return;
+              }
               setLoginDialogOpen(false);
               setRegisterDialogOpen(true);
             }}
+            recaptchaEnabled={recaptchaEnabled}
+            recaptchaSiteKey={recaptchaSiteKey}
           />
           <MobileRegisterDialog 
             open={registerDialogOpen} 
@@ -318,6 +358,9 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
               setRegisterDialogOpen(false);
               setLoginDialogOpen(true);
             }}
+            recaptchaEnabled={recaptchaEnabled}
+            recaptchaSiteKey={recaptchaSiteKey}
+            registerEnabled={registerEnabled}
           />
         </>,
         document.body
@@ -326,32 +369,50 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
   );
 }
 
-function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister }: { 
+function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister, recaptchaEnabled, recaptchaSiteKey }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void;
   onSwitchToRegister: () => void;
+  recaptchaEnabled: boolean;
+  recaptchaSiteKey: string;
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginRecaptchaToken, setLoginRecaptchaToken] = useState<string | null>(null);
+  const [loginRecaptchaKey, setLoginRecaptchaKey] = useState(0);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (recaptchaEnabled && !loginRecaptchaToken) {
+      setError('กรุณายืนยัน reCaptcha');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ 
+          username, 
+          password,
+          ...(loginRecaptchaToken && { recaptchaToken: loginRecaptchaToken })
+        })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!res.ok) throw new Error(json?.message || json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
       window.dispatchEvent(new Event('wallet:changed'));
       window.location.reload();
     } catch (err: unknown) {
       setError((err as Error).message);
+      if (recaptchaEnabled) {
+        setLoginRecaptchaToken(null);
+        setLoginRecaptchaKey((prev) => prev + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -362,6 +423,8 @@ function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister }: {
     setPassword(''); 
     setError(null); 
     setLoading(false); 
+    setLoginRecaptchaToken(null);
+    setLoginRecaptchaKey((prev) => prev + 1);
   };
 
   return (
@@ -418,8 +481,22 @@ function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister }: {
                 <span className="text-sm text-gray-300">จดจำการเข้าสู่ระบบ</span>
               </label>
             </div>
+            {recaptchaEnabled && recaptchaSiteKey && open && (
+              <div className="flex justify-center" key={`mobile-login-recaptcha-${loginRecaptchaKey}`}>
+                <ReCaptcha
+                  siteKey={recaptchaSiteKey}
+                  onVerify={(token) => setLoginRecaptchaToken(token)}
+                  onExpire={() => setLoginRecaptchaToken(null)}
+                  onError={() => {
+                    setLoginRecaptchaToken(null);
+                    setError('เกิดข้อผิดพลาดกับ reCaptcha');
+                  }}
+                  disabled={loading}
+                />
+              </div>
+            )}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+              <div className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded-lg text-sm font-medium">
                 {error}
               </div>
             )}
@@ -459,21 +536,34 @@ function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister }: {
   );
 }
 
-function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin }: { 
+function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin, recaptchaEnabled, recaptchaSiteKey, registerEnabled }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void;
   onSwitchToLogin: () => void;
+  recaptchaEnabled: boolean;
+  recaptchaSiteKey: string;
+  registerEnabled: boolean;
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [repassword, setRepassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registerRecaptchaToken, setRegisterRecaptchaToken] = useState<string | null>(null);
+  const [registerRecaptchaKey, setRegisterRecaptchaKey] = useState(0);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!registerEnabled) {
+      setError('การสมัครสมาชิกถูกปิดใช้งาน');
+      return;
+    }
     if (password !== repassword) {
       setError('รหัสผ่านไม่ตรงกัน');
+      return;
+    }
+    if (recaptchaEnabled && !registerRecaptchaToken) {
+      setError('กรุณายืนยัน reCaptcha');
       return;
     }
     setLoading(true);
@@ -482,15 +572,23 @@ function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin }: {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ 
+          username, 
+          password,
+          ...(registerRecaptchaToken && { recaptchaToken: registerRecaptchaToken })
+        })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'สมัครสมาชิกไม่สำเร็จ');
+      if (!res.ok) throw new Error(json?.message || json?.error || 'สมัครสมาชิกไม่สำเร็จ');
       // Close register and open login
       resetState();
       onSwitchToLogin();
     } catch (err: unknown) {
       setError((err as Error).message);
+      if (recaptchaEnabled) {
+        setRegisterRecaptchaToken(null);
+        setRegisterRecaptchaKey((prev) => prev + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -502,6 +600,8 @@ function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin }: {
     setRepassword('');
     setError(null); 
     setLoading(false); 
+    setRegisterRecaptchaToken(null);
+    setRegisterRecaptchaKey((prev) => prev + 1);
   };
 
   return (
@@ -564,8 +664,22 @@ function MobileRegisterDialog({ open, onOpenChange, onSwitchToLogin }: {
                 className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 rounded-lg"
               />
             </div>
+            {recaptchaEnabled && recaptchaSiteKey && open && (
+              <div className="flex justify-center" key={`mobile-register-recaptcha-${registerRecaptchaKey}`}>
+                <ReCaptcha
+                  siteKey={recaptchaSiteKey}
+                  onVerify={(token) => setRegisterRecaptchaToken(token)}
+                  onExpire={() => setRegisterRecaptchaToken(null)}
+                  onError={() => {
+                    setRegisterRecaptchaToken(null);
+                    setError('เกิดข้อผิดพลาดกับ reCaptcha');
+                  }}
+                  disabled={loading}
+                />
+              </div>
+            )}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
+              <div className="bg-red-900/30 border border-red-800 text-red-200 px-4 py-3 rounded-lg text-sm font-medium">
                 {error}
               </div>
             )}
