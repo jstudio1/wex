@@ -1,20 +1,28 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
+import { ReactNode, useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/backoffice/AppSidebar';
 
 export default function PricingLayoutClient({ children }: { children: ReactNode }) {
-  const [selectedMenu] = useState('products');
-  
+  const router = useRouter();
+  const [selectedMenu, setSelectedMenu] = useState('pricing');
+
+  const handleMenuSelect = useCallback(
+    (menuId: string) => {
+      setSelectedMenu(menuId);
+      if (menuId === 'pricing') return;
+      const query = menuId ? `?menu=${encodeURIComponent(menuId)}` : '';
+      router.push(`/backoffice${query}`);
+    },
+    [router]
+  );
+
   return (
     <div className="flex h-screen">
       <SidebarProvider>
-        <AppSidebar selectedMenu={selectedMenu} setSelectedMenu={() => {}} />
+        <AppSidebar selectedMenu={selectedMenu} setSelectedMenu={handleMenuSelect} />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/10 px-4">
             <SidebarTrigger className="-ml-1" />

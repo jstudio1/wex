@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import ProductsContent from '@/components/backoffice/ProductsContent';
@@ -82,7 +82,6 @@ const menuSections: MenuSection[] = [
     label: 'บริการเติมเกม',
     items: [
       { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
-      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
       { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
     ]
   },
@@ -165,6 +164,17 @@ const menuSections: MenuSection[] = [
     ]
   },
 ];
+
+const VALID_MENU_IDS = (() => {
+  const ids = new Set<string>();
+  menuSections.forEach((section) => {
+    section.items.forEach((item) => {
+      ids.add(item.id);
+      item.subItems?.forEach((sub) => ids.add(sub.id));
+    });
+  });
+  return ids;
+})();
 
 function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; setSelectedMenu: (id: string) => void }) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social']));
@@ -284,12 +294,25 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
   );
 }
 
-export default function BackofficePage() {
+function BackofficePageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedMenu, setSelectedMenu] = useState<string>('dashboard');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const menuParam = searchParams.get('menu');
+    if (menuParam && VALID_MENU_IDS.has(menuParam)) {
+      if (selectedMenu !== menuParam) {
+        setSelectedMenu(menuParam);
+      }
+    } else if (!menuParam && selectedMenu !== 'dashboard') {
+      setSelectedMenu('dashboard');
+    }
+  }, [searchParams, selectedMenu]);
 
   useEffect(() => {
     // ตรวจสอบว่าเป็น admin และล็อคอินอยู่แล้วหรือไม่
@@ -369,6 +392,14 @@ export default function BackofficePage() {
         setSelectedMenu={(id) => {
           setIsLoading(true);
           setSelectedMenu(id);
+          const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
+          if (!id || id === 'dashboard') {
+            params.delete('menu');
+          } else {
+            params.set('menu', id);
+          }
+          const query = params.toString();
+          router.replace(query ? `/backoffice?${query}` : '/backoffice', { scroll: false });
         }} 
       />
       <SidebarInset className="flex flex-col h-screen max-h-screen overflow-hidden bg-black">
@@ -406,6 +437,20 @@ export default function BackofficePage() {
         </div>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+export default function BackofficePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-black text-white">
+          กำลังโหลด...
+        </div>
+      }
+    >
+      <BackofficePageInner />
+    </Suspense>
   );
 }
 
@@ -456,8 +501,6 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <NewTopupServicesManager />;
     case 'categories':
       return <CategoriesContent />;
-    case 'pricing':
-      return <PricingContent />;
     case 'orders':
       return <OrdersContentWrapper />;
     case 'topup-history':
