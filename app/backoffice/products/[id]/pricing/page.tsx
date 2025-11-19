@@ -58,6 +58,9 @@ type NewItemFormState = {
   is_recommended: boolean;
 };
 
+const darkInputClass =
+  'bg-[#0f0f0f] border border-gray-700 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500';
+
 const toNumber = (value: unknown, fallback = 0): number => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -620,17 +623,21 @@ export default function ProductPricingPage() {
   if (!product || items.length === 0) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" onClick={() => router.back()} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => router.back()}
+          className="gap-2 border-gray-700 text-white bg-[#050505] hover:bg-gray-900"
+        >
           <ArrowLeft className="size-4" />
           กลับ
         </Button>
-          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-8">
+          <Empty className="from-gray-900/60 to-black h-full bg-gradient-to-b from-30% py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <FileText className="size-6" />
+                <FileText className="size-6 text-emerald-400" />
               </EmptyMedia>
-              <EmptyTitle>ไม่พบข้อมูล</EmptyTitle>
-              <EmptyDescription>
+              <EmptyTitle className="text-white">ไม่พบข้อมูล</EmptyTitle>
+              <EmptyDescription className="text-gray-400">
                 ไม่พบสินค้าหรือรายการราคา กรุณาตรวจสอบข้อมูล
               </EmptyDescription>
             </EmptyHeader>
@@ -643,13 +650,17 @@ export default function ProductPricingPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()} className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-50">
-            <ArrowLeft className="size-4 text-gray-500" />
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="gap-2 border-gray-700 text-white bg-[#050505] hover:bg-gray-900"
+          >
+            <ArrowLeft className="size-4 text-gray-300" />
             กลับ
           </Button>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">จัดการราคา</h2>
-            <p className="text-sm text-gray-500 mt-1">{product.name}</p>
+            <h2 className="text-2xl font-bold text-white">จัดการราคา</h2>
+            <p className="text-sm text-gray-400 mt-1">{product.name}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -659,48 +670,54 @@ export default function ProductPricingPage() {
               resetNewItemForm();
               setCreateDialogOpen(true);
             }}
-            className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="gap-2 border-gray-700 text-white bg-[#050505] hover:bg-gray-900"
           >
             <Plus className="size-4" />
             เพิ่มแพ็กเกจ
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="gap-2 bg-red-600 hover:bg-red-700 text-white">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-900/40"
+          >
             <Save className="size-4" />
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
           </Button>
         </div>
       </div>
 
-      <Card className="bg-white border border-gray-200 shadow-sm">
+      <Card className="bg-[#050505] border border-gray-900 shadow-[0_18px_45px_rgba(0,0,0,0.45)]">
         <CardHeader>
-          <CardTitle className="text-gray-900">ตั้งค่าราคาแนะนำ</CardTitle>
-          <CardDescription className="text-gray-500">
+          <CardTitle className="text-white">ตั้งค่าราคาแนะนำ</CardTitle>
+          <CardDescription className="text-gray-400">
             เลือกราคาที่ต้องการให้แสดงเป็น "แนะนำ" ในหน้ารายละเอียดสินค้า
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+          <div className="rounded-xl border border-gray-900 bg-[#0a0a0a] overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="border-gray-200 bg-gray-100 hover:bg-gray-100">
-                  <TableHead className="w-[40px] text-gray-600"></TableHead>
-                  <TableHead className="w-[100px] text-gray-600">สถานะ</TableHead>
-                  <TableHead className="text-gray-600">แพ็กเกจ</TableHead>
-                  <TableHead className="w-[120px] text-gray-600">SKU</TableHead>
-                  <TableHead className="w-[200px] text-gray-600">Icon URL</TableHead>
-                  <TableHead className="w-[150px] text-gray-600">ราคา</TableHead>
-                  <TableHead className="w-[150px] text-gray-600">ราคาเดิม</TableHead>
-                  <TableHead className="w-[100px] text-gray-600">Markup %</TableHead>
-                  <TableHead className="w-[100px] text-gray-600">Markup ฿</TableHead>
-                  <TableHead className="w-[120px] text-right text-gray-600">จัดการ</TableHead>
-                  <TableHead className="w-[100px] text-center text-gray-600">ราคาสิทธิ์</TableHead>
+                <TableRow className="border-gray-900 bg-white/5 hover:bg-white/5 text-gray-300">
+                  <TableHead className="w-[40px] text-gray-300"></TableHead>
+                  <TableHead className="w-[100px] text-gray-300">สถานะ</TableHead>
+                  <TableHead className="text-gray-300">แพ็กเกจ</TableHead>
+                  <TableHead className="w-[120px] text-gray-300">SKU</TableHead>
+                  <TableHead className="w-[200px] text-gray-300">Icon URL</TableHead>
+                  <TableHead className="w-[150px] text-gray-300">ราคา</TableHead>
+                  <TableHead className="w-[150px] text-gray-300">ราคาเดิม</TableHead>
+                  <TableHead className="w-[100px] text-gray-300">Markup %</TableHead>
+                  <TableHead className="w-[100px] text-gray-300">Markup ฿</TableHead>
+                  <TableHead className="w-[120px] text-right text-gray-300">จัดการ</TableHead>
+                  <TableHead className="w-[100px] text-center text-gray-300">ราคาสิทธิ์</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((item) => (
                   <TableRow
                     key={item.id}
-                    className={`border-gray-200 hover:bg-white transition-colors ${draggingItemId === item.id ? 'bg-red-50/60' : ''}`}
+                    className={`border-gray-900 hover:bg-white/5 transition-colors ${
+                      draggingItemId === item.id ? 'bg-emerald-500/5' : ''
+                    }`}
                     draggable
                     onDragStart={() => setDraggingItemId(item.id)}
                     onDragEnd={() => setDraggingItemId(null)}
@@ -719,7 +736,7 @@ export default function ProductPricingPage() {
                       });
                     }}
                   >
-                    <TableCell className="text-gray-400 align-middle">
+                    <TableCell className="text-gray-500 align-middle">
                       <div className="flex justify-center cursor-grab active:cursor-grabbing">
                         <GripVertical className="size-4" />
                       </div>
@@ -732,8 +749,8 @@ export default function ProductPricingPage() {
                           onCheckedChange={() => handleToggleRecommended(item.id, item.is_recommended)}
                         />
                         {item.is_recommended && (
-                          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs px-2 py-0.5">
-                            <Star className="size-3 mr-1 text-yellow-600" />
+                          <Badge className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/40 text-xs px-2 py-0.5">
+                            <Star className="size-3 mr-1 text-emerald-200" />
                             แนะนำ
                           </Badge>
                         )}
@@ -746,13 +763,11 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const value = e.target.value;
                           setItems((prevItems) =>
-                            prevItems.map((i) =>
-                              i.id === item.id ? { ...i, name: value } : i
-                            )
+                            prevItems.map((i) => (i.id === item.id ? { ...i, name: value } : i)),
                           );
                         }}
                         placeholder="ชื่อแพ็กเกจ"
-                        className="border-gray-300"
+                        className={darkInputClass}
                       />
                     </TableCell>
                     <TableCell>
@@ -762,13 +777,11 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const value = e.target.value;
                           setItems((prevItems) =>
-                            prevItems.map((i) =>
-                              i.id === item.id ? { ...i, sku: value } : i
-                            )
+                            prevItems.map((i) => (i.id === item.id ? { ...i, sku: value } : i)),
                           );
                         }}
                         placeholder="SKU"
-                        className="border-gray-300 font-mono text-sm"
+                        className={`${darkInputClass} font-mono text-sm`}
                       />
                     </TableCell>
                     <TableCell>
@@ -779,7 +792,7 @@ export default function ProductPricingPage() {
                             <img 
                               src={item.icon_url} 
                               alt="icon preview" 
-                              className="h-6 w-6 object-contain rounded border border-gray-200 bg-white p-0.5"
+                              className="h-6 w-6 object-contain rounded border border-gray-700 bg-black p-0.5"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
@@ -792,15 +805,13 @@ export default function ProductPricingPage() {
                           value={item.icon_url || ''}
                           onChange={(e) => {
                             const val = e.target.value.trim();
-                            setItems(prevItems =>
-                              prevItems.map(i =>
-                                i.id === item.id
-                                  ? { ...i, icon_url: val || null }
-                                  : i
-                              )
+                            setItems((prevItems) =>
+                              prevItems.map((i) =>
+                                i.id === item.id ? { ...i, icon_url: val || null } : i,
+                              ),
                             );
                           }}
-                          className="w-full text-sm font-mono border-gray-300"
+                          className={`${darkInputClass} w-full text-sm font-mono`}
                         />
                       </div>
                     </TableCell>
@@ -812,16 +823,16 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                            setItems(prevItems =>
-                              prevItems.map(i =>
+                            setItems((prevItems) =>
+                              prevItems.map((i) =>
                                 i.id === item.id
                                   ? { ...i, price: val === '' ? 0 : parseFloat(val) || 0 }
-                                  : i
-                              )
+                                  : i,
+                              ),
                             );
                           }
                         }}
-                        className="w-full border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${darkInputClass} w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       />
                     </TableCell>
                     <TableCell>
@@ -832,16 +843,16 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                            setItems(prevItems =>
-                              prevItems.map(i =>
+                            setItems((prevItems) =>
+                              prevItems.map((i) =>
                                 i.id === item.id
                                   ? { ...i, original_price: val === '' ? null : parseFloat(val) || null }
-                                  : i
-                              )
+                                  : i,
+                              ),
                             );
                           }
                         }}
-                        className="w-full border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${darkInputClass} w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       />
                     </TableCell>
                     <TableCell>
@@ -852,16 +863,16 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                            setItems(prevItems =>
-                              prevItems.map(i =>
+                            setItems((prevItems) =>
+                              prevItems.map((i) =>
                                 i.id === item.id
                                   ? { ...i, markup_percent: val === '' ? 0 : parseFloat(val) || 0 }
-                                  : i
-                              )
+                                  : i,
+                              ),
                             );
                           }
                         }}
-                        className="w-full border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${darkInputClass} w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       />
                     </TableCell>
                     <TableCell>
@@ -872,22 +883,22 @@ export default function ProductPricingPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                            setItems(prevItems =>
-                              prevItems.map(i =>
+                            setItems((prevItems) =>
+                              prevItems.map((i) =>
                                 i.id === item.id
                                   ? { ...i, markup_fixed: val === '' ? 0 : parseFloat(val) || 0 }
-                                  : i
-                              )
+                                  : i,
+                              ),
                             );
                           }
                         }}
-                        className="w-full border-gray-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className={`${darkInputClass} w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {item.is_recommended && (
-                          <Badge variant="outline" className="border-yellow-300 text-yellow-700 bg-yellow-100">
+                          <Badge variant="outline" className="border-emerald-500/50 text-emerald-300 bg-emerald-900/20">
                             แนะนำ
                           </Badge>
                         )}
@@ -896,7 +907,7 @@ export default function ProductPricingPage() {
                           variant="outline"
                           onClick={() => handleDeleteItem(item.id)}
                           disabled={deletingItemId === item.id}
-                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          className="border-red-600/40 text-red-300 hover:bg-red-900/20"
                         >
                           {deletingItemId === item.id ? (
                             <Loader2 className="size-4 animate-spin" />
@@ -911,7 +922,7 @@ export default function ProductPricingPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => openPriceDialog(item)}
-                        className="gap-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                        className="gap-2 border-gray-700 text-white hover:bg-gray-900"
                       >
                         <DollarSign className="size-4" />
                         ราคา
@@ -932,17 +943,17 @@ export default function ProductPricingPage() {
           if (!open) resetNewItemForm();
         }}
       >
-        <DialogContent className="sm:max-w-[520px] bg-white text-gray-900">
+        <DialogContent className="sm:max-w-[520px] bg-[#050505] text-white border border-gray-800">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">เพิ่มแพ็กเกจใหม่</DialogTitle>
-            <DialogDescription className="text-gray-500">
+            <DialogTitle className="text-white">เพิ่มแพ็กเกจใหม่</DialogTitle>
+            <DialogDescription className="text-gray-400">
               กรอกข้อมูลแพ็กเกจที่จะเพิ่มให้ครบถ้วน
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="new_item_name" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_name" className="text-sm font-medium text-gray-200">
                   ชื่อแพ็กเกจ
                 </Label>
                 <Input
@@ -951,11 +962,11 @@ export default function ProductPricingPage() {
                   value={newItemForm.name}
                   onChange={(e) => setNewItemForm((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="เช่น 500 เพชร"
-                  className="border-gray-300"
+                  className={darkInputClass}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new_item_sku" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_sku" className="text-sm font-medium text-gray-200">
                   SKU
                 </Label>
                 <Input
@@ -964,14 +975,14 @@ export default function ProductPricingPage() {
                   value={newItemForm.sku}
                   onChange={(e) => setNewItemForm((prev) => ({ ...prev, sku: e.target.value }))}
                   placeholder="เช่น FF500"
-                  className="border-gray-300 font-mono text-sm"
+                  className={`${darkInputClass} font-mono text-sm`}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="new_item_price" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_price" className="text-sm font-medium text-gray-200">
                   ราคา (฿)
                 </Label>
                 <Input
@@ -986,11 +997,11 @@ export default function ProductPricingPage() {
                     }
                   }}
                   placeholder="0.00"
-                  className="border-gray-300"
+                  className={darkInputClass}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new_item_original_price" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_original_price" className="text-sm font-medium text-gray-200">
                   ราคาเดิม (ถ้ามี)
                 </Label>
                 <Input
@@ -1005,14 +1016,14 @@ export default function ProductPricingPage() {
                     }
                   }}
                   placeholder="0.00"
-                  className="border-gray-300"
+                  className={darkInputClass}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="new_item_markup_percent" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_markup_percent" className="text-sm font-medium text-gray-200">
                   Markup %
                 </Label>
                 <Input
@@ -1027,11 +1038,11 @@ export default function ProductPricingPage() {
                     }
                   }}
                   placeholder="0"
-                  className="border-gray-300"
+                  className={darkInputClass}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="new_item_markup_fixed" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="new_item_markup_fixed" className="text-sm font-medium text-gray-200">
                   Markup ฿
                 </Label>
                 <Input
@@ -1046,13 +1057,13 @@ export default function ProductPricingPage() {
                     }
                   }}
                   placeholder="0.00"
-                  className="border-gray-300"
+                  className={darkInputClass}
                 />
               </div>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="new_item_icon_url" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="new_item_icon_url" className="text-sm font-medium text-gray-200">
                 Icon URL (ถ้ามี)
               </Label>
               <Input
@@ -1061,14 +1072,14 @@ export default function ProductPricingPage() {
                 value={newItemForm.icon_url}
                 onChange={(e) => setNewItemForm((prev) => ({ ...prev, icon_url: e.target.value }))}
                 placeholder="https://example.com/icon.png"
-                className="border-gray-300"
+                className={darkInputClass}
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+            <div className="flex items-center justify-between rounded-md border border-gray-800 bg-black/30 px-3 py-2">
               <div>
-                <p className="text-sm font-medium text-gray-700">ตั้งเป็นแพ็กเกจแนะนำ</p>
-                <p className="text-xs text-gray-500">แสดงป้ายแนะนำในหน้ารายละเอียดสินค้า</p>
+                <p className="text-sm font-medium text-white">ตั้งเป็นแพ็กเกจแนะนำ</p>
+                <p className="text-xs text-gray-400">แสดงป้ายแนะนำในหน้ารายละเอียดสินค้า</p>
               </div>
               <Switch
                 checked={newItemForm.is_recommended}
@@ -1083,14 +1094,14 @@ export default function ProductPricingPage() {
                 resetNewItemForm();
                 setCreateDialogOpen(false);
               }}
-              className="border-gray-300"
+              className="border-gray-700 text-white hover:bg-gray-900"
             >
               ยกเลิก
             </Button>
             <Button
               onClick={handleCreateItem}
               disabled={creatingItem}
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+              className="gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
             >
               {creatingItem ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               เพิ่มแพ็กเกจ
@@ -1101,16 +1112,16 @@ export default function ProductPricingPage() {
 
       {/* Price Management Dialog */}
       <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-white text-gray-900">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-[#050505] text-white border border-gray-800">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">
+            <DialogTitle className="text-white">
               จัดการราคาตามสิทธิ์
             </DialogTitle>
-            <DialogDescription className="text-gray-500">
+            <DialogDescription className="text-gray-400">
               {selectedItemForPrice && (
                 <div className="mt-2">
-                  <div className="font-semibold text-gray-900">{selectedItemForPrice.name}</div>
-                  <div className="text-sm text-gray-600">SKU: {selectedItemForPrice.sku}</div>
+                  <div className="font-semibold text-white">{selectedItemForPrice.name}</div>
+                  <div className="text-sm text-gray-400">SKU: {selectedItemForPrice.sku}</div>
                   <div className="text-sm text-gray-500 mt-1">ราคาปกติ: {Number(selectedItemForPrice.price).toFixed(2)} ฿</div>
                 </div>
               )}
@@ -1118,31 +1129,31 @@ export default function ProductPricingPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Add New Price */}
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-900 mb-3">เพิ่มราคาใหม่</h3>
+            <div className="border border-gray-800 rounded-lg p-4 bg-black/30">
+              <h3 className="font-semibold text-white mb-3">เพิ่มราคาใหม่</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="new_permission_id" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="new_permission_id" className="text-sm font-medium text-gray-200">
                     สิทธิ์
                   </Label>
                   <select
                     id="new_permission_id"
                     value={newPriceForm.permission_id}
-                    onChange={(e) => setNewPriceForm(prev => ({ ...prev, permission_id: e.target.value }))}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                    onChange={(e) => setNewPriceForm((prev) => ({ ...prev, permission_id: e.target.value }))}
+                    className="w-full rounded-md border border-gray-700 bg-[#0f0f0f] px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   >
-                    <option value="" className="bg-white text-gray-900">เลือกสิทธิ์</option>
+                    <option value="" className="bg-[#0f0f0f] text-white">เลือกสิทธิ์</option>
                     {permissions
-                      .filter(p => !itemPrices.find(ip => ip.permission_id === p.id))
-                      .map(perm => (
-                        <option key={perm.id} value={perm.id} className="bg-white text-gray-900">
+                      .filter((p) => !itemPrices.find((ip) => ip.permission_id === p.id))
+                      .map((perm) => (
+                        <option key={perm.id} value={perm.id} className="bg-[#0f0f0f] text-white">
                           {perm.name}
                         </option>
                       ))}
                   </select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="new_price" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="new_price" className="text-sm font-medium text-gray-200">
                     ราคา (฿)
                   </Label>
                   <Input
@@ -1153,17 +1164,17 @@ export default function ProductPricingPage() {
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                        setNewPriceForm(prev => ({ ...prev, price: val }));
+                        setNewPriceForm((prev) => ({ ...prev, price: val }));
                       }
                     }}
                     placeholder="0.00"
-                    className="border-gray-300"
+                    className={darkInputClass}
                   />
                 </div>
               </div>
               <Button
                 onClick={handleAddPrice}
-                className="mt-3 bg-red-600 hover:bg-red-700 text-white"
+                className="mt-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
                 disabled={!newPriceForm.permission_id || !newPriceForm.price}
               >
                 เพิ่มราคา
@@ -1172,7 +1183,7 @@ export default function ProductPricingPage() {
 
             {/* Existing Prices */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">ราคาตามสิทธิ์</h3>
+              <h3 className="font-semibold text-white mb-3">ราคาตามสิทธิ์</h3>
               {loadingPrices ? (
                 <div className="text-center py-4 text-gray-500">กำลังโหลด...</div>
               ) : itemPrices.length === 0 ? (
@@ -1182,10 +1193,10 @@ export default function ProductPricingPage() {
                   {itemPrices.map((itemPrice) => (
                     <div
                       key={itemPrice.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-white"
+                      className="flex items-center justify-between p-3 border border-gray-800 rounded-lg bg-black/40"
                     >
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-white">
                           {(itemPrice.permission as any)?.name || `สิทธิ์ #${itemPrice.permission_id}`}
                         </div>
                         {editingPriceId === itemPrice.id ? (
@@ -1200,7 +1211,7 @@ export default function ProductPricingPage() {
                                   setEditingPriceValue(val);
                                 }
                               }}
-                              className="w-32 border-gray-300"
+                              className={`w-32 ${darkInputClass}`}
                               autoFocus
                             />
                             <Button
@@ -1211,7 +1222,7 @@ export default function ProductPricingPage() {
                                   handleUpdatePrice(itemPrice.id, priceNum);
                                 }
                               }}
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                              className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
                             >
                               บันทึก
                             </Button>
@@ -1222,13 +1233,13 @@ export default function ProductPricingPage() {
                                 setEditingPriceId(null);
                                 setEditingPriceValue('');
                               }}
-                              className="border-gray-300"
+                              className="border-gray-700 text-white hover:bg-gray-900"
                             >
                               ยกเลิก
                             </Button>
                           </div>
                         ) : (
-                          <div className="text-lg font-bold text-red-600 mt-1">
+                          <div className="text-lg font-bold text-emerald-400 mt-1">
                             {Number(itemPrice.price).toFixed(2)} ฿
                           </div>
                         )}
@@ -1242,7 +1253,7 @@ export default function ProductPricingPage() {
                               setEditingPriceId(itemPrice.id);
                               setEditingPriceValue(itemPrice.price.toString());
                             }}
-                            className="border-gray-300"
+                            className="border-gray-700 text-white hover:bg-gray-900"
                           >
                             <Edit2 className="size-4" />
                           </Button>
@@ -1250,7 +1261,7 @@ export default function ProductPricingPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDeletePrice(itemPrice.id)}
-                            className="border-red-300 text-red-600 hover:bg-red-50"
+                            className="border-red-600/40 text-red-300 hover:bg-red-900/30"
                           >
                             <Trash2 className="size-4" />
                           </Button>

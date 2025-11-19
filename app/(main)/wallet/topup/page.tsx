@@ -131,8 +131,8 @@ export default function TopupPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Spinner />
-      </div>
+            <Spinner />
+          </div>
     );
   }
 

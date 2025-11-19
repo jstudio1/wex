@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import wepayCatalog from '../../../../wepay.json';
 
 type WepayGame = {
   company_id: string;
@@ -11,7 +10,9 @@ type WepayGame = {
   refs_format?: { ref1?: string };
 };
 
-const gtopupProducts: WepayGame[] = ((wepayCatalog as any)?.data?.gtopup || []) as WepayGame[];
+const WEPAY_PRODUCTS_URL =
+  process.env.WEPAY_PRODUCTS_URL ||
+  'https://www.wepay.in.th/comp_export.php?json';
 
 function slugifyCompany(companyId: string, companyName: string) {
   if (companyId) {
@@ -74,6 +75,17 @@ export async function POST(req: Request) {
   }
 
   try {
+    const upstream = await fetch(WEPAY_PRODUCTS_URL, { cache: 'no-store' });
+    if (!upstream.ok) {
+      console.error('[wePAY sync] fetch failed', upstream.status, upstream.statusText);
+      return NextResponse.json({ error: 'fetch_failed', detail: 'ไม่สามารถดึงข้อมูลจาก wePAY ได้' }, { status: upstream.status || 500 });
+    }
+    const payload = await upstream.json();
+    const gtopupProducts: WepayGame[] = Array.isArray(payload?.data?.gtopup) ? payload.data.gtopup : [];
+    if (!gtopupProducts.length) {
+      return NextResponse.json({ error: 'empty_gtopup', detail: 'ไม่พบข้อมูล gtopup จาก wePAY' }, { status: 502 });
+    }
+
     const sb = createServiceClient();
     let countProducts = 0;
     let countItems = 0;
