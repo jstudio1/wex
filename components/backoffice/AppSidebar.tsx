@@ -19,6 +19,7 @@ import {
   DollarSign,
   Trophy,
   CreditCard,
+  BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -78,8 +79,8 @@ const menuSections: MenuSection[] = [
   {
     label: 'ปั๊มโซเชียล',
     items: [
-      {
-        id: 'social',
+      { 
+        id: 'social', 
         label: 'ปั๊มโซเชียล',
         icon: Share,
         subItems: [
@@ -92,9 +93,9 @@ const menuSections: MenuSection[] = [
   {
     label: 'เกม',
     items: [
-      {
-        id: 'games',
-        label: 'เกม',
+      { 
+        id: 'games', 
+        label: 'เกม', 
         icon: Trophy,
         subItems: [
           { id: 'games', label: 'จัดการเกม' },
@@ -125,6 +126,20 @@ const menuSections: MenuSection[] = [
           { id: 'coupons', label: 'คูปองส่วนลด' },
           { id: 'redeem-codes', label: 'โค้ดเติมพอยต์' },
           { id: 'popup', label: 'Popup Notification' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'เนื้อหา',
+    items: [
+      { 
+        id: 'blog', 
+        label: 'Blog How To', 
+        icon: BookOpen,
+        subItems: [
+          { id: 'blog-posts', label: 'จัดการบทความ' },
+          { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
         ],
       },
     ],

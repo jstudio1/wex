@@ -24,6 +24,7 @@ type SiteData = {
   flashStart?: string | null; 
   flashEnd?: string | null;
   navbarMenus?: {
+    home: boolean;
     products: boolean;
     social: boolean;
     categories: boolean;
@@ -31,6 +32,8 @@ type SiteData = {
     premiumApp: boolean;
     cashcard: boolean;
     contact: boolean;
+    blog: boolean;
+    tools: boolean;
   };
   navbarMenuOrder?: string[];
   navbarMenuLabels?: {
@@ -38,6 +41,8 @@ type SiteData = {
     premiumApp?: string;
     social?: string;
     contact?: string;
+    blog?: string;
+    tools?: string;
   };
   paymentMethods?: {
     code: boolean;
@@ -100,6 +105,7 @@ export default function AdminSiteForm() {
     flashStart: null, 
     flashEnd: null,
     navbarMenus: {
+      home: true,
       products: true,
       social: true,
       categories: true,
@@ -107,8 +113,10 @@ export default function AdminSiteForm() {
       premiumApp: true,
       cashcard: true,
       contact: true,
+      blog: true,
+      tools: true,
     },
-    navbarMenuOrder: ['products', 'premiumApp', 'social', 'contact'],
+    navbarMenuOrder: ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'],
     navbarMenuLabels: {
       products: 'เติมเกม',
       premiumApp: 'แอพ',
@@ -187,14 +195,18 @@ export default function AdminSiteForm() {
           flashStart: json.flashStart || '', 
           flashEnd: json.flashEnd || '',
           navbarMenus: json.navbarMenus || {
+            home: true,
             products: true,
             social: true,
             categories: true,
             games: true,
             premiumApp: true,
             cashcard: true,
+            contact: true,
+            blog: true,
+            tools: true,
           },
-          navbarMenuOrder: json.navbarMenuOrder || ['products', 'premiumApp', 'social', 'contact'],
+          navbarMenuOrder: json.navbarMenuOrder || ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'],
           navbarMenuLabels: json.navbarMenuLabels || {
             products: 'เติมเกม',
             premiumApp: 'แอพ',
@@ -327,7 +339,8 @@ export default function AdminSiteForm() {
         body: JSON.stringify({
           ...form,
           posters: sanitizedPosters,
-          navbarMenuOrder: form.navbarMenuOrder,
+          // ไม่ต้องเก็บ 'home' ใน order เพราะหน้าเว็บจะใส่ 'home' ไว้แรกเสมอ
+          navbarMenuOrder: (form.navbarMenuOrder || []).filter(key => key !== 'home'),
           navbarMenuLabels: form.navbarMenuLabels,
           bankAccounts: sanitizedBankAccounts,
           siteBrandName: form.siteBrandName || '',
@@ -612,29 +625,22 @@ export default function AdminSiteForm() {
             <h2 className="text-lg font-semibold mb-1">การตั้งค่าเมนู NavBar</h2>
             <p className="text-sm text-[color:var(--text)]/60">จัดการการแสดงผลและลำดับเมนูใน NavBar</p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label className="text-sm font-semibold">เรียงลำดับเมนู</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mb-3">ลากไอคอน <GripVertical className="inline size-3" /> เพื่อจัดลำดับการแสดงผล</p>
+            <p className="text-xs text-[color:var(--text)]/50 mb-2">ลากไอคอน <GripVertical className="inline size-3" /> เพื่อจัดลำดับการแสดงผล</p>
         
         {(() => {
           const menuInfo: Record<string, { label: string; key: string }> = {
+            home: { label: 'หน้าหลัก', key: 'home' },
             products: { label: 'เติมเกม', key: 'products' },
             premiumApp: { label: 'แอพ', key: 'premiumApp' },
             social: { label: 'ปั้ม', key: 'social' },
+            blog: { label: 'How To', key: 'blog' },
+            tools: { label: 'เครื่องมือ', key: 'tools' },
             contact: { label: 'ติดต่อเรา', key: 'contact' },
             categories: { label: 'สินค้าอื่นๆ', key: 'categories' },
             games: { label: 'สุ่มรางวัล', key: 'games' },
             cashcard: { label: 'บัตรเติมเงิน', key: 'cashcard' }
-          };
-          
-          const handleDragStart = (e: React.DragEvent, index: number) => {
-            setDraggedIndex(index);
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', '');
-            // Add visual feedback
-            if (e.currentTarget instanceof HTMLElement) {
-              e.currentTarget.style.opacity = '0.5';
-            }
           };
           
           const handleDragEnd = (e: React.DragEvent) => {
@@ -645,7 +651,56 @@ export default function AdminSiteForm() {
             }
           };
           
-          const handleDragOver = (e: React.DragEvent, index: number) => {
+          const handleDragLeave = () => {
+            setDragOverIndex(null);
+          };
+          
+          // Show all menus from menuInfo - ใช้ลำดับเดียวกับที่หน้าเว็บใช้ (NavLinks.tsx logic)
+          const allMenuKeys = Object.keys(menuInfo);
+          const currentOrder = form.navbarMenuOrder || [];
+          
+          // ใช้ logic เดียวกับ NavBar.tsx และ NavLinks.tsx
+          // NavBar.tsx จะ filter order ให้เฉพาะที่อยู่ใน DEFAULT_MENU_ORDER และเพิ่มเมนูที่ขาดหายไป
+          const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
+          const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+          
+          // Process order เหมือน NavBar.tsx (filter และเพิ่มเมนูที่ขาดหายไป)
+          let processedOrder: string[] = [...DEFAULT_MENU_ORDER];
+          if (currentOrder.length > 0) {
+            // Filter order ให้เฉพาะที่อยู่ใน DEFAULT_MENU_ORDER (เหมือน NavBar.tsx)
+            const filtered = currentOrder.filter((item): item is string => 
+              typeof item === 'string' && (DEFAULT_MENU_ORDER as readonly string[]).includes(item as any)
+            );
+            const unique = Array.from(new Set(filtered));
+            // เพิ่มเมนูที่ขาดหายไปจาก DEFAULT_MENU_ORDER (เหมือน NavBar.tsx)
+            for (const key of DEFAULT_MENU_ORDER) {
+              if (!unique.includes(key)) unique.push(key);
+            }
+            processedOrder = unique;
+          }
+          
+          // ใช้ logic เดียวกับ NavLinks.tsx: order = navbarMenuOrder || defaultOrder
+          const order = processedOrder;
+          
+          // Ensure 'home' is always first (same as NavLinks.tsx)
+          const orderedKeys = order.includes('home') 
+            ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key) && allMenuKeys.includes(key))]
+            : ['home', ...validKeys.filter(key => key !== 'home' && allMenuKeys.includes(key))];
+          
+          // เพิ่มเมนูที่ไม่อยู่ใน DEFAULT_MENU_ORDER (เช่น categories, games, cashcard)
+          const otherMenus = allMenuKeys.filter(key => !DEFAULT_MENU_ORDER.includes(key as any));
+          const allMenus = [...orderedKeys, ...otherMenus];
+          
+          const handleDragStartForAll = (e: React.DragEvent, menuKey: string, index: number) => {
+            setDraggedIndex(index);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', menuKey);
+            if (e.currentTarget instanceof HTMLElement) {
+              e.currentTarget.style.opacity = '0.5';
+            }
+          };
+          
+          const handleDragOverForAll = (e: React.DragEvent, index: number) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             if (draggedIndex !== null && draggedIndex !== index) {
@@ -653,33 +708,46 @@ export default function AdminSiteForm() {
             }
           };
           
-          const handleDragLeave = () => {
-            setDragOverIndex(null);
-          };
-          
-          const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+          const handleDropForAll = (e: React.DragEvent, dropMenuKey: string, dropIndex: number) => {
             e.preventDefault();
             if (draggedIndex === null) return;
             
-            const newOrder = [...(form.navbarMenuOrder || [])];
-            const draggedItem = newOrder[draggedIndex];
-            newOrder.splice(draggedIndex, 1);
-            newOrder.splice(dropIndex, 0, draggedItem);
+            const draggedMenuKey = allMenus[draggedIndex];
+            if (!draggedMenuKey) return;
             
+            // ใช้ orderedKeys เป็นฐาน (ไม่รวม home เพราะ home จะอยู่แรกเสมอ)
+            const baseOrder = orderedKeys.filter(key => key !== 'home');
+            
+            // หา index ของ dragged และ drop ใน baseOrder
+            const draggedIndexInBase = baseOrder.indexOf(draggedMenuKey);
+            const dropIndexInBase = baseOrder.indexOf(dropMenuKey);
+            
+            let newOrder: string[] = [];
+            
+            if (draggedIndexInBase !== -1 && dropIndexInBase !== -1) {
+              // ทั้งสองอยู่ใน order แล้ว - reorder
+              newOrder = [...baseOrder];
+              newOrder.splice(draggedIndexInBase, 1);
+              const newDropIndex = newOrder.indexOf(dropMenuKey);
+              newOrder.splice(newDropIndex, 0, draggedMenuKey);
+            } else if (draggedIndexInBase === -1 && dropIndexInBase !== -1) {
+              // dragged ไม่อยู่ใน order, drop อยู่ใน order - ใส่ dragged ก่อน drop
+              newOrder = [...baseOrder];
+              newOrder.splice(dropIndexInBase, 0, draggedMenuKey);
+            } else if (draggedIndexInBase !== -1 && dropIndexInBase === -1) {
+              // dragged อยู่ใน order, drop ไม่อยู่ - ใส่ drop หลัง dragged
+              newOrder = [...baseOrder];
+              newOrder.splice(draggedIndexInBase + 1, 0, dropMenuKey);
+            } else {
+              // ทั้งสองไม่อยู่ใน order - เพิ่มทั้งสอง
+              newOrder = [...baseOrder, draggedMenuKey, dropMenuKey];
+            }
+            
+            // home จะอยู่แรกเสมอ ไม่ต้องเก็บใน order (เหมือน NavLinks.tsx)
             setForm({ ...form, navbarMenuOrder: newOrder });
             setDraggedIndex(null);
             setDragOverIndex(null);
           };
-          
-          // Show all menus from menuInfo
-          const allMenuKeys = Object.keys(menuInfo);
-          const currentOrder = form.navbarMenuOrder || [];
-          
-          // Combine: menus in order first, then menus not in order
-          const allMenus = [
-            ...currentOrder.filter(key => allMenuKeys.includes(key)),
-            ...allMenuKeys.filter(key => !currentOrder.includes(key))
-          ];
           
           return allMenus.map((menuKey, index) => {
             const menu = menuInfo[menuKey];
@@ -692,33 +760,20 @@ export default function AdminSiteForm() {
             const isEnabled = form.navbarMenus?.[menu.key as keyof typeof form.navbarMenus] !== false;
             const isDragging = draggedIndex === index;
             const isDragOver = dragOverIndex === index;
-            const isInOrder = currentOrder.includes(menuKey);
-            const orderIndex = isInOrder ? currentOrder.indexOf(menuKey) : -1;
+            // ใช้ orderedKeys แทน currentOrder เพื่อให้ตรงกับหน้าเว็บ
+            const isInOrder = orderedKeys.includes(menuKey);
+            const orderIndex = isInOrder ? orderedKeys.indexOf(menuKey) : -1;
             
             return (
               <div
                 key={menuKey}
-                draggable={isInOrder}
-                onDragStart={(e) => {
-                  if (isInOrder && orderIndex !== -1) {
-                    handleDragStart(e, orderIndex);
-                  }
-                }}
+                draggable={true}
+                onDragStart={(e) => handleDragStartForAll(e, menuKey, index)}
                 onDragEnd={handleDragEnd}
-                onDragOver={(e) => {
-                  if (isInOrder && orderIndex !== -1) {
-                    handleDragOver(e, orderIndex);
-                  }
-                }}
+                onDragOver={(e) => handleDragOverForAll(e, index)}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => {
-                  if (isInOrder && orderIndex !== -1) {
-                    handleDrop(e, orderIndex);
-                  }
-                }}
-                className={`flex flex-col gap-3 p-4 border rounded-lg transition-all duration-200 ${
-                  isInOrder ? 'cursor-move' : 'cursor-default'
-                } ${
+                onDrop={(e) => handleDropForAll(e, menuKey, index)}
+                className={`flex items-center gap-2 p-2.5 border rounded-md transition-all duration-200 cursor-move ${
                   isDragging 
                     ? 'opacity-50 border-accent/50 bg-accent/10 scale-95' 
                     : isDragOver
@@ -726,62 +781,67 @@ export default function AdminSiteForm() {
                     : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  {isInOrder && (
                 <div 
-                  className="flex items-center gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                  className="flex items-center gap-1.5 flex-shrink-0 cursor-grab active:cursor-grabbing"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <GripVertical className={`size-5 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
-        </div>
-                  )}
+                  <GripVertical className={`size-4 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
+                </div>
                 
-                  <div className="flex-1 space-y-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <Label htmlFor={`menu-label-${menuKey}`} className="text-xs text-[color:var(--text)]/60 mb-1 block">ชื่อเมนู</Label>
-                        <Input
-                          id={`menu-label-${menuKey}`}
-                          value={displayLabel}
-                          onChange={(e) => {
-                            const newLabels = {
-                              ...(form.navbarMenuLabels || {}),
-                              [menu.key]: e.target.value
-                            };
-                            setForm({
-                              ...form,
-                              navbarMenuLabels: newLabels
-                            });
-                          }}
-                          placeholder={menu.label}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-          <div>
-                        <p className="text-xs text-[color:var(--text)]/50">
-                      {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
-                          {isInOrder && ` • ลำดับที่ ${orderIndex + 1}`}
-                    </p>
-          </div>
-          <Switch
-                    checked={isEnabled}
-                    onCheckedChange={(checked) => {
-                      const key = menu.key as keyof typeof form.navbarMenus;
-                      setForm({
-              ...form,
-              navbarMenus: { 
-                          ...(form.navbarMenus || {}),
-                          [key]: checked
-                        } as typeof form.navbarMenus
-                      });
-                    }}
-          />
+                <div className="flex-1 min-w-0 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <Label htmlFor={`menu-label-${menuKey}`} className="text-[10px] text-[color:var(--text)]/60 mb-0.5 block">ชื่อเมนู</Label>
+                      <Input
+                        id={`menu-label-${menuKey}`}
+                        value={displayLabel}
+                        onChange={(e) => {
+                          const newLabels = {
+                            ...(form.navbarMenuLabels || {}),
+                            [menu.key]: e.target.value
+                          };
+                          setForm({
+                            ...form,
+                            navbarMenuLabels: newLabels
+                          });
+                        }}
+                        placeholder={menu.label}
+                        className="w-full h-8 text-sm"
+                      />
                     </div>
                   </div>
-        </div>
-          </div>
+                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-[color:var(--text)]/50 truncate">
+                        {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
+                        {isInOrder && menuKey !== 'home' && ` • ลำดับที่ ${orderIndex}`}
+                        {menuKey === 'home' && isInOrder && ' • อยู่แรกเสมอ'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => {
+                        const key = menu.key as keyof typeof form.navbarMenus;
+                        setForm({
+                          ...form,
+                          navbarMenus: { 
+                            ...(form.navbarMenus || {}),
+                            [key]: checked
+                          } as typeof form.navbarMenus
+                        });
+                        // Auto-add to order when enabled
+                        if (checked && !currentOrder.includes(menuKey)) {
+                          setForm(prev => ({
+                            ...prev,
+                            navbarMenuOrder: [...(prev.navbarMenuOrder || []), menuKey]
+                          }));
+                        }
+                      }}
+                      className="scale-75"
+                    />
+                  </div>
+                </div>
+              </div>
             );
           });
         })()}
@@ -802,7 +862,7 @@ export default function AdminSiteForm() {
           <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <Label>ช่องทาง "ใช้โค้ด"</Label>
+            <Label>ช่องทาง &quot;ใช้โค้ด&quot;</Label>
             <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยโค้ด</p>
           </div>
           <Switch
@@ -820,7 +880,7 @@ export default function AdminSiteForm() {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label>ช่องทาง "QR Payment"</Label>
+            <Label>ช่องทาง &quot;QR Payment&quot;</Label>
             <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วย QR Payment</p>
           </div>
           <Switch
@@ -838,7 +898,7 @@ export default function AdminSiteForm() {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label>ช่องทาง "สลิปโอนเงิน"</Label>
+            <Label>ช่องทาง &quot;สลิปโอนเงิน&quot;</Label>
             <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยสลิปโอนเงิน (ตรวจสอบอัตโนมัติ)</p>
           </div>
           <Switch
@@ -856,7 +916,7 @@ export default function AdminSiteForm() {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <Label>ช่องทาง "ซองอั่งเปา TrueWallet"</Label>
+            <Label>ช่องทาง &quot;ซองอั่งเปา TrueWallet&quot;</Label>
             <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยซองอั่งเปา TrueWallet</p>
           </div>
           <Switch
@@ -878,7 +938,7 @@ export default function AdminSiteForm() {
               <h3 className="text-md font-semibold">บัญชีธนาคารสำหรับโอนเงิน</h3>
               <p className="text-sm text-[color:var(--text)]/60">ตั้งค่าบัญชีธนาคารที่จะแสดงให้ลูกค้าเมื่อเลือกชำระเงินด้วยการโอน</p>
               <p className="text-xs text-[color:var(--text)]/50 mt-1">
-                💡 <strong>หมายเหตุ:</strong> เลขที่บัญชีที่ตั้งค่าไว้จะถูกใช้เป็น "บัญชีผู้รับที่คาดหวัง" สำหรับตรวจสอบสลิปโอนเงินอัตโนมัติ
+                💡 <strong>หมายเหตุ:</strong> เลขที่บัญชีที่ตั้งค่าไว้จะถูกใช้เป็น &quot;บัญชีผู้รับที่คาดหวัง&quot; สำหรับตรวจสอบสลิปโอนเงินอัตโนมัติ
               </p>
             </div>
             {(form.bankAccounts || []).length === 0 && (
@@ -1656,7 +1716,7 @@ function AdminPopupForm() {
       <Button disabled={saving} type="submit" className="w-full sm:w-auto">
         {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกรูป Popup'}
       </Button>
-      <p className="text-xs text-[color:var(--text)]/50">หมายเหตุ: เมื่อบันทึกรูปใหม่ popup จะเด้งทันทีแม้ว่าผู้ใช้จะกด "ไม่แสดงอีกใน 3 วัน" ไปแล้ว</p>
+      <p className="text-xs text-[color:var(--text)]/50">หมายเหตุ: เมื่อบันทึกรูปใหม่ popup จะเด้งทันทีแม้ว่าผู้ใช้จะกด &quot;ไม่แสดงอีกใน 3 วัน&quot; ไปแล้ว</p>
     </form>
   );
 }

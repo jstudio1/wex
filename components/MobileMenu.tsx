@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText } from 'lucide-react';
+import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText, MessageSquare, Wrench, Shield, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ type NavbarMenus = {
   premiumApp: boolean;
   cashcard: boolean;
   contact: boolean;
+  blog: boolean;
 };
 
 type Props = {
@@ -195,13 +196,14 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   products: { href: '/products', label: navbarMenuLabels?.products || 'เติมเกม', icon: Gamepad2, key: 'products' },
                   premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
                   social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
+                  blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
                 };
 
-                const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'contact'];
+                const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
                 const order = navbarMenuOrder || defaultOrder;
 
                 const items = order
-                  .filter(key => key !== 'contact')
+                  .filter(key => key !== 'contact' && key !== 'tools')
                   .map(key => allItemsMap[key])
                   .filter(item => {
                     if (!item) return false;
@@ -227,6 +229,23 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   );
                 });
 
+                // Add tools menu if in order
+                if (order.includes('tools')) {
+                  menuItems.push(
+                    <div key="tools-menu" className="space-y-1">
+                      <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เครื่องมือ</div>
+                      <Link 
+                        onClick={() => setOpen(false)} 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                        href="/tools/2fa"
+                      >
+                        <Shield className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                        2FA
+                      </Link>
+                    </div>
+                  );
+                }
+
                 // Add contact menu if enabled and in order
                 if (order.includes('contact') && navbarMenus.contact !== false) {
                   menuItems.push(
@@ -239,6 +258,16 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                         <Mail className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
                         {navbarMenuLabels?.contact || 'ติดต่อเรา'}
                       </Link>
+                      {isLoggedIn && (
+                        <Link 
+                          onClick={() => setOpen(false)} 
+                          className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11" 
+                          href="/account/tickets"
+                        >
+                          <MessageSquare className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
+                          Ticket Support
+                        </Link>
+                      )}
                       <Link 
                         onClick={() => setOpen(false)} 
                         className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11" 

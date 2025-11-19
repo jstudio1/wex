@@ -690,7 +690,7 @@ export default function ProductPricingPage() {
         <CardHeader>
           <CardTitle className="text-white">ตั้งค่าราคาแนะนำ</CardTitle>
           <CardDescription className="text-gray-400">
-            เลือกราคาที่ต้องการให้แสดงเป็น "แนะนำ" ในหน้ารายละเอียดสินค้า
+            เลือกราคาที่ต้องการให้แสดงเป็น &quot;แนะนำ&quot; ในหน้ารายละเอียดสินค้า
           </CardDescription>
         </CardHeader>
         <CardContent>

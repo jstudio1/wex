@@ -22,7 +22,7 @@ const NAVBAR_MENU_KEYS = [
   'NAVBAR_MENU_ORDER',
 ];
 
-const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'contact'] as const;
+const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
 
 async function getNavbarMenus() {
   try {
@@ -74,6 +74,7 @@ async function getNavbarMenus() {
       premiumApp: getNavbarSetting('NAVBAR_MENU_PREMIUM_APP', true),
       cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', true),
       contact: getNavbarSetting('NAVBAR_MENU_CONTACT', true),
+      blog: true,
       menuOrder,
       menuLabels: {
         products: map.NAVBAR_MENU_LABEL_PRODUCTS || 'เติมเกม',
@@ -92,6 +93,7 @@ async function getNavbarMenus() {
       premiumApp: true,
       cashcard: true,
       contact: true,
+      blog: true,
       menuOrder: [...DEFAULT_MENU_ORDER],
       menuLabels: {
         products: 'เติมเกม',

@@ -19,7 +19,7 @@
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["lib/*"],
-      "@/types": ["types/index.ts"],
+      "@/types/*": ["types/*"],
       "@/components/*": ["components/*"],
       "@/hooks/*": ["hooks/*"]
     }

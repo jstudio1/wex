@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -29,6 +29,9 @@ import CashcardContent from '@/components/backoffice/CashcardContent';
 import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
 import TopupHistoryContent from '@/components/backoffice/TopupHistoryContent';
 import AdminLoginForm from '@/components/backoffice/AdminLoginForm';
+import TicketsContent from '@/components/backoffice/TicketsContent';
+import BlogPostsContent from '@/components/backoffice/BlogPostsContent';
+import BlogCategoriesContent from '@/components/backoffice/BlogCategoriesContent';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Empty,
@@ -135,6 +138,26 @@ const menuSections: MenuSection[] = [
     ]
   },
   {
+    label: 'ซัพพอร์ต',
+    items: [
+      { id: 'tickets', label: 'จัดการ Ticket', icon: MessageSquare },
+    ]
+  },
+  {
+    label: 'บทความ',
+    items: [
+      { 
+        id: 'blog', 
+        label: 'บทความ', 
+        icon: FileText,
+        subItems: [
+          { id: 'blog-posts', label: 'จัดการบทความ' },
+          { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
+        ]
+      },
+    ]
+  },
+  {
     label: 'ผู้ใช้',
     items: [
       { id: 'users', label: 'ผู้ใช้', icon: Users },
@@ -177,7 +200,7 @@ const VALID_MENU_IDS = (() => {
 })();
 
 function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; setSelectedMenu: (id: string) => void }) {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social']));
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social', 'blog']));
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {
@@ -535,6 +558,12 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <AppPremiumContent />;
     case 'cashcard':
       return <CashcardContent />;
+    case 'tickets':
+      return <TicketsContent />;
+    case 'blog-posts':
+      return <BlogPostsContent />;
+    case 'blog-categories':
+      return <BlogCategoriesContent />;
     default:
       return (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">

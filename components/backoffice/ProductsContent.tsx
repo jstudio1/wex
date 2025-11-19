@@ -324,7 +324,7 @@ export default function ProductsContent() {
 
       toast.show({ title: 'สำเร็จ', description: 'อัปเดตการตั้งค่าสำเร็จ' });
       closeEditModal();
-      await fetchData();
+        await fetchData();
     } catch (err) {
       toast.show({
         title: 'เกิดข้อผิดพลาด',
@@ -487,7 +487,7 @@ export default function ProductsContent() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        {filteredProducts.map((p) => {
+          {filteredProducts.map((p) => {
           const catsForProduct = productCategories.get(p.id) || [];
           const categoryLabels = catsForProduct
             .map((cid) => categories.find((c) => c.id === cid)?.name)
@@ -498,14 +498,14 @@ export default function ProductsContent() {
               className="flex flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#0e0e0e] to-[#050505] p-4 shadow-lg shadow-emerald-500/5"
             >
               <div className="flex items-start gap-3">
-                {p.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image_url} alt={p.name} className="h-14 w-14 rounded-xl object-cover border border-white/10" />
-                ) : (
+                    ) : (
                   <div className="h-14 w-14 rounded-xl border border-dashed border-white/10 bg-black/40 flex items-center justify-center text-xs text-white/50">
                     no img
                   </div>
-                )}
+                    )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-white line-clamp-2">{p.name}</h3>
@@ -516,16 +516,16 @@ export default function ProductsContent() {
                     )}
                   </div>
                   <p className="text-xs text-gray-400 mt-1 truncate">key: {p.key}</p>
-                </div>
-              </div>
+                    </div>
+                  </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span
+                      <span
                   className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                     p.is_published ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-gray-800 text-gray-300 border border-gray-700'
-                  }`}
-                >
-                  {p.is_published ? 'เผยแพร่' : 'ยังไม่เผยแพร่'}
-                </span>
+                        }`}
+                      >
+                        {p.is_published ? 'เผยแพร่' : 'ยังไม่เผยแพร่'}
+                      </span>
                 {categoryLabels.slice(0, 3).map((label) => (
                   <Badge key={label} variant="outline" className="border-white/15 text-gray-200">
                     {label}
@@ -535,13 +535,13 @@ export default function ProductsContent() {
                   <Badge variant="outline" className="border-white/15 text-gray-400">
                     +{categoryLabels.length - 3}
                   </Badge>
-                )}
-              </div>
+                    )}
+                  </div>
               <div className="mt-4 flex flex-col gap-2 text-xs text-gray-400">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Banner</span>
                   <span className="truncate max-w-[60%] text-right">{p.banner_url ? 'ตั้งค่าแล้ว' : '-'}</span>
-                </div>
+                  </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Icon</span>
                   <span className="truncate max-w-[60%] text-right">{p.icon_url ? 'ตั้งค่าแล้ว' : '-'}</span>
@@ -570,7 +570,7 @@ export default function ProductsContent() {
             </div>
           );
         })}
-      </div>
+        </div>
 
       {filteredProducts.length === 0 && (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-8">

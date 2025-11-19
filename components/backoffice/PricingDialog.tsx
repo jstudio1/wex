@@ -755,13 +755,13 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
               <CardHeader>
                 <CardTitle className="text-white">ตั้งค่าราคาแนะนำ</CardTitle>
                 <CardDescription className="text-gray-400">
-                  เลือกราคาที่ต้องการให้แสดงเป็น "แนะนำ" ในหน้ารายละเอียดสินค้า
+                  เลือกราคาที่ต้องการให้แสดงเป็น &quot;แนะนำ&quot; ในหน้ารายละเอียดสินค้า
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="rounded-xl border border-gray-900 bg-[#0a0a0a] overflow-hidden">
                   <Table className="min-w-[1200px]">
-                    <TableHeader>
+                      <TableHeader>
                       <TableRow className="border-gray-900 bg-white/5 hover:bg-white/5 text-gray-300">
                         <TableHead className="min-w-[40px] text-gray-300"></TableHead>
                         <TableHead className="min-w-[120px] text-gray-300">สถานะ</TableHead>
@@ -774,10 +774,10 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                         <TableHead className="min-w-[120px] text-gray-300">Markup ฿</TableHead>
                         <TableHead className="min-w-[120px] text-right text-gray-300">จัดการ</TableHead>
                         <TableHead className="min-w-[120px] text-center text-gray-300">ราคาสิทธิ์</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map((item) => (
                         <TableRow
                           key={item.id}
                           className={`border-gray-900 hover:bg-white/5 transition-colors ${
@@ -806,22 +806,22 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                               <GripVertical className="size-4" />
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                id={`recommended-${item.id}`}
-                                checked={item.is_recommended}
-                                onCheckedChange={() => handleToggleRecommended(item.id, item.is_recommended)}
-                              />
-                              {item.is_recommended && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id={`recommended-${item.id}`}
+                                  checked={item.is_recommended}
+                                  onCheckedChange={() => handleToggleRecommended(item.id, item.is_recommended)}
+                                />
+                                {item.is_recommended && (
                                 <Badge className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/40 text-xs px-2 py-0.5">
                                   <Star className="size-3 mr-1 text-emerald-200" />
-                                  แนะนำ
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
+                                    แนะนำ
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
                             <Input
                               type="text"
                               value={item.name}
@@ -834,8 +834,8 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                               placeholder="ชื่อแพ็กเกจ"
                               className={`${darkInputClass} w-full min-w-[220px]`}
                             />
-                          </TableCell>
-                          <TableCell>
+                            </TableCell>
+                            <TableCell>
                             <Input
                               type="text"
                               value={item.sku}
@@ -879,19 +879,19 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                                 className={`${darkInputClass} w-full min-w-[240px] text-sm font-mono`}
                               />
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
                               value={
                                 item.public_price === null || item.public_price === undefined
                                   ? ''
                                   : String(item.public_price)
                               }
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
                                   setItems((prevItems) =>
                                     prevItems.map((i) => {
                                       if (i.id !== item.id) return i;
@@ -915,21 +915,21 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                                         agent_cost_price: recalculatedCost,
                                       };
                                     }),
-                                  );
-                                }
-                              }}
+                                    );
+                                  }
+                                }}
                               placeholder="0.00"
                               className={`${darkInputClass} w-full min-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
                               value={item.agent_cost_price ?? item.price}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
                                   setItems((prevItems) =>
                                     prevItems.map((i) => {
                                       if (i.id !== item.id) return i;
@@ -947,54 +947,54 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                                           : i.agent_discount_percent,
                                       };
                                     }),
-                                  );
-                                }
-                              }}
+                                    );
+                                  }
+                                }}
                               placeholder="0.00"
                               className={`${darkInputClass} w-full min-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={item.markup_percent}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={item.markup_percent}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
                                   setItems((prevItems) =>
                                     prevItems.map((i) =>
-                                      i.id === item.id
-                                        ? { ...i, markup_percent: val === '' ? 0 : parseFloat(val) || 0 }
+                                        i.id === item.id
+                                          ? { ...i, markup_percent: val === '' ? 0 : parseFloat(val) || 0 }
                                         : i,
                                     ),
-                                  );
-                                }
-                              }}
+                                    );
+                                  }
+                                }}
                               className={`${darkInputClass} w-full min-w-[130px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={item.markup_fixed}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={item.markup_fixed}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
                                   setItems((prevItems) =>
                                     prevItems.map((i) =>
-                                      i.id === item.id
-                                        ? { ...i, markup_fixed: val === '' ? 0 : parseFloat(val) || 0 }
+                                        i.id === item.id
+                                          ? { ...i, markup_fixed: val === '' ? 0 : parseFloat(val) || 0 }
                                         : i,
                                     ),
-                                  );
-                                }
-                              }}
+                                    );
+                                  }
+                                }}
                               className={`${darkInputClass} w-full min-w-[130px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               <Button
                                 size="sm"
@@ -1021,11 +1021,11 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                               <DollarSign className="size-4" />
                               ราคา
                             </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                 </div>
               </CardContent>
             </Card>
@@ -1191,7 +1191,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                     className="border-gray-700 text-white hover:bg-gray-900"
                   >
                     ยกเลิก
-                  </Button>
+              </Button>
                   <Button
                     onClick={handleCreateItem}
                     disabled={creatingItem}
@@ -1199,7 +1199,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                   >
                     {creatingItem ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                     เพิ่มแพ็กเกจ
-                  </Button>
+              </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -1215,7 +1215,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                         <div className="text-sm text-gray-400">SKU: {selectedItemForPrice.sku}</div>
                         <div className="text-sm text-gray-500">
                           ราคาปกติ: {Number(selectedItemForPrice.agent_cost_price ?? selectedItemForPrice.price).toFixed(2)} ฿
-                        </div>
+            </div>
                       </div>
                     )}
                   </DialogDescription>

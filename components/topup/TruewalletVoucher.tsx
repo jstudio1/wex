@@ -86,7 +86,7 @@ export default function TruewalletVoucher() {
             <ol className="list-decimal list-inside space-y-1 text-gray-300">
               <li>รับซองอั่งเปา TrueWallet จากเพื่อนหรือโปรโมชั่น</li>
               <li>คัดลอกลิงก์หรือรหัสซอง</li>
-              <li>วางในช่องด้านล่างและกดปุ่ม "แลกซองและรับพ้อยต์"</li>
+              <li>วางในช่องด้านล่างและกดปุ่ม &quot;แลกซองและรับพ้อยต์&quot;</li>
             </ol>
             <p className="text-xs text-gray-400 mt-2">
               💡 <strong>ตัวอย่าง:</strong> https://gift.truemoney.com/campaign/?v=abc123xyz789 หรือแค่ abc123xyz789

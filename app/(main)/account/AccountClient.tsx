@@ -71,6 +71,14 @@ const quickActions: QuickAction[] = [
     icon: ShoppingBag,
     accent: 'from-violet-500/10 to-violet-500/25 border-violet-500/40 text-violet-200',
   },
+  {
+    id: 'tickets',
+    label: 'Ticket Support',
+    description: 'ติดตาม/สร้าง Ticket',
+    href: '/account/tickets',
+    icon: User,
+    accent: 'from-amber-500/10 to-amber-500/25 border-amber-500/40 text-amber-200',
+  },
 ];
 
 export default function AccountClient({ profile: initialProfile }: AccountClientProps) {

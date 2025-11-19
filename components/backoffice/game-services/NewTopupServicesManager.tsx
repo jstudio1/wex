@@ -21,23 +21,23 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import PricingDialog from '@/components/backoffice/PricingDialog';
 
 type Product = {
-  id: number;
-  name: string;
-  key: string;
-  is_published: boolean;
-  image_url: string | null;
-  banner_url: string | null;
-  icon_url: string | null;
-  badge_enabled: boolean;
-  badge_percent: number | null;
-  badge_text: string | null;
-  badge_apply_price: boolean;
+	id: number;
+	name: string;
+	key: string;
+	is_published: boolean;
+	image_url: string | null;
+	banner_url: string | null;
+	icon_url: string | null;
+	badge_enabled: boolean;
+	badge_percent: number | null;
+	badge_text: string | null;
+	badge_apply_price: boolean;
 };
 
 type Category = {
-  id: number;
-  name: string;
-  slug: string;
+	id: number;
+	name: string;
+	slug: string;
 };
 
 type ProductCategoryMap = Map<number, number[]>;
@@ -81,16 +81,16 @@ const defaultForm: ProductFormState = {
 
 export default function NewTopupServicesManager() {
   const toast = useToast();
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [syncing, setSyncing] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [productCategories, setProductCategories] = useState<ProductCategoryMap>(new Map());
+	const [products, setProducts] = useState<Product[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [productCategories, setProductCategories] = useState<ProductCategoryMap>(new Map());
 
-  const [filter, setFilter] = useState<'all' | 'published' | 'unpublished'>('all');
-  const [query, setQuery] = useState('');
+	const [filter, setFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+	const [query, setQuery] = useState('');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -104,57 +104,57 @@ export default function NewTopupServicesManager() {
   const [discountSaving, setDiscountSaving] = useState(false);
   const [discountSearch, setDiscountSearch] = useState('');
 
-  useEffect(() => {
-    fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+	useEffect(() => {
+		fetchAll();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filter]);
 
-  const fetchAll = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+	const fetchAll = async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const [p, c, pc] = await Promise.all([
-        fetch(`/api/admin/products?filter=${filter}`, { signal: controller.signal }),
-        fetch('/api/admin/categories', { signal: controller.signal }),
-        fetch('/api/admin/products/categories', { signal: controller.signal }),
-      ]);
+			const [p, c, pc] = await Promise.all([
+				fetch(`/api/admin/products?filter=${filter}`, { signal: controller.signal }),
+				fetch('/api/admin/categories', { signal: controller.signal }),
+				fetch('/api/admin/products/categories', { signal: controller.signal }),
+			]);
 
-      clearTimeout(timeoutId);
+			clearTimeout(timeoutId);
 
-      if (!p.ok) throw new Error((await p.json().catch(() => ({}))).error || 'โหลดบริการไม่สำเร็จ');
-      if (!c.ok) throw new Error((await c.json().catch(() => ({}))).error || 'โหลดหมวดหมู่ไม่สำเร็จ');
+			if (!p.ok) throw new Error((await p.json().catch(() => ({}))).error || 'โหลดบริการไม่สำเร็จ');
+			if (!c.ok) throw new Error((await c.json().catch(() => ({}))).error || 'โหลดหมวดหมู่ไม่สำเร็จ');
 
-      const pj = await p.json();
-      const cj = await c.json();
-      const pcj = pc.ok ? await pc.json() : { data: [] };
+			const pj = await p.json();
+			const cj = await c.json();
+			const pcj = pc.ok ? await pc.json() : { data: [] };
 
-      setProducts(pj.data || []);
-      setCategories(cj.data || []);
+			setProducts(pj.data || []);
+			setCategories(cj.data || []);
 
-      const map: ProductCategoryMap = new Map();
-      for (const row of pcj.data || []) {
-        const pid = row.product_id as number;
-        const cid = row.category_id as number;
-        const arr = map.get(pid) || [];
-        arr.push(cid);
-        map.set(pid, arr);
-      }
-      setProductCategories(map);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
-      setProducts([]);
-      setCategories([]);
-      setProductCategories(new Map());
-    } finally {
-      setLoading(false);
-    }
-  };
+			const map: ProductCategoryMap = new Map();
+			for (const row of pcj.data || []) {
+				const pid = row.product_id as number;
+				const cid = row.category_id as number;
+				const arr = map.get(pid) || [];
+				arr.push(cid);
+				map.set(pid, arr);
+			}
+			setProductCategories(map);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+			setProducts([]);
+			setCategories([]);
+			setProductCategories(new Map());
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
     const list = products.filter((p) =>
       filter === 'all'
         ? true
@@ -167,30 +167,30 @@ export default function NewTopupServicesManager() {
   }, [products, query, filter]);
 
   const runSync = async () => {
-    setSyncing(true);
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
-      const res = await fetch('/api/admin/products/sync', { method: 'POST', signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'Sync ไม่สำเร็จ');
-      }
+		setSyncing(true);
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 120000);
+			const res = await fetch('/api/admin/products/sync', { method: 'POST', signal: controller.signal });
+			clearTimeout(timeoutId);
+			if (!res.ok) {
+				const j = await res.json().catch(() => ({}));
+				throw new Error(j.error || 'Sync ไม่สำเร็จ');
+			}
       toast.show({ title: 'Sync สำเร็จ', description: 'รีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว' });
-      await fetchAll();
+			await fetchAll();
       return true;
-    } catch (err) {
+		} catch (err) {
       toast.show({
         title: 'Sync ไม่สำเร็จ',
         description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
         variant: 'destructive',
       });
       return false;
-    } finally {
-      setSyncing(false);
-    }
-  };
+		} finally {
+			setSyncing(false);
+		}
+	};
 
   const fetchDiscountProviders = useCallback(async () => {
     setDiscountLoading(true);
@@ -298,14 +298,14 @@ export default function NewTopupServicesManager() {
     }
   };
 
-  const handlePublishAll = async () => {
-    if (!confirm('คุณต้องการเผยแพร่ทุกเกมที่ยังไม่เผยแพร่หรือไม่?')) return;
-    try {
-      const res = await fetch('/api/admin/products/publish-all', { method: 'POST' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'เผยแพร่ไม่สำเร็จ');
-      }
+	const handlePublishAll = async () => {
+		if (!confirm('คุณต้องการเผยแพร่ทุกเกมที่ยังไม่เผยแพร่หรือไม่?')) return;
+		try {
+			const res = await fetch('/api/admin/products/publish-all', { method: 'POST' });
+			if (!res.ok) {
+				const j = await res.json().catch(() => ({}));
+				throw new Error(j.error || 'เผยแพร่ไม่สำเร็จ');
+			}
       toast.show({ title: 'เผยแพร่สำเร็จ', description: 'เผยแพร่ทุกเกมแล้ว' });
       await fetchAll();
     } catch (err) {
@@ -384,13 +384,13 @@ export default function NewTopupServicesManager() {
 
       toast.show({ title: 'บันทึกสำเร็จ', description: 'อัปเดตบริการเรียบร้อย' });
       closeEditModal();
-      await fetchAll();
-    } catch (err) {
+			await fetchAll();
+		} catch (err) {
       toast.show({ title: 'เกิดข้อผิดพลาด', description: err instanceof Error ? err.message : 'ไม่สามารถบันทึกได้', variant: 'destructive' });
     } finally {
       setEditSaving(false);
-    }
-  };
+		}
+	};
 
   const renderSkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
@@ -414,30 +414,30 @@ export default function NewTopupServicesManager() {
     </div>
   );
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-white">จัดการบริการเติมเกม</h2>
-          <p className="text-sm text-gray-400">จัดการรายการสินค้าต่างๆ</p>
-        </div>
-        <div className="flex items-center gap-2">
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between flex-wrap gap-3">
+				<div>
+					<h2 className="text-2xl font-bold text-white">จัดการบริการเติมเกม</h2>
+					<p className="text-sm text-gray-400">จัดการรายการสินค้าต่างๆ</p>
+				</div>
+				<div className="flex items-center gap-2">
           <Button variant="outline" onClick={handlePublishAll} disabled={loading}>
-            เผยแพร่ทุกเกม
+						เผยแพร่ทุกเกม
           </Button>
           <Button variant="outline" onClick={() => setDiscountDialogOpen(true)} disabled={syncing}>
-            {syncing ? 'กำลังซิงก์...' : 'Sync จากผู้ให้บริการ'}
+						{syncing ? 'กำลังซิงก์...' : 'Sync จากผู้ให้บริการ'}
           </Button>
-        </div>
-      </div>
+				</div>
+			</div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[220px] max-w-md">
           <InputGroup>
             <InputGroupInput
-              placeholder="ค้นหาชื่อหรือคีย์บริการ..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+					placeholder="ค้นหาชื่อหรือคีย์บริการ..."
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
             />
             <InputGroupAddon>
               <SearchIcon size={16} />
@@ -448,36 +448,36 @@ export default function NewTopupServicesManager() {
           <Button
             type="button"
             variant={filter === 'all' ? 'default' : 'outline'}
-            onClick={() => setFilter('all')}
-          >
-            ทั้งหมด
+						onClick={() => setFilter('all')}
+					>
+						ทั้งหมด
           </Button>
           <Button
             type="button"
             variant={filter === 'published' ? 'default' : 'outline'}
-            onClick={() => setFilter('published')}
-          >
-            ที่เผยแพร่
+						onClick={() => setFilter('published')}
+					>
+						ที่เผยแพร่
           </Button>
           <Button
             type="button"
             variant={filter === 'unpublished' ? 'default' : 'outline'}
-            onClick={() => setFilter('unpublished')}
-          >
-            ที่ไม่เผยแพร่
+						onClick={() => setFilter('unpublished')}
+					>
+						ที่ไม่เผยแพร่
           </Button>
-        </div>
-      </div>
+				</div>
+			</div>
 
-      {error && (
-        <div className="p-3 rounded border border-red-800 bg-red-900/30 text-sm text-red-400">
-          {error}
-        </div>
-      )}
+			{error && (
+				<div className="p-3 rounded border border-red-800 bg-red-900/30 text-sm text-red-400">
+					{error}
+				</div>
+			)}
 
-      {loading ? (
+				{loading ? (
         renderSkeleton()
-      ) : filtered.length === 0 ? (
+				) : filtered.length === 0 ? (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-8">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -487,27 +487,27 @@ export default function NewTopupServicesManager() {
             <EmptyDescription>ลองค้นหาด้วยคำอื่น หรือซิงก์ข้อมูลอีกครั้ง</EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : (
+				) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          {filtered.map((p) => {
+						{filtered.map((p) => {
             const catsForProduct = productCategories.get(p.id) || [];
             const labels = catsForProduct
               .map((cid) => categories.find((c) => c.id === cid)?.name)
               .filter(Boolean) as string[];
-            return (
+							return (
               <div
                 key={p.id}
                 className="flex flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#111] to-[#050505] p-4 shadow-lg shadow-emerald-500/5"
               >
                 <div className="flex items-start gap-3">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+										{p.image_url ? (
+											// eslint-disable-next-line @next/next/no-img-element
                     <img src={p.image_url} alt={p.name} className="h-14 w-14 rounded-xl object-cover border border-white/10" />
-                  ) : (
+										) : (
                     <div className="h-14 w-14 rounded-xl border border-dashed border-white/10 bg-black/40 flex items-center justify-center text-xs text-white/50">
                       no img
                     </div>
-                  )}
+										)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-white line-clamp-2">{p.name}</h3>
@@ -516,18 +516,18 @@ export default function NewTopupServicesManager() {
                           {p.badge_text || `${p.badge_percent ?? 0}% OFF`}
                         </Badge>
                       )}
-                    </div>
+										</div>
                     <p className="text-xs text-gray-400 mt-1 truncate">key: {p.key}</p>
-                  </div>
-                </div>
+										</div>
+									</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
                       p.is_published ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-gray-800 text-gray-300 border border-gray-700'
                     }`}
                   >
-                    {p.is_published ? 'เผยแพร่' : 'ยังไม่เผยแพร่'}
-                  </span>
+											{p.is_published ? 'เผยแพร่' : 'ยังไม่เผยแพร่'}
+										</span>
                   {labels.slice(0, 3).map((label) => (
                     <Badge key={label} variant="outline" className="border-white/15 text-gray-200">
                       {label}
@@ -538,17 +538,17 @@ export default function NewTopupServicesManager() {
                       +{labels.length - 3}
                     </Badge>
                   )}
-                </div>
+									</div>
                 <div className="mt-4 flex flex-col gap-2 text-xs text-gray-400">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Banner</span>
                     <span className="truncate max-w-[60%] text-right">{p.banner_url ? 'ตั้งค่าแล้ว' : '-'}</span>
-                  </div>
+											</div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Icon ราคา</span>
                     <span className="truncate max-w-[60%] text-right">{p.icon_url ? 'ตั้งค่าแล้ว' : '-'}</span>
-                  </div>
-                </div>
+											</div>
+										</div>
                 <div className="mt-auto flex flex-col gap-2 pt-4">
                   <Button
                     variant="secondary"
@@ -568,12 +568,12 @@ export default function NewTopupServicesManager() {
                 >
                   ตั้งค่าราคา
                 </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				)}
 
       <Dialog
         open={editDialogOpen}
@@ -805,7 +805,7 @@ export default function NewTopupServicesManager() {
                     )}
                   </tbody>
                 </table>
-              </div>
+			</div>
             </div>
           )}
           <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
@@ -834,8 +834,8 @@ export default function NewTopupServicesManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+		</div>
+	);
 }
 
 

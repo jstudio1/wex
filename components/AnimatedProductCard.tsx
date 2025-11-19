@@ -59,7 +59,8 @@ function CountdownBadge({ flashStart, flashEnd }: { flashStart?: string | null; 
 }
 
 export default function AnimatedProductCard({ product: p, isHighlight = false, index = 0, flashStart, flashEnd, noAnimation = false }: Props & { noAnimation?: boolean }) {
-  const { ref, isVisible } = noAnimation ? { ref: null, isVisible: true } : useScrollAnimation();
+  const scrollAnimation = useScrollAnimation();
+  const { ref, isVisible } = noAnimation ? { ref: null, isVisible: true } : scrollAnimation;
   const manualPercent = typeof p.badge?.percent === 'number' ? Math.round(Number(p.badge?.percent)) : null;
   const manualText = p.badge?.text?.trim();
   const badgeText = manualText && manualText.length
