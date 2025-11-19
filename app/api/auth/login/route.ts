@@ -9,9 +9,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const parsed = loginSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ 
+        error: 'invalid_payload', 
+        message: 'กรุณากรอกชื่อผู้ใช้หรืออีเมลและรหัสผ่านให้ถูกต้อง' 
+      }, { status: 400 });
+    }
 
-    const { username, password, recaptchaToken } = parsed.data;
+    const { usernameOrEmail, password, recaptchaToken } = parsed.data;
 
     // Verify reCaptcha if enabled
     if (recaptchaToken) {
@@ -21,13 +26,27 @@ export async function POST(req: Request) {
       }
     }
     const sb = createServiceClient();
-    const { data: user, error } = await sb
+    
+    // ตรวจสอบว่าเป็น email หรือ username
+    const isEmail = usernameOrEmail.includes('@');
+    let query = sb
       .from('users')
-      .select('id, username, password_hash, is_active')
-      .eq('username', username)
-      .maybeSingle();
+      .select('id, username, password_hash, is_active, email');
+    
+    if (isEmail) {
+      query = query.eq('email', usernameOrEmail);
+    } else {
+      query = query.eq('username', usernameOrEmail);
+    }
+    
+    const { data: user, error } = await query.maybeSingle();
     if (error) return NextResponse.json({ error: 'db_error' }, { status: 500 });
-    if (!user) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ 
+        error: 'invalid_credentials', 
+        message: 'ไม่พบผู้ใช้ในระบบ กรุณาตรวจสอบชื่อผู้ใช้หรืออีเมล' 
+      }, { status: 401 });
+    }
 
     // ตรวจสอบว่าผู้ใช้ถูกปิดใช้งานหรือไม่
     if (user.is_active === false) {
@@ -35,7 +54,12 @@ export async function POST(req: Request) {
     }
 
     const ok = await verifyPassword(password, user.password_hash as string);
-    if (!ok) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+    if (!ok) {
+      return NextResponse.json({ 
+        error: 'invalid_credentials', 
+        message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' 
+      }, { status: 401 });
+    }
 
     const token = await signJwt({ sub: String(user.id), username: user.username });
     const res = NextResponse.json({ user: { id: user.id, username: user.username } });

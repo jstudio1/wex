@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
 
-    const { username, password, recaptchaToken } = parsed.data;
+    const { username, password, firstName, lastName, email, phone, recaptchaToken } = parsed.data;
 
     // Verify reCaptcha if enabled
     if (recaptchaToken) {
@@ -34,18 +34,35 @@ export async function POST(req: Request) {
     }
     const password_hash = await hashPassword(password);
 
-    const { data: existing, error: findErr } = await sb
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
-    if (findErr) return NextResponse.json({ error: 'db_error' }, { status: 500 });
-    if (existing) return NextResponse.json({ error: 'username_taken' }, { status: 409 });
+    // ตรวจสอบ username และ email ซ้ำ
+    const [usernameCheck, emailCheck] = await Promise.all([
+      sb.from('users').select('id').eq('username', username).maybeSingle(),
+      sb.from('users').select('id').eq('email', email).maybeSingle(),
+    ]);
+    
+    if (usernameCheck.error || emailCheck.error) {
+      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    }
+    
+    if (usernameCheck.data) {
+      return NextResponse.json({ error: 'username_taken' }, { status: 409 });
+    }
+    
+    if (emailCheck.data) {
+      return NextResponse.json({ error: 'email_taken' }, { status: 409 });
+    }
 
     const { data, error } = await sb
       .from('users')
-      .insert({ username, password_hash })
-      .select('id, username')
+      .insert({ 
+        username, 
+        password_hash,
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        phone: phone || null
+      })
+      .select('id, username, email, first_name, last_name')
       .single();
     if (error) return NextResponse.json({ error: 'db_error' }, { status: 500 });
 

@@ -10,7 +10,7 @@ import Link from 'next/link';
 import ReCaptcha from '@/components/ReCaptcha';
 
 export default function LoginClient() {
-  const [username, setUsername] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function LoginClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          username, 
+          usernameOrEmail, 
           password,
           ...(recaptchaToken && { recaptchaToken })
         })
@@ -61,7 +61,16 @@ export default function LoginClient() {
         if (json?.error === 'recaptcha_failed') {
           throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
         }
-        throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+        if (json?.error === 'account_disabled') {
+          throw new Error(json?.message || 'บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+        }
+        if (json?.error === 'invalid_credentials') {
+          throw new Error(json?.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+        }
+        if (json?.error === 'invalid_payload') {
+          throw new Error(json?.message || 'กรุณากรอกข้อมูลให้ครบถ้วน');
+        }
+        throw new Error(json?.message || 'เข้าสู่ระบบไม่สำเร็จ');
       }
       toast.show({ title: 'สำเร็จ', description: 'เข้าสู่ระบบเรียบร้อย' });
       window.location.href = '/products';
@@ -86,8 +95,8 @@ export default function LoginClient() {
         <p className="mt-2 max-w-sm text-sm text-[color:var(--text)]/70">เข้าสู่ระบบเพื่อใช้งานเว็บไซต์</p>
         <form className="my-8" onSubmit={onSubmit}>
           <div className="mb-4 grid gap-2">
-            <Label htmlFor="username" className="text-[color:var(--text)]">ชื่อผู้ใช้</Label>
-            <Input id="username" placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Label htmlFor="usernameOrEmail" className="text-[color:var(--text)]">ชื่อผู้ใช้หรืออีเมล</Label>
+            <Input id="usernameOrEmail" placeholder="username หรือ email@example.com" value={usernameOrEmail} onChange={(e) => setUsernameOrEmail(e.target.value)} />
           </div>
           <div className="mb-6 grid gap-2">
             <Label htmlFor="password" className="text-[color:var(--text)]">รหัสผ่าน</Label>

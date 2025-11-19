@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  username: z.string().min(3),
+  usernameOrEmail: z.string().min(3), // รองรับทั้ง username และ email
   password: z.string().min(6),
   recaptchaToken: z.string().optional()
 });
 
 export const registerSchema = z.object({
-  username: z.string().min(3),
+  username: z.string().min(3).max(50),
   password: z.string().min(6),
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.string().email().max(255),
+  phone: z.string().min(10).max(20).optional(),
   recaptchaToken: z.string().optional()
 });
 

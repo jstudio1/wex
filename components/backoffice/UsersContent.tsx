@@ -283,16 +283,16 @@ export default function UsersContent() {
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user.id} className="border-b border-gray-800 hover:bg-gray-900/30">
+                  <tr key={user.id} className="border-b border-gray-800 hover:bg-gray-900/30">
                   <td className="p-3">
-                    <span className="text-white">{user.username || '-'}</span>
+                        <span className="text-white">{user.username || '-'}</span>
                   </td>
                   <td className="p-3">
                     <span className="text-white">{Number(user.points || 0).toFixed(2)}</span>
-                  </td>
+                    </td>
                   <td className="p-3">
                     <Badge
-                      variant="outline"
+                              variant="outline"
                       className={
                         user.is_active
                           ? 'border-green-600 text-green-400 bg-green-900/30'
@@ -301,34 +301,34 @@ export default function UsersContent() {
                     >
                       {user.is_active ? 'ใช้งาน' : 'ปิดใช้งาน'}
                     </Badge>
-                  </td>
+                    </td>
                   <td className="p-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        user.is_admin
-                          ? 'border-purple-600 text-purple-400 bg-purple-900/30'
-                          : 'border-gray-700 text-gray-300 bg-gray-800'
-                      }
-                    >
-                      {user.is_admin ? 'Admin' : 'User'}
-                    </Badge>
-                  </td>
+                        <Badge
+                          variant="outline"
+                          className={
+                            user.is_admin
+                              ? 'border-purple-600 text-purple-400 bg-purple-900/30'
+                              : 'border-gray-700 text-gray-300 bg-gray-800'
+                          }
+                        >
+                          {user.is_admin ? 'Admin' : 'User'}
+                        </Badge>
+                    </td>
                   <td className="p-3 text-gray-400">
-                    {new Date(user.created_at).toLocaleDateString('th-TH')}
-                  </td>
+                      {new Date(user.created_at).toLocaleDateString('th-TH')}
+                    </td>
                   <td className="p-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(user)}
-                      className="border-gray-700 text-gray-300 hover:bg-gray-800"
-                    >
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(user)}
+                            className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                          >
                       <Edit className="size-3 mr-1" />
                       แก้ไข
-                    </Button>
-                  </td>
-                </tr>
+                          </Button>
+                    </td>
+                  </tr>
               ))
             )}
           </tbody>

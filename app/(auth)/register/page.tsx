@@ -13,6 +13,10 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [repassword, setRepassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -70,6 +74,10 @@ export default function RegisterPage() {
         body: JSON.stringify({ 
           username, 
           password,
+          firstName,
+          lastName,
+          email,
+          phone: phone || undefined,
           ...(recaptchaToken && { recaptchaToken })
         })
       });
@@ -81,7 +89,13 @@ export default function RegisterPage() {
         if (json.error === 'recaptcha_failed') {
           throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
         }
-        throw new Error(json.error === 'username_taken' ? 'ชื่อผู้ใช้นี้ถูกใช้งานแล้ว' : 'สมัครสมาชิกไม่สำเร็จ');
+        if (json.error === 'username_taken') {
+          throw new Error('ชื่อผู้ใช้นี้ถูกใช้งานแล้ว');
+        }
+        if (json.error === 'email_taken') {
+          throw new Error('อีเมลนี้ถูกใช้งานแล้ว');
+        }
+        throw new Error('สมัครสมาชิกไม่สำเร็จ');
       }
       toast.show({ title: 'สำเร็จ', description: 'สมัครสมาชิกเรียบร้อย โปรดเข้าสู่ระบบ' });
       window.location.href = '/login';
@@ -114,16 +128,32 @@ export default function RegisterPage() {
         <p className="mt-2 max-w-sm text-sm text-[color:var(--text)]/70">สร้างบัญชีใหม่เพื่อเริ่มต้นใช้งาน</p>
         <form onSubmit={onSubmit} className="my-8">
           <div className="mb-4 grid gap-2">
+            <Label htmlFor="firstName" className="text-[color:var(--text)]">ชื่อ</Label>
+            <Input id="firstName" placeholder="ชื่อ" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          </div>
+          <div className="mb-4 grid gap-2">
+            <Label htmlFor="lastName" className="text-[color:var(--text)]">นามสกุล</Label>
+            <Input id="lastName" placeholder="นามสกุล" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+          </div>
+          <div className="mb-4 grid gap-2">
             <Label htmlFor="username" className="text-[color:var(--text)]">ชื่อผู้ใช้</Label>
-            <Input id="username" placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Input id="username" placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+          </div>
+          <div className="mb-4 grid gap-2">
+            <Label htmlFor="email" className="text-[color:var(--text)]">อีเมล</Label>
+            <Input id="email" type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="mb-4 grid gap-2">
+            <Label htmlFor="phone" className="text-[color:var(--text)]">เบอร์โทรศัพท์ (ไม่บังคับ)</Label>
+            <Input id="phone" type="tel" placeholder="0812345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div className="mb-4 grid gap-2">
             <Label htmlFor="password" className="text-[color:var(--text)]">รหัสผ่าน</Label>
-            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <div className="mb-6 grid gap-2">
             <Label htmlFor="repassword" className="text-[color:var(--text)]">ยืนยันรหัสผ่าน</Label>
-            <Input id="repassword" type="password" placeholder="••••••••" value={repassword} onChange={(e) => setRepassword(e.target.value)} />
+            <Input id="repassword" type="password" placeholder="••••••••" value={repassword} onChange={(e) => setRepassword(e.target.value)} required />
           </div>
           {recaptchaEnabled && recaptchaSiteKey && (
             <div className="mb-4">

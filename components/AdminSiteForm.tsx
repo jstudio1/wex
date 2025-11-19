@@ -13,8 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import PolicyContent from '@/components/backoffice/PolicyContent';
 
 type SiteData = { 
   title: string; 
@@ -76,6 +77,18 @@ type SiteData = {
   recaptchaSecretKey?: string;
   recaptchaEnabled?: boolean;
   termsPolicy?: string;
+  footer?: {
+    logoUrl?: string;
+    description?: string;
+    openingHours?: string;
+    facebookUrl?: string;
+    lineUrl?: string;
+    instagramUrl?: string;
+    phone?: string;
+    email?: string;
+    workingHours?: string;
+    copyright?: string;
+  };
 };
 type AnnouncementData = { text: string; enabled: boolean };
 
@@ -134,7 +147,19 @@ export default function AdminSiteForm() {
     recaptchaSiteKey: '',
     recaptchaSecretKey: '',
     recaptchaEnabled: false,
-    termsPolicy: ''
+    termsPolicy: '',
+    footer: {
+      logoUrl: '',
+      description: '',
+      openingHours: '',
+      facebookUrl: '',
+      lineUrl: '',
+      instagramUrl: '',
+      phone: '',
+      email: '',
+      workingHours: '',
+      copyright: ''
+    }
   });
   const [postersText, setPostersText] = useState<string>('');
   const [announcement, setAnnouncement] = useState<AnnouncementData>({ text: '', enabled: false });
@@ -208,7 +233,19 @@ export default function AdminSiteForm() {
           recaptchaSiteKey: json.recaptchaSiteKey || '',
           recaptchaSecretKey: json.recaptchaSecretKey || '',
           recaptchaEnabled: json.recaptchaEnabled === true,
-          termsPolicy: json.termsPolicy || ''
+          termsPolicy: json.termsPolicy || '',
+          footer: json.footer || {
+            logoUrl: '',
+            description: '',
+            openingHours: '',
+            facebookUrl: '',
+            lineUrl: '',
+            instagramUrl: '',
+            phone: '',
+            email: '',
+            workingHours: '',
+            copyright: ''
+          }
         });
         setPostersText((json.posters || []).join('\n'));
         
@@ -301,7 +338,19 @@ export default function AdminSiteForm() {
           recaptchaSiteKey: form.recaptchaSiteKey || '',
           recaptchaSecretKey: form.recaptchaSecretKey || '',
           recaptchaEnabled: form.recaptchaEnabled === true,
-          termsPolicy: form.termsPolicy || ''
+          termsPolicy: form.termsPolicy || '',
+          footer: form.footer || {
+            logoUrl: '',
+            description: '',
+            openingHours: '',
+            facebookUrl: '',
+            lineUrl: '',
+            instagramUrl: '',
+            phone: '',
+            email: '',
+            workingHours: '',
+            copyright: ''
+          }
         })
       });
       if (!res.ok) throw new Error('บันทึกไม่สำเร็จ');
@@ -399,6 +448,14 @@ export default function AdminSiteForm() {
         <TabsTrigger value="site-settings" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
           <Wrench className="size-4 shrink-0" />
           <span className="hidden sm:inline">ตั้งค่าเว็บ</span>
+        </TabsTrigger>
+        <TabsTrigger value="policy" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
+          <FileText className="size-4 shrink-0" />
+          <span className="hidden sm:inline">ตั้งค่า Policy</span>
+        </TabsTrigger>
+        <TabsTrigger value="footer" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
+          <Settings className="size-4 shrink-0" />
+          <span className="hidden sm:inline">Footer</span>
         </TabsTrigger>
       </TabsList>
 
@@ -671,14 +728,14 @@ export default function AdminSiteForm() {
               >
                 <div className="flex items-center gap-3">
                   {isInOrder && (
-                    <div 
-                      className="flex items-center gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <GripVertical className={`size-5 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
-                    </div>
+                <div 
+                  className="flex items-center gap-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className={`size-5 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
+        </div>
                   )}
-                  
+                
                   <div className="flex-1 space-y-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -702,29 +759,29 @@ export default function AdminSiteForm() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div>
+          <div>
                         <p className="text-xs text-[color:var(--text)]/50">
-                          {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
+                      {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
                           {isInOrder && ` • ลำดับที่ ${orderIndex + 1}`}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={(checked) => {
-                          const key = menu.key as keyof typeof form.navbarMenus;
-                          setForm({
-                            ...form,
-                            navbarMenus: { 
-                              ...(form.navbarMenus || {}),
-                              [key]: checked
-                            } as typeof form.navbarMenus
-                          });
-                        }}
-                      />
+                    </p>
+          </div>
+          <Switch
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => {
+                      const key = menu.key as keyof typeof form.navbarMenus;
+                      setForm({
+              ...form,
+              navbarMenus: { 
+                          ...(form.navbarMenus || {}),
+                          [key]: checked
+                        } as typeof form.navbarMenus
+                      });
+                    }}
+          />
                     </div>
                   </div>
-                </div>
-              </div>
+        </div>
+          </div>
             );
           });
         })()}
@@ -1334,33 +1391,160 @@ export default function AdminSiteForm() {
             )}
           </div>
 
-          {/* Policy Pages */}
+          <Button disabled={saving} type="submit" className="w-full sm:w-auto">
+            {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+          </Button>
+        </form>
+      </TabsContent>
+
+      {/* Policy Settings */}
+      <TabsContent value="policy" className="space-y-4">
+        <PolicyContent />
+      </TabsContent>
+
+      {/* Footer */}
+      <TabsContent value="footer" className="space-y-4">
+        <form onSubmit={onSubmit} className="card p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">ตั้งค่า Footer</h2>
+            <p className="text-sm text-[color:var(--text)]/60">จัดการข้อมูลที่จะแสดงใน Footer ของเว็บไซต์</p>
+          </div>
+
+          {/* Logo & Description */}
           <div className="pt-4 border-t border-white/10 space-y-4">
             <div>
-              <h3 className="text-base font-semibold mb-2">หน้าข้อกำหนดและนโยบาย</h3>
-              <p className="text-xs text-gray-400 mb-4">ตั้งค่าเนื้อหาสำหรับหน้า Terms Policy</p>
+              <h3 className="text-md font-semibold mb-2">โลโก้และคำอธิบาย</h3>
             </div>
+            <div>
+              <Label htmlFor="footer-logo-url">URL โลโก้</Label>
+              <Input
+                id="footer-logo-url"
+                className="mt-1"
+                value={form.footer?.logoUrl || ''}
+                onChange={(e) => setForm({ ...form, footer: { ...form.footer, logoUrl: e.target.value } })}
+                placeholder="https://example.com/logo.png"
+              />
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">URL ของโลโก้ที่จะแสดงใน Footer</p>
+            </div>
+            <div>
+              <Label htmlFor="footer-description">คำอธิบายเว็บ</Label>
+              <Textarea
+                id="footer-description"
+                className="mt-1 h-24"
+                value={form.footer?.description || ''}
+                onChange={(e) => setForm({ ...form, footer: { ...form.footer, description: e.target.value } })}
+                placeholder="เว็บเติมเกมอันดับ 1 ราคาถูกที่สุด เติมเร็ว ปลอดภัย บริการตลอด 24 ชั่วโมง"
+                maxLength={200}
+              />
+              <p className="text-xs text-[color:var(--text)]/50 mt-1">คำอธิบายสั้นๆ เกี่ยวกับเว็บไซต์ ({form.footer?.description?.length || 0}/200)</p>
+            </div>
+            <div>
+              <Label htmlFor="footer-opening-hours">เวลาเปิด-ปิดบริการ</Label>
+              <Input
+                id="footer-opening-hours"
+                className="mt-1"
+                value={form.footer?.openingHours || ''}
+                onChange={(e) => setForm({ ...form, footer: { ...form.footer, openingHours: e.target.value } })}
+                placeholder="เปิดบริการ 24 ชั่วโมง"
+              />
+            </div>
+          </div>
 
-            <div className="space-y-4 p-4 rounded-lg border border-gray-800 bg-gray-900/30">
-              <div className="grid gap-2">
-                <Label htmlFor="terms-policy" className="text-sm font-medium">
-                  Terms Policy (ข้อกำหนดการใช้งาน)
-                </Label>
-                <Textarea
-                  id="terms-policy"
-                  value={form.termsPolicy || ''}
-                  onChange={(e) => setForm({ ...form, termsPolicy: e.target.value })}
-                  placeholder="กรอกเนื้อหา Terms Policy..."
-                  rows={10}
-                  className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/30"
+          {/* Social Media */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2">Social Media</h3>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <Label htmlFor="footer-facebook-url">Facebook URL</Label>
+                <Input
+                  id="footer-facebook-url"
+                  className="mt-1"
+                  type="url"
+                  value={form.footer?.facebookUrl || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, facebookUrl: e.target.value } })}
+                  placeholder="https://facebook.com/yourpage"
                 />
-                <p className="text-xs text-gray-400">เนื้อหาจะแสดงในหน้า /terms-policy</p>
+              </div>
+              <div>
+                <Label htmlFor="footer-line-url">LINE URL</Label>
+                <Input
+                  id="footer-line-url"
+                  className="mt-1"
+                  type="url"
+                  value={form.footer?.lineUrl || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, lineUrl: e.target.value } })}
+                  placeholder="https://line.me/ti/p/~lineid"
+                />
+              </div>
+              <div>
+                <Label htmlFor="footer-instagram-url">Instagram URL</Label>
+                <Input
+                  id="footer-instagram-url"
+                  className="mt-1"
+                  type="url"
+                  value={form.footer?.instagramUrl || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, instagramUrl: e.target.value } })}
+                  placeholder="https://instagram.com/yourpage"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2">ข้อมูลติดต่อ</h3>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="footer-phone">เบอร์โทรศัพท์</Label>
+                <Input
+                  id="footer-phone"
+                  className="mt-1"
+                  type="tel"
+                  value={form.footer?.phone || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, phone: e.target.value } })}
+                  placeholder="0812345678"
+                />
+              </div>
+              <div>
+                <Label htmlFor="footer-email">อีเมล</Label>
+                <Input
+                  id="footer-email"
+                  className="mt-1"
+                  type="email"
+                  value={form.footer?.email || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, email: e.target.value } })}
+                  placeholder="contact@WeXPlus.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="footer-working-hours">เวลาทำการ</Label>
+                <Input
+                  id="footer-working-hours"
+                  className="mt-1"
+                  value={form.footer?.workingHours || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, workingHours: e.target.value } })}
+                  placeholder="ติดต่อได้ 24 ชม."
+                />
+              </div>
+              <div>
+                <Label htmlFor="footer-copyright">Copyright</Label>
+                <Input
+                  id="footer-copyright"
+                  className="mt-1"
+                  value={form.footer?.copyright || ''}
+                  onChange={(e) => setForm({ ...form, footer: { ...form.footer, copyright: e.target.value } })}
+                  placeholder={`© ${new Date().getFullYear()} สิทธิ์ทั้งหมด`}
+                />
               </div>
             </div>
           </div>
 
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
-            {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+            {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า Footer'}
           </Button>
         </form>
       </TabsContent>

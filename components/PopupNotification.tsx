@@ -85,8 +85,22 @@ export default function PopupNotification() {
   if (loading || !show || !imageUrl) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative max-w-2xl w-full bg-black rounded-lg border border-white/20 shadow-2xl overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={(e) => {
+        // ปิด popup เมื่อคลิกที่ backdrop (นอก popup content)
+        if (e.target === e.currentTarget) {
+          setShow(false);
+        }
+      }}
+    >
+      <div 
+        className="relative max-w-2xl w-full bg-black rounded-lg border border-white/20 shadow-2xl overflow-hidden"
+        onClick={(e) => {
+          // ป้องกันการปิดเมื่อคลิกที่ popup content
+          e.stopPropagation();
+        }}
+      >
         <button
           onClick={() => setShow(false)}
           className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 transition-colors"

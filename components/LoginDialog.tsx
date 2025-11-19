@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 
 export default function LoginDialog() {
-  const [username, setUsername] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,10 +21,21 @@ export default function LoginDialog() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ usernameOrEmail, password })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!res.ok) {
+        if (json?.error === 'invalid_credentials') {
+          throw new Error(json?.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+        }
+        if (json?.error === 'invalid_payload') {
+          throw new Error(json?.message || 'กรุณากรอกข้อมูลให้ครบถ้วน');
+        }
+        if (json?.error === 'account_disabled') {
+          throw new Error(json?.message || 'บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+        }
+        throw new Error(json?.message || 'เข้าสู่ระบบไม่สำเร็จ');
+      }
       window.dispatchEvent(new Event('wallet:changed'));
       window.location.reload();
     } catch (err: unknown) {
@@ -34,7 +45,7 @@ export default function LoginDialog() {
     }
   }
 
-  const resetState = () => { setUsername(''); setPassword(''); setError(null); setLoading(false); };
+  const resetState = () => { setUsernameOrEmail(''); setPassword(''); setError(null); setLoading(false); };
 
   return (
     <Dialog onOpenChange={(v) => { if (!v) resetState(); }}>
@@ -56,8 +67,8 @@ export default function LoginDialog() {
           <form onSubmit={onSubmit} className="px-5 pb-5 pt-4">
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="username">ชื่อผู้ใช้</Label>
-                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" required />
+                <Label htmlFor="usernameOrEmail">ชื่อผู้ใช้หรืออีเมล</Label>
+                <Input id="usernameOrEmail" value={usernameOrEmail} onChange={(e) => setUsernameOrEmail(e.target.value)} placeholder="username หรือ email@example.com" required />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">รหัสผ่าน</Label>

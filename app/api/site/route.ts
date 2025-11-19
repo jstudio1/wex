@@ -19,7 +19,8 @@ export async function GET() {
     'SITE_BRAND_NAME','SITE_TITLE','SITE_META_DESCRIPTION',
     'MAINTENANCE_MODE','REGISTER_ENABLED',
     'RECAPTCHA_SITE_KEY','RECAPTCHA_SECRET_KEY','RECAPTCHA_ENABLED',
-    'TERMS_POLICY'
+    'TERMS_POLICY',
+    'FOOTER_LOGO_URL','FOOTER_DESCRIPTION','FOOTER_OPENING_HOURS','FOOTER_FACEBOOK_URL','FOOTER_LINE_URL','FOOTER_INSTAGRAM_URL','FOOTER_PHONE','FOOTER_EMAIL','FOOTER_WORKING_HOURS','FOOTER_COPYRIGHT'
   ]);
   const map: Record<string, string> = {};
   for (const row of data || []) map[row.key as string] = row.value as string;
@@ -124,7 +125,19 @@ export async function GET() {
     recaptchaSiteKey: map.RECAPTCHA_SITE_KEY || '',
     recaptchaSecretKey: map.RECAPTCHA_SECRET_KEY || '',
     recaptchaEnabled: map.RECAPTCHA_ENABLED === 'true',
-    termsPolicy: map.TERMS_POLICY || ''
+    termsPolicy: map.TERMS_POLICY || '',
+    footer: {
+      logoUrl: map.FOOTER_LOGO_URL || '',
+      description: map.FOOTER_DESCRIPTION || '',
+      openingHours: map.FOOTER_OPENING_HOURS || '',
+      facebookUrl: map.FOOTER_FACEBOOK_URL || '',
+      lineUrl: map.FOOTER_LINE_URL || '',
+      instagramUrl: map.FOOTER_INSTAGRAM_URL || '',
+      phone: map.FOOTER_PHONE || '',
+      email: map.FOOTER_EMAIL || '',
+      workingHours: map.FOOTER_WORKING_HOURS || '',
+      copyright: map.FOOTER_COPYRIGHT || ''
+    }
     },
     {
       headers: {
@@ -158,6 +171,7 @@ export async function POST(req: Request) {
   const recaptchaSecretKey = String(body?.recaptchaSecretKey || '').trim();
   const recaptchaEnabled = body?.recaptchaEnabled === true;
   const termsPolicy = String(body?.termsPolicy || '').trim();
+  const footer = body?.footer || {};
   const bankAccountsInput = Array.isArray(body?.bankAccounts) ? body.bankAccounts : [];
   const bankAccounts = bankAccountsInput
     .map((item: unknown) => {
@@ -250,6 +264,18 @@ export async function POST(req: Request) {
   
   // Save policy settings
   await sb.from('settings').upsert({ key: 'TERMS_POLICY', value: termsPolicy }, { onConflict: 'key' });
+  
+  // Save footer settings
+  await sb.from('settings').upsert({ key: 'FOOTER_LOGO_URL', value: String(footer.logoUrl || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_DESCRIPTION', value: String(footer.description || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_OPENING_HOURS', value: String(footer.openingHours || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_FACEBOOK_URL', value: String(footer.facebookUrl || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_LINE_URL', value: String(footer.lineUrl || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_INSTAGRAM_URL', value: String(footer.instagramUrl || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_PHONE', value: String(footer.phone || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_EMAIL', value: String(footer.email || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_WORKING_HOURS', value: String(footer.workingHours || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'FOOTER_COPYRIGHT', value: String(footer.copyright || '').trim() }, { onConflict: 'key' });
   
   // Revalidate public cache for site settings and homepage
   try {

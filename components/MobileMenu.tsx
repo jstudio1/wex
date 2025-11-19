@@ -222,15 +222,15 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
                 const menuItems = items.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link 
+              <Link 
                       key={item.href}
-                      onClick={() => setOpen(false)} 
-                      className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
+                onClick={() => setOpen(false)} 
+                className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white" 
                       href={item.href}
-                    >
+              >
                       <Icon className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
                       {item.label}
-                    </Link>
+              </Link>
                   );
                 });
 

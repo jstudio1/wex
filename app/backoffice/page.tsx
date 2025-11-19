@@ -294,8 +294,14 @@ export default function BackofficePage() {
   useEffect(() => {
     // ตรวจสอบว่าเป็น admin และล็อคอินอยู่แล้วหรือไม่
     fetch('/api/admin/check')
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          // ถ้า response ไม่ ok ให้แสดง login form โดยไม่แสดง error
+          setIsAdmin(false);
+          setCheckingAuth(false);
+          return;
+        }
+        const data = await res.json();
         if (!data.isAdmin) {
           // Not admin, show login form
           setIsAdmin(false);
@@ -306,7 +312,7 @@ export default function BackofficePage() {
         setCheckingAuth(false);
       })
       .catch(() => {
-        // Error checking, show login form
+        // Error checking, show login form (ไม่แสดง error message)
         setIsAdmin(false);
         setCheckingAuth(false);
       });
