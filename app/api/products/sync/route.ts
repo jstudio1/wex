@@ -14,6 +14,86 @@ const WEPAY_PRODUCTS_URL =
   process.env.WEPAY_PRODUCTS_URL ||
   'https://www.wepay.in.th/comp_export.php?json';
 
+const agentDiscountMap = (() => {
+  const entries: Array<[string, number]> = [
+    ['ZEPETO', 46],
+    ['Blood Strike', 35.5],
+    ['Marvel Rivals', 27.5],
+    ['Zenless Zone Zero', 27],
+    ['Honkai: Star Rail', 27],
+    ['Dragon Nest M: Classic', 27],
+    ['Genshin Impact', 27],
+    ['Delta Force (Steam)', 26],
+    ['Arena Breakout', 26],
+    ['Harry Potter: Magic Awakened', 25.5],
+    ['Sword of Justice', 22],
+    ['Racing Master', 22],
+    ['Ace Racer', 21],
+    ['Seal M', 20.5],
+    ['Ragnarok X: Next Generation', 20.5],
+    ['X-HERO', 20.5],
+    ['GODDESS OF VICTORY: NIKKE', 20.5],
+    ['Sausage Man', 20.5],
+    ['Dragon Raja', 20.5],
+    ['Magic Chess: Go Go', 20.5],
+    ['Onmyoji Arena', 19],
+    ['Dunk City Dynasty', 18],
+    ['Diablo: Immortal', 17.5],
+    ['PUBG Mobile (Thai)', 17],
+    ['Ragnarok Original', 15],
+    ['MARVEL SNAP', 15],
+    ['Ragnarok M: Eternal Love', 15],
+    ['Diablo IV', 13.5],
+    ['PUBG Mobile (โปรโมชั่น UC STATION)', 13.5],
+    ['Seven Knights Re:BIRTH', 13.5],
+    ['Overwatch 2', 13.5],
+    ['PUBG Mobile (Global)', 13.5],
+    ['Ragnarok M: Classic', 13.5],
+    ['Honor of Kings', 12],
+    ['MU Origin 3', 12],
+    ['MU Archangel', 12],
+    ['Counter:Side', 12],
+    ['EOS RED', 12],
+    ['Love and Deepspace', 10.5],
+    ['Mobile Legends: Bang Bang', 10],
+    ['HAIKYU!! FLY HIGH', 10],
+    ['MapleStory R: Evolution', 9],
+    ['Super Sus', 9],
+    ['Metal Slug: Awakening', 8.5],
+    ['Bigo Live', 8],
+    ['FC Mobile (FIFA Mobile)', 7.8],
+    ['Teamfight Tactics Mobile', 7],
+    ['Legends of Runeterra', 7],
+    ['League of Legends: Wild Rift', 7],
+    ['Valorant', 7],
+    ['League of Legends', 7],
+    ['AFK Journey', 7],
+    ['Garena Undawn', 5.5],
+    ['Call Of Duty Mobile', 5.5],
+    ['Free Fire', 5.5],
+    ['RoV Mobile', 5.5],
+    ['Delta Force (Garena)', 5.5],
+  ];
+
+  const map = new Map<string, number>();
+  for (const [name, percent] of entries) {
+    map.set(name.trim().toLowerCase(), percent);
+  }
+  return map;
+})();
+
+function getAgentDiscountPercent(gameName: string | undefined | null) {
+  if (!gameName) return 0;
+  const normalized = gameName.trim().toLowerCase();
+  return agentDiscountMap.get(normalized) ?? 0;
+}
+
+function computeAgentCost(basePrice: number, discountPercent: number) {
+  if (!discountPercent) return basePrice;
+  const discounted = basePrice * (1 - discountPercent / 100);
+  return Number(discounted.toFixed(4));
+}
+
 function slugifyCompany(companyId: string, companyName: string) {
   if (companyId) {
     return companyId.toLowerCase();
@@ -168,6 +248,8 @@ export async function POST(req: Request) {
         const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
         const existingKey = `${upsertedProduct.id}::${sku}`;
         const existingItem = existingItemMap.get(existingKey);
+        const discountPercent = getAgentDiscountPercent(cleanedName);
+        const agentCost = computeAgentCost(priceValue, discountPercent);
 
         if (existingItem) {
           const { error: updateError } = await sb
@@ -175,8 +257,11 @@ export async function POST(req: Request) {
             .update({
               name: itemName,
               sku,
-              price: priceValue,
+              price: agentCost,
               original_price: priceValue,
+              public_price: priceValue,
+              agent_discount_percent: discountPercent,
+              agent_cost_price: agentCost,
               markup_percent: 0,
               markup_fixed: 0
             })
@@ -194,8 +279,11 @@ export async function POST(req: Request) {
               product_id: upsertedProduct.id,
             name: itemName,
             sku,
-            price: priceValue,
+            price: agentCost,
             original_price: priceValue,
+            public_price: priceValue,
+            agent_discount_percent: discountPercent,
+            agent_cost_price: agentCost,
               markup_percent: 0,
               markup_fixed: 0
             });

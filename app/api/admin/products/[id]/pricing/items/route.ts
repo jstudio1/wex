@@ -9,6 +9,9 @@ const createItemSchema = z.object({
   sku: z.string().min(1, { message: 'sku_required' }).max(255, { message: 'sku_too_long' }),
   price: z.number().min(0, { message: 'price_invalid' }),
   original_price: z.number().min(0, { message: 'original_price_invalid' }).nullable().optional(),
+  public_price: z.number().min(0).nullable().optional(),
+  agent_discount_percent: z.number().min(0).max(100).optional(),
+  agent_cost_price: z.number().min(0).optional(),
   markup_percent: z.number().min(0).optional(),
   markup_fixed: z.number().min(0).optional(),
   icon_url: z.string().trim().min(1).nullable().optional(),
@@ -56,12 +59,22 @@ export async function POST(
       return NextResponse.json({ error: 'duplicate_sku' }, { status: 409 });
     }
 
+    const publicPrice = validated.public_price ?? validated.original_price ?? validated.price;
+    const agentDiscountPercent = validated.agent_discount_percent ?? 0;
+    const agentCost =
+      validated.agent_cost_price ??
+      validated.price ??
+      (publicPrice != null ? publicPrice * (1 - agentDiscountPercent / 100) : 0);
+
     const payload = {
       product_id: productId,
       name: validated.name.trim(),
       sku: validated.sku.trim(),
-      price: validated.price,
-      original_price: validated.original_price ?? null,
+      price: agentCost,
+      original_price: publicPrice ?? null,
+      public_price: publicPrice ?? null,
+      agent_discount_percent: agentDiscountPercent,
+      agent_cost_price: agentCost,
       markup_percent: validated.markup_percent ?? 0,
       markup_fixed: validated.markup_fixed ?? 0,
       icon_url: validated.icon_url ? validated.icon_url.trim() : null,
@@ -71,7 +84,7 @@ export async function POST(
     const { data: item, error: insertError } = await sb
       .from('product_items')
       .insert(payload)
-      .select('id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended, icon_url')
+      .select('id, name, sku, price, original_price, public_price, agent_discount_percent, agent_cost_price, markup_percent, markup_fixed, is_recommended, icon_url')
       .single();
 
     if (insertError || !item) {

@@ -54,7 +54,7 @@ export async function GET(req: Request, { params }: Params) {
     
     const { data: items, error: ierr } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended, icon_url')
+      .select('id, name, sku, price, original_price, public_price, agent_cost_price, agent_discount_percent, markup_percent, markup_fixed, is_recommended, icon_url')
       .eq('product_id', productId);
     if (ierr) return NextResponse.json({ error: 'db_error', detail: ierr.message }, { status: 500 });
 
@@ -129,10 +129,11 @@ export async function GET(req: Request, { params }: Params) {
 
     // Map items and calculate prices
     const mappedItems = (items || []).map((i) => {
-      const base = Number(i.price ?? 0);
+      const publicPrice = Number((i as any).public_price ?? i.original_price ?? i.price ?? 0);
+      const agentCost = Number((i as any).agent_cost_price ?? i.price ?? 0);
       const pct = Number((i as any).markup_percent ?? 0);
       const fix = Number((i as any).markup_fixed ?? 0);
-      const computed = computePrice(base, pct, fix, gpct, gfix);
+      const computed = computePrice(agentCost, pct, fix, gpct, gfix);
       
       // Check if there's a custom price for this item
       const customPrice = customPricesMap.get(i.id);
@@ -157,7 +158,9 @@ export async function GET(req: Request, { params }: Params) {
         sku: i.sku,
         price: finalPrice.toFixed(2),
         priceValue: finalPrice, // Keep numeric value for sorting
-        originalPrice: String(i.original_price || computed.toFixed(2)),
+        originalPrice: Number.isFinite(publicPrice) ? publicPrice.toFixed(2) : '0.00',
+        agentCost: Number.isFinite(agentCost) ? agentCost.toFixed(2) : '0.00',
+        agentDiscountPercent: Number((i as any).agent_discount_percent ?? 0),
         original_price_for_permission: originalPriceForPermission !== null ? originalPriceForPermission.toFixed(2) : null,
         icon_url: (i as any).icon_url || null
       };

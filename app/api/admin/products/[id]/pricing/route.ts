@@ -11,6 +11,9 @@ const updateItemSchema = z.object({
   is_recommended: z.boolean().optional(),
   price: z.number().optional(),
   original_price: z.number().optional().nullable(),
+  public_price: z.number().optional().nullable(),
+  agent_discount_percent: z.number().optional(),
+  agent_cost_price: z.number().optional(),
   markup_percent: z.number().optional(),
   markup_fixed: z.number().optional(),
   icon_url: z.string().nullable().optional(),
@@ -49,7 +52,7 @@ export async function GET(
     // Get items with recommended flag
     const { data: items, error: itemsError } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price, markup_percent, markup_fixed, is_recommended, icon_url')
+      .select('id, name, sku, price, original_price, public_price, agent_discount_percent, agent_cost_price, markup_percent, markup_fixed, is_recommended, icon_url')
       .eq('product_id', productId)
       .order('price', { ascending: true });
 
@@ -112,9 +115,21 @@ export async function PUT(
       }
       if (itemUpdate.price !== undefined) {
         updateData.price = itemUpdate.price;
+        updateData.agent_cost_price = itemUpdate.price;
       }
       if (itemUpdate.original_price !== undefined) {
         updateData.original_price = itemUpdate.original_price;
+        updateData.public_price = itemUpdate.original_price;
+      }
+      if (itemUpdate.public_price !== undefined) {
+        updateData.public_price = itemUpdate.public_price;
+      }
+      if (itemUpdate.agent_cost_price !== undefined) {
+        updateData.agent_cost_price = itemUpdate.agent_cost_price;
+        updateData.price = itemUpdate.agent_cost_price;
+      }
+      if (itemUpdate.agent_discount_percent !== undefined) {
+        updateData.agent_discount_percent = itemUpdate.agent_discount_percent;
       }
       if (itemUpdate.name !== undefined) {
         updateData.name = itemUpdate.name;
