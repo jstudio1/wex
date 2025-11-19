@@ -281,9 +281,9 @@ export default function TicketsClient({ initialTickets, initialTotals, categorie
               <p className="text-sm font-semibold text-white line-clamp-1 mb-1">{ticket.title}</p>
               <p className="text-xs text-white/60 line-clamp-2 mb-2">{ticket.last_message_preview || 'ยังไม่มีข้อความ'}</p>
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={cn('text-xs', getTicketStatusBadgeClasses(ticket.status))}>
-                  {getTicketStatusLabel(ticket.status)}
-                </Badge>
+          <Badge className={cn('text-xs', getTicketStatusBadgeClasses(ticket.status))}>
+            {getTicketStatusLabel(ticket.status)}
+          </Badge>
                 <span className="text-xs text-white/50">{ticket.category?.name || 'ไม่ระบุหมวดหมู่'}</span>
               </div>
             </div>

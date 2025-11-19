@@ -199,10 +199,17 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
                 };
 
+                // ใช้ logic เดียวกับ NavLinks.tsx
                 const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
                 const order = navbarMenuOrder || defaultOrder;
+                
+                // Ensure 'home' is always first if it exists in the order (same as NavLinks.tsx)
+                const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+                const orderedKeys = order.includes('home') 
+                  ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
+                  : ['home', ...validKeys.filter(key => key !== 'home')];
 
-                const items = order
+                const items = orderedKeys
                   .filter(key => key !== 'contact' && key !== 'tools')
                   .map(key => allItemsMap[key])
                   .filter(item => {
@@ -230,7 +237,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                 });
 
                 // Add tools menu if in order
-                if (order.includes('tools')) {
+                if (orderedKeys.includes('tools')) {
                   menuItems.push(
                     <div key="tools-menu" className="space-y-1">
                       <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เครื่องมือ</div>
@@ -247,7 +254,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                 }
 
                 // Add contact menu if enabled and in order
-                if (order.includes('contact') && navbarMenus.contact !== false) {
+                if (orderedKeys.includes('contact') && navbarMenus.contact !== false) {
                   menuItems.push(
                     <div key="contact-menu" className="space-y-1">
                       <Link 
@@ -427,7 +434,7 @@ function MobileLoginDialog({ open, onOpenChange, onSwitchToRegister, recaptchaEn
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          username, 
+          usernameOrEmail: username, 
           password,
           ...(loginRecaptchaToken && { recaptchaToken: loginRecaptchaToken })
         })
