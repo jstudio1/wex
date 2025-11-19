@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Settings2, SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Empty,
   EmptyContent,
@@ -41,6 +41,17 @@ type Category = {
 };
 
 type ProductCategoryMap = Map<number, number[]>;
+type ProviderDiscountResponse = {
+  provider_company_id: string;
+  provider_name: string;
+  discount_percent: number;
+  product_count: number;
+};
+
+type ProviderDiscount = ProviderDiscountResponse & {
+  draft_percent: string;
+};
+
 
 type ProductFormState = {
   name: string;
@@ -87,6 +98,11 @@ export default function NewTopupServicesManager() {
   const [editSaving, setEditSaving] = useState(false);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [pricingProductId, setPricingProductId] = useState<number | null>(null);
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
+  const [discountProviders, setDiscountProviders] = useState<ProviderDiscount[]>([]);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountSaving, setDiscountSaving] = useState(false);
+  const [discountSearch, setDiscountSearch] = useState('');
 
   useEffect(() => {
     fetchAll();
@@ -150,11 +166,7 @@ export default function NewTopupServicesManager() {
     return list.filter((p) => p.name?.toLowerCase().includes(q) || p.key?.toLowerCase().includes(q));
   }, [products, query, filter]);
 
-  const handleSync = async () => {
-    const confirmed = confirm(
-      'คำเตือน: การ Sync จะรีเซ็ตกำไรทั้งหมดเป็น 0%\nคุณแน่ใจหรือไม่ที่จะดำเนินการ?'
-    );
-    if (!confirmed) return;
+  const runSync = async () => {
     setSyncing(true);
     try {
       const controller = new AbortController();
@@ -167,10 +179,122 @@ export default function NewTopupServicesManager() {
       }
       toast.show({ title: 'Sync สำเร็จ', description: 'รีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว' });
       await fetchAll();
+      return true;
     } catch (err) {
-      toast.show({ title: 'Sync ไม่สำเร็จ', description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด', variant: 'destructive' });
+      toast.show({
+        title: 'Sync ไม่สำเร็จ',
+        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+        variant: 'destructive',
+      });
+      return false;
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const fetchDiscountProviders = useCallback(async () => {
+    setDiscountLoading(true);
+    try {
+      const res = await fetch('/api/admin/products/agent-discounts');
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'โหลดส่วนลดไม่สำเร็จ');
+      }
+      const json = await res.json();
+      const rows = (json.data || []).map((row: ProviderDiscountResponse) => ({
+        ...row,
+        discount_percent: Number(row.discount_percent ?? 0),
+        draft_percent: String(Number(row.discount_percent ?? 0)),
+      }));
+      setDiscountProviders(rows);
+    } catch (err) {
+      toast.show({
+        title: 'โหลดข้อมูลส่วนลดไม่สำเร็จ',
+        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+        variant: 'destructive',
+      });
+      setDiscountProviders([]);
+    } finally {
+      setDiscountLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (discountDialogOpen) {
+      fetchDiscountProviders();
+    } else {
+      setDiscountSearch('');
+    }
+  }, [discountDialogOpen, fetchDiscountProviders]);
+
+  const filteredDiscountProviders = useMemo(() => {
+    const q = discountSearch.trim().toLowerCase();
+    if (!q) return discountProviders;
+    return discountProviders.filter((provider) => provider.provider_name.toLowerCase().includes(q));
+  }, [discountProviders, discountSearch]);
+
+  const handleChangeDiscountPercent = (providerId: string, value: string) => {
+    if (!/^\d*\.?\d*$/.test(value)) return;
+    setDiscountProviders((prev) =>
+      prev.map((item) => {
+        if (item.provider_company_id !== providerId) return item;
+        const numeric = value === '' ? null : parseFloat(value);
+        const clamp =
+          numeric === null || Number.isNaN(numeric) ? 0 : Math.min(100, Math.max(0, numeric));
+        return {
+          ...item,
+          discount_percent: clamp,
+          draft_percent: value,
+        };
+      }),
+    );
+  };
+
+  const handleResetDiscounts = () => {
+    setDiscountProviders((prev) =>
+      prev.map((item) => ({ ...item, discount_percent: 0, draft_percent: '0' })),
+    );
+  };
+
+  const saveDiscountOverrides = async () => {
+    setDiscountSaving(true);
+    try {
+      const payload = {
+        providers: discountProviders.map((provider) => ({
+          provider_company_id: provider.provider_company_id,
+          provider_name: provider.provider_name,
+          discount_percent: provider.discount_percent,
+        })),
+      };
+      const res = await fetch('/api/admin/products/agent-discounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.detail || json.error || 'บันทึกส่วนลดไม่สำเร็จ');
+      }
+      toast.show({ title: 'บันทึกส่วนลดสำเร็จ', description: 'บันทึกส่วนลดตัวแทนเรียบร้อยแล้ว' });
+      return true;
+    } catch (err) {
+      toast.show({
+        title: 'บันทึกส่วนลดไม่สำเร็จ',
+        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setDiscountSaving(false);
+    }
+  };
+
+  const handleConfirmSync = async () => {
+    const saved = await saveDiscountOverrides();
+    if (!saved) return;
+    const synced = await runSync();
+    if (synced) {
+      setDiscountDialogOpen(false);
     }
   };
 
@@ -301,7 +425,7 @@ export default function NewTopupServicesManager() {
           <Button variant="outline" onClick={handlePublishAll} disabled={loading}>
             เผยแพร่ทุกเกม
           </Button>
-          <Button variant="outline" onClick={handleSync} disabled={syncing}>
+          <Button variant="outline" onClick={() => setDiscountDialogOpen(true)} disabled={syncing}>
             {syncing ? 'กำลังซิงก์...' : 'Sync จากผู้ให้บริการ'}
           </Button>
         </div>
@@ -590,6 +714,126 @@ export default function NewTopupServicesManager() {
           }
         }}
       />
+
+      <Dialog open={discountDialogOpen} onOpenChange={(open) => setDiscountDialogOpen(open)}>
+        <DialogContent className="max-w-4xl bg-[#050505] border border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle>ปรับ % ส่วนลดตัวแทนก่อนซิงก์</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              ตรวจสอบและกำหนดเปอร์เซ็นต์ส่วนลดของแต่ละเกม ก่อนดึงข้อมูลจาก wePAY
+            </DialogDescription>
+          </DialogHeader>
+          {discountLoading ? (
+            <div className="py-10 text-center text-gray-400">กำลังโหลดข้อมูล...</div>
+          ) : discountProviders.length === 0 ? (
+            <div className="py-10 text-center text-gray-400">
+              ไม่พบข้อมูลเกมที่ต้องปรับส่วนลด
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[65vh] overflow-hidden">
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex-1 min-w-[220px]">
+                  <Input
+                    placeholder="ค้นหาเกม..."
+                    value={discountSearch}
+                    onChange={(e) => setDiscountSearch(e.target.value)}
+                    className="bg-[#0f0f0f] border border-gray-700 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResetDiscounts}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  รีเซ็ตเป็น 0%
+                </Button>
+              </div>
+              <div className="border border-white/10 rounded-xl max-h-[55vh] overflow-y-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-white/5 text-gray-300 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">เกม</th>
+                      <th className="px-4 py-3 font-medium">มีในระบบ</th>
+                      <th className="px-4 py-3 font-medium text-right">% ส่วนลด</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDiscountProviders.map((provider) => (
+                      <tr
+                        key={provider.provider_company_id}
+                        className="border-t border-white/5 hover:bg-white/5 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-white">{provider.provider_name}</div>
+                          <div className="text-xs text-gray-400">ID: {provider.provider_company_id}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {provider.product_count > 0 ? (
+                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-300">
+                              {provider.product_count} รายการ
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-white/20 text-gray-400">
+                              ยังไม่มีในระบบ
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={provider.draft_percent}
+                              onChange={(e) =>
+                                handleChangeDiscountPercent(provider.provider_company_id, e.target.value)
+                              }
+                              className="w-24 text-right bg-[#0f0f0f] border border-gray-700 text-white focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+                              placeholder="0"
+                            />
+                            <span className="text-gray-400 text-xs">%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredDiscountProviders.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
+                          ไม่พบเกมตามคำค้นหา
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+            <p className="text-xs text-gray-500">
+              * ส่วนลดนี้จะถูกนำไปใช้คำนวณราคาทุนทันทีเมื่อซิงก์จาก wePAY
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDiscountDialogOpen(false)}
+                disabled={discountSaving || syncing}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmSync}
+                disabled={discountSaving || syncing || discountProviders.length === 0}
+                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+              >
+                {discountSaving || syncing ? 'กำลังบันทึกและซิงก์...' : 'บันทึกและซิงก์'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

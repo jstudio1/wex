@@ -14,7 +14,7 @@ const WEPAY_PRODUCTS_URL =
   process.env.WEPAY_PRODUCTS_URL ||
   'https://www.wepay.in.th/comp_export.php?json';
 
-const agentDiscountMap = (() => {
+const defaultAgentDiscountMap = (() => {
   const entries: Array<[string, number]> = [
     ['ZEPETO', 46],
     ['Blood Strike', 35.5],
@@ -82,10 +82,14 @@ const agentDiscountMap = (() => {
   return map;
 })();
 
-function getAgentDiscountPercent(gameName: string | undefined | null) {
+function resolveAgentDiscountPercent(providerCompanyId: string | undefined | null, gameName: string | undefined | null, overrides: Map<string, number>) {
+  const providerKey = providerCompanyId?.trim().toLowerCase();
+  if (providerKey && overrides.has(providerKey)) {
+    return overrides.get(providerKey) ?? 0;
+  }
   if (!gameName) return 0;
   const normalized = gameName.trim().toLowerCase();
-  return agentDiscountMap.get(normalized) ?? 0;
+  return defaultAgentDiscountMap.get(normalized) ?? 0;
 }
 
 function computeAgentCost(basePrice: number, discountPercent: number) {
@@ -167,6 +171,19 @@ export async function POST(req: Request) {
     }
 
     const sb = createServiceClient();
+    const discountOverridesMap = new Map<string, number>();
+    try {
+      const { data: discountRows } = await sb
+        .from('product_agent_discounts')
+        .select('provider_company_id, discount_percent');
+      for (const row of discountRows || []) {
+        const key = String(row.provider_company_id || '').trim().toLowerCase();
+        if (!key) continue;
+        discountOverridesMap.set(key, Number(row.discount_percent ?? 0));
+      }
+    } catch (discountErr) {
+      console.warn('[PRODUCTS][SYNC] Failed to load agent discount overrides:', discountErr);
+    }
     let countProducts = 0;
     let countItems = 0;
     let countInputs = 0;
@@ -248,7 +265,7 @@ export async function POST(req: Request) {
         const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
         const existingKey = `${upsertedProduct.id}::${sku}`;
         const existingItem = existingItemMap.get(existingKey);
-        const discountPercent = getAgentDiscountPercent(cleanedName);
+        const discountPercent = resolveAgentDiscountPercent(providerCompanyId, cleanedName, discountOverridesMap);
         const agentCost = computeAgentCost(priceValue, discountPercent);
 
         if (existingItem) {
