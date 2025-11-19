@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 const topupSchema = z.object({
@@ -38,7 +39,10 @@ export async function POST(
       .single();
 
     if (fetchError || !existingUser) {
-      return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'user_not_found',
+        message: 'ไม่พบผู้ใช้ในระบบ'
+      }, { status: 404 });
     }
 
     // อัปเดต points ของผู้ใช้
@@ -51,7 +55,11 @@ export async function POST(
     if (updateError) {
       console.error('[POST /api/admin/users/[id]/topup] Update points error:', updateError);
       return NextResponse.json(
-        { error: 'db_error', details: updateError.message },
+        { 
+          error: 'db_error',
+          message: getErrorMessage('db_error'),
+          details: updateError.message 
+        },
         { status: 500 }
       );
     }
@@ -91,7 +99,11 @@ export async function POST(
     }
     console.error('[POST /api/admin/users/[id]/topup] Unexpected error:', err);
     return NextResponse.json(
-      { error: 'unexpected', detail: err instanceof Error ? err.message : String(err) },
+      { 
+        error: 'unexpected',
+        message: getErrorMessage('unexpected'),
+        detail: err instanceof Error ? err.message : String(err) 
+      },
       { status: 500 }
     );
   }

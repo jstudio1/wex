@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 import { getAuthUser } from '@/lib/auth';
 import { hashPassword } from '@/lib/hash';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 const updateUserSchema = z.object({
@@ -27,7 +28,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (error) {
     console.error('[GET /api/admin/users/[id]] Database error:', error);
-    return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'db_error',
+      message: getErrorMessage('db_error'),
+      details: error.message 
+    }, { status: 500 });
   }
 
   return NextResponse.json({ data });
@@ -57,7 +62,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .single();
 
     if (fetchError || !existingUser) {
-      return NextResponse.json({ error: 'user_not_found' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'user_not_found',
+        message: 'ไม่พบผู้ใช้ในระบบ'
+      }, { status: 404 });
     }
 
     // ป้องกันการลบสิทธิ์ admin ของตัวเอง
@@ -111,7 +119,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       console.error('[PUT /api/admin/users/[id]] Database error:', error);
       console.error('[PUT /api/admin/users/[id]] Update data:', updateData);
       console.error('[PUT /api/admin/users/[id]] User ID:', userId);
-      return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error'),
+        details: error.message 
+      }, { status: 500 });
     }
 
     return NextResponse.json({ data });
@@ -127,7 +139,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     console.error('[PUT /api/admin/users/[id]] Unexpected error:', err);
     console.error('[PUT /api/admin/users/[id]] Error stack:', err instanceof Error ? err.stack : 'No stack trace');
     return NextResponse.json({ 
-      error: 'unexpected', 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected'),
       detail: err instanceof Error ? err.message : String(err) 
     }, { status: 500 });
   }
@@ -144,7 +157,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   
   // ป้องกันลบตัวเอง
   if (userId === currentUser.id) {
-    return NextResponse.json({ error: 'cannot_delete_self' }, { status: 400 });
+    return NextResponse.json({ 
+      error: 'cannot_delete_self',
+      message: 'ไม่สามารถลบบัญชีของตัวเองได้'
+    }, { status: 400 });
   }
 
   const sb = createServiceClient();
@@ -154,7 +170,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     .eq('id', userId);
 
   if (error) {
-    return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'db_error',
+      message: getErrorMessage('db_error')
+    }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

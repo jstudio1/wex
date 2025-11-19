@@ -92,7 +92,7 @@ export default function TopupHistoryPage() {
       const res = await fetch(`/api/user/topup-history?${params}`);
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || json.detail || 'ไม่สามารถโหลดข้อมูลได้');
+        throw new Error(json.message || json.error || json.detail || 'ไม่สามารถโหลดข้อมูลได้');
       }
 
       const json: HistoryResponse = await res.json();

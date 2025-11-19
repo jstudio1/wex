@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/error-messages';
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -32,7 +33,10 @@ export async function PUT(req: Request) {
     const { percent, fixed } = body ?? {};
 
     if (typeof percent !== 'number' || typeof fixed !== 'number') {
-      return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
     }
 
     const sb = createServiceClient();
@@ -45,7 +49,10 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Global markup update error:', error);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 

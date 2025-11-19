@@ -79,7 +79,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = createOrderSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload', detail: parsed.error.issues }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง',
+        detail: parsed.error.issues 
+      }, { status: 400 });
     }
 
     const { product_key, item_sku, input, webhookURL, coupon_code } = parsed.data;

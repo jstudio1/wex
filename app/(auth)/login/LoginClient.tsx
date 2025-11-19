@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -10,6 +11,7 @@ import Link from 'next/link';
 import ReCaptcha from '@/components/ReCaptcha';
 
 export default function LoginClient() {
+  const searchParams = useSearchParams();
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,7 +75,8 @@ export default function LoginClient() {
         throw new Error(json?.message || 'เข้าสู่ระบบไม่สำเร็จ');
       }
       toast.show({ title: 'สำเร็จ', description: 'เข้าสู่ระบบเรียบร้อย' });
-      window.location.href = '/products';
+      const redirectTo = searchParams?.get('redirect') || '/products';
+      window.location.href = redirectTo;
     } catch (err: unknown) {
       const msg = (err as Error).message;
       setError(msg);

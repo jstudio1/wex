@@ -16,6 +16,7 @@ import {
 type Props = {
   username: string;
   isAdmin?: boolean;
+  avatarUrl?: string | null;
 };
 
 type Permission = {
@@ -26,7 +27,7 @@ type Permission = {
   discount_cap_amount: number;
 } | null;
 
-export default function UserProfileMenu({ username, isAdmin = false }: Props) {
+export default function UserProfileMenu({ username, isAdmin = false, avatarUrl }: Props) {
   const [points, setPoints] = useState<number | null>(null);
   const [permission, setPermission] = useState<Permission>(null);
   const [loading, setLoading] = useState(false);
@@ -176,8 +177,12 @@ export default function UserProfileMenu({ username, isAdmin = false }: Props) {
           className="flex items-center gap-3 text-white transition-opacity duration-200 hover:opacity-90 cursor-pointer"
         >
           {/* Avatar Circle with Gradient */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+            ) : (
             <span className="text-base font-bold text-white">{avatarLetter}</span>
+            )}
           </div>
           
           {/* User Info */}
@@ -203,8 +208,12 @@ export default function UserProfileMenu({ username, isAdmin = false }: Props) {
       >
         <div className="border-b border-gray-800 bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-950 p-4 text-white">
           <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg">
+            <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+              ) : (
               <span className="text-base font-bold text-white">{avatarLetter}</span>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{username}</div>

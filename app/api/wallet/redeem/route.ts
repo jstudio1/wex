@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { logTopupToDiscord } from '@/lib/discord';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 const redeemSchema = z.object({
@@ -16,7 +17,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = redeemSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
     }
 
     const { code } = parsed.data;
@@ -87,7 +91,11 @@ export async function POST(req: Request) {
     });
 
     if (creditError) {
-      return NextResponse.json({ error: 'db_error', details: creditError.message }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error'),
+        details: creditError.message 
+      }, { status: 500 });
     }
 
     // อัปเดต used_count
@@ -128,7 +136,10 @@ export async function POST(req: Request) {
       message: `รับพอยต์ ${points.toFixed(2)} สำเร็จ!`
     });
   } catch {
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 

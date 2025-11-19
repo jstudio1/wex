@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { hashPassword, verifyPassword } from '@/lib/hash';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,10 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const parsed = changePasswordSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
     }
 
     const { current_password, new_password } = parsed.data;
@@ -38,13 +42,19 @@ export async function PUT(req: Request) {
       .maybeSingle();
 
     if (findErr || !userData) {
-      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error')
+      }, { status: 500 });
     }
 
     // ตรวจสอบรหัสผ่านปัจจุบัน
     const isValid = await verifyPassword(current_password, userData.password_hash);
     if (!isValid) {
-      return NextResponse.json({ error: 'invalid_password' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'invalid_password',
+        message: getErrorMessage('invalid_password')
+      }, { status: 401 });
     }
 
     // Hash รหัสผ่านใหม่
@@ -57,12 +67,18 @@ export async function PUT(req: Request) {
       .eq('id', user.id);
 
     if (updateErr) {
-      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error')
+      }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 

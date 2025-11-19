@@ -327,6 +327,74 @@ body * {
   font-family: "Noto Sans Thai", sans-serif !important;
 }
 
+/* -------------------------- */
+/* Custom Sonner Toast Theme  */
+/* -------------------------- */
+[data-sonner-toaster] {
+  --sonner-z-index: 60;
+  --sonner-toast-width: 360px;
+  --sonner-toast-icon-background: transparent;
+  --sonner-toast-icon-color: var(--text);
+  --sonner-toast-border-radius: 1.25rem;
+  --sonner-color-success: #10b981;
+  --sonner-color-error: #ef4444;
+  --sonner-color-warning: #f59e0b;
+  --sonner-color-info: #38bdf8;
+  font-family: "Noto Sans Thai", sans-serif !important;
+}
+
+[data-sonner-toast] {
+  border-radius: 1.25rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(3, 7, 18, 0.92) !important;
+  color: var(--text) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(14px);
+  padding: 16px 20px !important;
+}
+
+[data-sonner-toast][data-type='success'] {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+[data-sonner-toast][data-type='error'],
+[data-sonner-toast][data-variant='destructive'] {
+  border-color: rgba(239, 68, 68, 0.55) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+[data-sonner-toast][data-type='warning'] {
+  border-color: rgba(245, 158, 11, 0.55) !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+[data-sonner-toast][data-type='info'] {
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+}
+
+[data-sonner-toast] .sonner-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+[data-sonner-toast] .sonner-description {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+[data-sonner-toast] button[data-close-button] {
+  display: none !important;
+}
+
+[data-sonner-toast] button[data-action] {
+  border-radius: 999px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 /* Sidebar background fix */
 @layer components {
   .bg-sidebar {

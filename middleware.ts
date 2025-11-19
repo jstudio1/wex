@@ -5,7 +5,8 @@ import { createServiceClient } from './lib/supabase';
 const AUTH_PATHS = [
   /^\/api\/orders(\/?|$)/,
   /^\/orders(\/?|$)/,
-  /^\/admin(\/?|$)/
+  /^\/admin(\/?|$)/,
+  /^\/account(\/?|$)/
 ];
 
 const ALLOWED_PATHS_IN_MAINTENANCE = [

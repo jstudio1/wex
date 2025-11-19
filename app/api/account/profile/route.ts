@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 const updateProfileSchema = z.object({
-  username: z.string().min(3).max(30),
+  first_name: z.string().max(100).nullable().optional(),
+  last_name: z.string().max(100).nullable().optional(),
+  email: z.string().email().max(255).nullable().optional(),
+  phone: z.string().max(20).nullable().optional(),
 });
 
 export async function GET() {
@@ -14,12 +18,15 @@ export async function GET() {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('users')
-    .select('id, username, created_at, updated_at, points, is_admin')
+    .select('id, username, created_at, updated_at, points, is_admin, first_name, last_name, email, phone, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
 
   if (error || !data) {
-    return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'db_error',
+      message: getErrorMessage('db_error')
+    }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -29,6 +36,11 @@ export async function GET() {
     updated_at: data.updated_at,
     points: Number(data.points),
     is_admin: data.is_admin,
+    first_name: data.first_name,
+    last_name: data.last_name,
+    email: data.email,
+    phone: data.phone,
+    avatar_url: data.avatar_url,
   });
 }
 
@@ -40,48 +52,77 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const parsed = updateProfileSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
     }
-
-    const { username } = parsed.data;
 
     const sb = createServiceClient();
 
-    // ตรวจสอบว่า username นี้ถูกใช้งานแล้วหรือไม่ (ยกเว้นตัวเอง)
-    const { data: existing, error: findErr } = await sb
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .neq('id', user.id)
-      .maybeSingle();
+    // ตรวจสอบ email ซ้ำ (ถ้ามีการเปลี่ยน email)
+    if (parsed.data.email) {
+      const { data: existing, error: findErr } = await sb
+        .from('users')
+        .select('id')
+        .eq('email', parsed.data.email)
+        .neq('id', user.id)
+        .maybeSingle();
 
-    if (findErr) {
-      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+      if (findErr) {
+        return NextResponse.json({ 
+          error: 'db_error',
+          message: getErrorMessage('db_error')
+        }, { status: 500 });
+      }
+
+      if (existing) {
+        return NextResponse.json({ 
+          error: 'email_taken',
+          message: getErrorMessage('email_taken')
+        }, { status: 409 });
+      }
     }
 
-    if (existing) {
-      return NextResponse.json({ error: 'username_taken' }, { status: 409 });
-    }
+    // เตรียมข้อมูลสำหรับอัปเดต
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
 
-    // อัปเดต username
+    if (parsed.data.first_name !== undefined) updateData.first_name = parsed.data.first_name;
+    if (parsed.data.last_name !== undefined) updateData.last_name = parsed.data.last_name;
+    if (parsed.data.email !== undefined) updateData.email = parsed.data.email;
+    if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
+
+    // อัปเดตข้อมูล
     const { data, error } = await sb
       .from('users')
-      .update({ username, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', user.id)
-      .select('id, username, updated_at')
+      .select('id, username, first_name, last_name, email, phone, updated_at')
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error')
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       id: data.id,
       username: data.username,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      phone: data.phone,
       updated_at: data.updated_at,
     });
   } catch {
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 

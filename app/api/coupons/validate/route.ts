@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { getErrorMessage } from '@/lib/error-messages';
 import { z } from 'zod';
 
 const validateSchema = z.object({
@@ -12,7 +13,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = validateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
     }
 
     const { code, total_amount } = parsed.data;
@@ -97,7 +101,10 @@ export async function POST(req: Request) {
       },
     });
   } catch {
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 

@@ -1,26 +1,39 @@
+import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { Mail, Phone, MessageCircle, Facebook } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getContactInfo() {
+  noStore();
   try {
     const sb = createServiceClient();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('settings')
       .select('key, value')
-      .in('key', ['CONTACT_LINE_ID', 'CONTACT_PHONE', 'CONTACT_FACEBOOK', 'CONTACT_EMAIL'])
-      .then((result) => {
-        const map: Record<string, string> = {};
-        for (const row of result.data || []) {
-          map[row.key as string] = row.value as string;
-        }
-        return { data: map };
-      });
-    
+      .in('key', ['CONTACT_LINE_ID', 'CONTACT_PHONE', 'CONTACT_FACEBOOK', 'CONTACT_EMAIL']);
+
+    if (error) {
+      console.error('Failed to load contact settings:', error);
+      return {
+        lineId: '',
+        phone: '',
+        facebook: '',
+        email: '',
+      };
+    }
+
+    const map: Record<string, string> = {};
+    for (const row of data || []) {
+      if (row.key) map[row.key] = row.value as string;
+    }
+
     return {
-      lineId: data.CONTACT_LINE_ID || '',
-      phone: data.CONTACT_PHONE || '',
-      facebook: data.CONTACT_FACEBOOK || '',
-      email: data.CONTACT_EMAIL || ''
+      lineId: map.CONTACT_LINE_ID || '',
+      phone: map.CONTACT_PHONE || '',
+      facebook: map.CONTACT_FACEBOOK || '',
+      email: map.CONTACT_EMAIL || '',
     };
   } catch {
     return {

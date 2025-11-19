@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '../styles/globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { Toaster as SonnerToaster } from 'sonner';
 import dynamic from 'next/dynamic';
 import { createServiceClient } from '@/lib/supabase';
 const BackgroundParticles = dynamic(() => import('@/components/BackgroundParticles'), { ssr: false });
@@ -96,11 +95,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         {/* background particles */}
         <BackgroundParticles />
-        <Toaster>
-          {children}
-          <PopupNotification />
-        </Toaster>
-        <SonnerToaster position="top-right" richColors className="top-24" />
+        {children}
+        <PopupNotification />
+        <Toaster />
         <ContactAdminButton />
       </body>
     </html>

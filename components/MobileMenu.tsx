@@ -25,6 +25,7 @@ type Props = {
   isLoggedIn: boolean;
   isAdmin: boolean;
   username?: string | null;
+  avatarUrl?: string | null;
   navbarMenus: NavbarMenus;
   navbarMenuOrder?: string[];
   navbarMenuLabels?: {
@@ -35,7 +36,7 @@ type Props = {
   };
 };
 
-export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus, navbarMenuOrder, navbarMenuLabels }: Props) {
+export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, navbarMenus, navbarMenuOrder, navbarMenuLabels }: Props) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -150,8 +151,12 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, navbarMenus,
               <div className="border-b border-gray-800 bg-[#1a1a1a] px-4 py-5">
                 <div className="flex items-center gap-3">
                   {/* Avatar Circle with Gradient */}
-                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg">
-                    <span className="text-xl font-bold text-white">{avatarLetter}</span>
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-lg overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={username || 'User'} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xl font-bold text-white">{avatarLetter}</span>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-base font-semibold text-white">{username}</div>

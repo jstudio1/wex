@@ -161,7 +161,7 @@ export default function SlipTransfer({ accounts = [] }: SlipTransferProps) {
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        throw new Error(json.error || 'ตรวจสอบสลิปไม่สำเร็จ');
+        throw new Error(json.message || json.error || 'ตรวจสอบสลิปไม่สำเร็จ');
       }
 
       toast.show({

@@ -88,7 +88,7 @@ export default function NavLinks({
       {menuItems.map((menuItem) => {
         if (menuItem.type === 'contact') {
           return (
-            <DropdownMenu key="contact">
+            <DropdownMenu key="contact" modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   className={`${baseClasses} ${

@@ -78,19 +78,24 @@ export default function NavAuthButtons() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // ใช้ message จาก API response ก่อน ถ้าไม่มีค่อยใช้ error code
+        if (json?.message) {
+          throw new Error(json.message);
+        }
+        // Fallback ตาม error code
         if (json?.error === 'recaptcha_failed') {
           throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
         }
         if (json?.error === 'account_disabled') {
-          throw new Error(json?.message || 'บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+          throw new Error('บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
         }
         if (json?.error === 'invalid_credentials') {
-          throw new Error(json?.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+          throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
         }
         if (json?.error === 'invalid_payload') {
-          throw new Error(json?.message || 'กรุณากรอกข้อมูลให้ครบถ้วน');
+          throw new Error('กรุณากรอกข้อมูลให้ครบถ้วน');
         }
-        throw new Error(json?.message || 'เข้าสู่ระบบไม่สำเร็จ');
+        throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
       }
       window.dispatchEvent(new Event('wallet:changed'));
       window.location.reload();
@@ -142,6 +147,11 @@ export default function NavAuthButtons() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // ใช้ message จาก API response ก่อน ถ้าไม่มีค่อยใช้ error code
+        if (json?.message) {
+          throw new Error(json.message);
+        }
+        // Fallback ตาม error code
         if (json?.error === 'recaptcha_failed') {
           throw new Error('reCaptcha ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
         }
@@ -150,6 +160,12 @@ export default function NavAuthButtons() {
         }
         if (json?.error === 'email_taken') {
           throw new Error('อีเมลนี้ถูกใช้งานแล้ว');
+        }
+        if (json?.error === 'registration_disabled') {
+          throw new Error('การสมัครสมาชิกถูกปิดใช้งาน');
+        }
+        if (json?.error === 'invalid_payload') {
+          throw new Error('กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง');
         }
         throw new Error(json?.error || 'สมัครสมาชิกไม่สำเร็จ');
       }

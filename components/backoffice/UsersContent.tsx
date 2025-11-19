@@ -139,7 +139,7 @@ export default function UsersContent() {
 
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || 'รีเซ็ตรหัสผ่านไม่สำเร็จ');
+        throw new Error(json.message || json.error || 'รีเซ็ตรหัสผ่านไม่สำเร็จ');
       }
 
       toast.show({ title: 'สำเร็จ', description: 'รีเซ็ตรหัสผ่านเรียบร้อย' });
@@ -181,7 +181,7 @@ export default function UsersContent() {
 
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || json.message || 'เพิ่มพอยต์ไม่สำเร็จ');
+        throw new Error(json.message || json.error || 'เพิ่มพอยต์ไม่สำเร็จ');
       }
 
       const json = await res.json();
@@ -215,7 +215,7 @@ export default function UsersContent() {
 
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || 'ลบไม่สำเร็จ');
+        throw new Error(json.message || json.error || 'ลบไม่สำเร็จ');
       }
 
       toast.show({ title: 'สำเร็จ', description: 'ลบผู้ใช้เรียบร้อย' });

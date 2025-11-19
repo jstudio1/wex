@@ -107,9 +107,24 @@ export default async function NavBar() {
   const user = await getAuthUser();
   const adminUser = await requireAdmin();
   const navbarMenus = await getNavbarMenus();
+  const sb = createServiceClient();
+  
+  // ดึง avatar_url สำหรับ user
+  let userAvatarUrl: string | null = null;
+  if (user) {
+    try {
+      const { data } = await sb
+        .from('users')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+      userAvatarUrl = data?.avatar_url || null;
+    } catch {
+      // ignore error
+    }
+  }
   
   // Check maintenance mode
-  const sb = createServiceClient();
   const { data: maintenanceData } = await sb
     .from('settings')
     .select('value')
@@ -188,7 +203,7 @@ export default async function NavBar() {
           <div className="flex flex-shrink-0 items-center gap-3">
             {isLoggedIn ? (
               <div className="hidden lg:flex">
-                <UserProfileMenu username={user.username} isAdmin={!!adminUser} />
+                <UserProfileMenu username={user.username} isAdmin={!!adminUser} avatarUrl={userAvatarUrl} />
               </div>
             ) : (
               <NavAuthButtons />
@@ -199,6 +214,7 @@ export default async function NavBar() {
                 isLoggedIn={isLoggedIn}
                 isAdmin={!!adminUser}
                 username={user?.username || null}
+                avatarUrl={userAvatarUrl}
                 navbarMenus={navbarMenus}
                 navbarMenuOrder={navbarMenus.menuOrder}
                 navbarMenuLabels={navbarMenus.menuLabels}

@@ -3,6 +3,7 @@ import { registerSchema } from '@/lib/validators';
 import { hashPassword } from '@/lib/hash';
 import { createServiceClient } from '@/lib/supabase';
 import { verifyRecaptcha } from '@/lib/recaptcha';
+import { getErrorMessage } from '@/lib/error-messages';
 
 export async function POST(req: Request) {
   try {
@@ -16,12 +17,20 @@ export async function POST(req: Request) {
     
     const isRegisterEnabled = registerSetting?.value !== 'false'; // default true
     if (!isRegisterEnabled) {
-      return NextResponse.json({ error: 'registration_disabled' }, { status: 403 });
+      return NextResponse.json({ 
+        error: 'registration_disabled',
+        message: getErrorMessage('registration_disabled')
+      }, { status: 403 });
     }
 
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ 
+        error: 'invalid_payload',
+        message: getErrorMessage('invalid_payload')
+      }, { status: 400 });
+    }
 
     const { username, password, firstName, lastName, email, phone, recaptchaToken } = parsed.data;
 
@@ -29,7 +38,10 @@ export async function POST(req: Request) {
     if (recaptchaToken) {
       const isValid = await verifyRecaptcha(recaptchaToken);
       if (!isValid) {
-        return NextResponse.json({ error: 'recaptcha_failed' }, { status: 400 });
+        return NextResponse.json({ 
+          error: 'recaptcha_failed',
+          message: getErrorMessage('recaptcha_failed')
+        }, { status: 400 });
       }
     }
     const password_hash = await hashPassword(password);
@@ -41,15 +53,24 @@ export async function POST(req: Request) {
     ]);
     
     if (usernameCheck.error || emailCheck.error) {
-      return NextResponse.json({ error: 'db_error' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error')
+      }, { status: 500 });
     }
     
     if (usernameCheck.data) {
-      return NextResponse.json({ error: 'username_taken' }, { status: 409 });
+      return NextResponse.json({ 
+        error: 'username_taken',
+        message: getErrorMessage('username_taken')
+      }, { status: 409 });
     }
     
     if (emailCheck.data) {
-      return NextResponse.json({ error: 'email_taken' }, { status: 409 });
+      return NextResponse.json({ 
+        error: 'email_taken',
+        message: getErrorMessage('email_taken')
+      }, { status: 409 });
     }
 
     const { data, error } = await sb
@@ -64,11 +85,19 @@ export async function POST(req: Request) {
       })
       .select('id, username, email, first_name, last_name')
       .single();
-    if (error) return NextResponse.json({ error: 'db_error' }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ 
+        error: 'db_error',
+        message: getErrorMessage('db_error')
+      }, { status: 500 });
+    }
 
     return NextResponse.json({ user: data });
   } catch {
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected',
+      message: getErrorMessage('unexpected')
+    }, { status: 500 });
   }
 }
 
