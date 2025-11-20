@@ -787,7 +787,7 @@ function AppPremiumLayout({
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {subCategoryCardGroups.map((group) => (
                 <button
                   key={group.name}
@@ -848,55 +848,57 @@ function AppPremiumLayout({
           }}
         >
           {subCategoryModal && (
-            <DialogContent className="max-w-2xl bg-[#050505] text-white">
+            <DialogContent className="max-w-4xl bg-[#050505] text-white">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-semibold">{subCategoryModal.name}</DialogTitle>
                 <DialogDescription className="text-sm text-gray-400">
                   เลือกแพ็กเกจที่ต้องการซื้อ หรือดูรายละเอียดเพิ่มเติม
                 </DialogDescription>
               </DialogHeader>
-              <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="mt-4 grid max-h-[65vh] grid-cols-1 gap-4 overflow-y-auto pr-2 sm:grid-cols-2">
                 {subCategoryModal.products
                   .slice()
                   .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
                   .map((product) => (
-                    <div key={product.id} className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-3">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1">
-                          <div
-                            className="text-sm font-semibold text-white"
-                            dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
-                            suppressHydrationWarning
-                          />
-                          {product.description && (
-                            <p className="text-xs text-gray-400 line-clamp-2">
-                              {product.description.replace(/<[^>]+>/g, '')}
-                        </p>
-                          )}
-                      </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-emerald-400">
-                            {currencyFormatter.format(product.price)}
+                    <div
+                      key={product.id}
+                      className="flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#101010] to-[#050505] p-4 shadow-lg"
+                    >
+                      <div className="space-y-2">
+                        <div
+                          className="text-base font-semibold text-white leading-snug"
+                          dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+                          suppressHydrationWarning
+                        />
+                        {product.description ? (
+                          <p className="text-xs text-gray-400 line-clamp-3">
+                            {product.description.replace(/<[^>]+>/g, '')}
                           </p>
-                          {product.stock !== null && (
-                            <p className="text-xs text-gray-400">สต็อก: {product.stock} ชิ้น</p>
-                          )}
-                    </div>
+                        ) : (
+                          <p className="text-xs text-gray-500">ยังไม่มีรายละเอียดเพิ่มเติม</p>
+                        )}
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                  <Button
-                          size="sm"
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3 text-sm text-gray-300">
+                        <span>ราคา</span>
+                        <span className="text-lg font-semibold text-emerald-400">
+                          {currencyFormatter.format(product.price)}
+                        </span>
+                      </div>
+                      {product.stock !== null && (
+                        <p className="text-xs text-gray-500">สต็อกคงเหลือ: {product.stock} ชิ้น</p>
+                      )}
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <Button
+                          className="h-10 w-full bg-emerald-600 hover:bg-emerald-500"
                           onClick={() => onQuickBuy(product)}
                         >
                           <ShoppingCart className="mr-2 size-4" />
                           ซื้อด่วน
-                  </Button>
-                        <Link href={`/premium-app/${product.id}`} className="flex-1" onClick={() => setSubCategoryModal(null)}>
-                  <Button
+                        </Button>
+                        <Link href={`/premium-app/${product.id}`} onClick={() => setSubCategoryModal(null)}>
+                          <Button
                             variant="outline"
-                            size="sm"
-                            className="w-full border-white/20 text-white hover:border-emerald-400 hover:text-emerald-300"
+                            className="h-10 w-full border-white/20 text-white hover:border-emerald-400 hover:text-emerald-300"
                           >
                             <Info className="mr-2 size-4" />
                             รายละเอียด
