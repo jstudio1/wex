@@ -16,6 +16,7 @@ import { type DateRange } from 'react-day-picker';
 import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PolicyContent from '@/components/backoffice/PolicyContent';
+import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
 
 type SiteData = { 
   title: string; 
@@ -23,6 +24,7 @@ type SiteData = {
   posters: string[]; 
   flashStart?: string | null; 
   flashEnd?: string | null;
+  premiumAppDisplayMode?: 'list' | 'cards';
   navbarMenus?: {
     home: boolean;
     products: boolean;
@@ -104,6 +106,7 @@ export default function AdminSiteForm() {
     posters: [], 
     flashStart: null, 
     flashEnd: null,
+    premiumAppDisplayMode: 'list',
     navbarMenus: {
       home: true,
       products: true,
@@ -194,6 +197,7 @@ export default function AdminSiteForm() {
           posters: json.posters || [], 
           flashStart: json.flashStart || '', 
           flashEnd: json.flashEnd || '',
+          premiumAppDisplayMode: normalizePremiumAppDisplayMode(json.premiumAppDisplayMode),
           navbarMenus: json.navbarMenus || {
             home: true,
             products: true,
@@ -342,6 +346,7 @@ export default function AdminSiteForm() {
           // ไม่ต้องเก็บ 'home' ใน order เพราะหน้าเว็บจะใส่ 'home' ไว้แรกเสมอ
           navbarMenuOrder: (form.navbarMenuOrder || []).filter(key => key !== 'home'),
           navbarMenuLabels: form.navbarMenuLabels,
+          premiumAppDisplayMode: normalizePremiumAppDisplayMode(form.premiumAppDisplayMode),
           bankAccounts: sanitizedBankAccounts,
           siteBrandName: form.siteBrandName || '',
           siteTitle: form.siteTitle || '',
@@ -1392,6 +1397,49 @@ export default function AdminSiteForm() {
                 onCheckedChange={(checked) => setForm({ ...form, registerEnabled: checked })}
               />
             </div>
+          </div>
+
+          {/* Premium App Display Mode */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-base font-semibold mb-2">รูปแบบหน้าแอพพรีเมี่ยม</h3>
+              <p className="text-xs text-gray-400">
+                สลับการแสดงหน้า <code className="text-emerald-300">/premium-app</code> ระหว่างโหมดดั้งเดิม (การ์ดละแพ็กเกจ) และโหมดรวม (คลิกการ์ดหลักแล้วเลือกแพ็กเกจใน modal)
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, premiumAppDisplayMode: 'list' }))}
+                className={`rounded-xl border p-4 text-left transition ${
+                  (form.premiumAppDisplayMode || 'list') === 'list'
+                    ? 'border-emerald-500/70 bg-emerald-950/20 shadow-lg shadow-emerald-500/20'
+                    : 'border-white/10 bg-black/30 hover:border-emerald-500/40'
+                }`}
+              >
+                <p className="text-sm font-semibold text-white">โหมดการ์ดแยกแพ็กเกจ</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  แสดงแพ็กเกจทั้งหมดแบบการ์ดเหมือนปัจจุบัน (มีตัวกรองหมวด/หมวดย่อย)
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, premiumAppDisplayMode: 'cards' }))}
+                className={`rounded-xl border p-4 text-left transition ${
+                  form.premiumAppDisplayMode === 'cards'
+                    ? 'border-emerald-500/70 bg-emerald-950/20 shadow-lg shadow-emerald-500/20'
+                    : 'border-white/10 bg-black/30 hover:border-emerald-500/40'
+                }`}
+              >
+                <p className="text-sm font-semibold text-white">โหมดรวมเป็นการ์ดหมวดหลัก</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  แสดงการ์ดต่อ 1 บริการหลัก (เช่น YouTube, Disney+) คลิกแล้วเปิด modal ให้เลือกแพ็กเกจย่อย ลดความยาวหน้า
+                </p>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              การสลับโหมดมีผลทันที ลูกค้าทุกคนเห็นเหมือนกัน
+            </p>
           </div>
 
           {/* Google reCaptcha */}

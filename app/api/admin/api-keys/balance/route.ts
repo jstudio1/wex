@@ -5,6 +5,8 @@ import { getApiKey } from '@/lib/api-keys';
 import { z } from 'zod';
 import { getWepayBalance, getWepayCredentials } from '@/lib/providers/wepay';
 
+export const runtime = 'nodejs';
+
 const getBalanceSchema = z.object({
   key_name: z.string().min(1),
 });

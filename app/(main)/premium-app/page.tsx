@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
+import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
+import type { PremiumAppDisplayMode } from '@/lib/premium-app';
 import AppPremiumProductsList from '@/components/AppPremiumProductsList';
 import {
   Empty,
@@ -18,7 +20,44 @@ import { Package } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function fetchAppPremiumProducts() {
+type PremiumAppProductRecord = {
+  id: number;
+  provider_product_id: number;
+  name: string;
+  display_name: string | null;
+  base_price: number | null;
+  markup_percent: number | null;
+  markup_fixed: number | null;
+  stock: number | null;
+  image_url: string | null;
+  icon_url: string | null;
+  description: string | null;
+  app_category: string | null;
+  sub_category: string | null;
+};
+
+type PremiumAppProduct = {
+  id: number;
+  provider_product_id: number;
+  name: string;
+  display_name: string;
+  price: number;
+  base_price: number;
+  stock: number;
+  image_url: string | null;
+  icon_url: string | null;
+  description: string | null;
+  app_category: string | null;
+  sub_category: string | null;
+};
+
+type PremiumAppData = {
+  products: PremiumAppProduct[];
+  globalMarkup: { percent: number; fixed: number };
+  displayMode: PremiumAppDisplayMode;
+};
+
+async function fetchAppPremiumProducts(): Promise<PremiumAppData> {
   noStore();
   try {
     const sb = createServiceClient();
@@ -27,7 +66,7 @@ async function fetchAppPremiumProducts() {
     const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
     
     // Fetch products with error handling and retry logic
-    let products: any[] | null = null;
+    let products: PremiumAppProductRecord[] | null = null;
     let productsError: any = null;
     
     // Try up to 3 times if the first attempt fails
@@ -57,11 +96,11 @@ async function fetchAppPremiumProducts() {
 
     if (productsError || !products) {
       console.error('Failed to fetch app premium products after retries:', productsError);
-      return { products: [], globalMarkup: { percent: globalPct || 0, fixed: globalFix || 0 } };
+      return { products: [], globalMarkup: { percent: globalPct || 0, fixed: globalFix || 0 }, displayMode: 'list' };
     }
 
     // Calculate final price for each product
-    const productsWithPrice = (products || []).map((prod: any) => {
+    const productsWithPrice: PremiumAppProduct[] = (products || []).map((prod: PremiumAppProductRecord) => {
       const finalPrice = computePrice(
         Number(prod.base_price || 0),
         Number(prod.markup_percent || 0),
@@ -85,13 +124,22 @@ async function fetchAppPremiumProducts() {
       };
     });
 
+    const { data: displaySetting } = await sb
+      .from('settings')
+      .select('value')
+      .eq('key', 'PREMIUM_APP_DISPLAY_MODE')
+      .maybeSingle();
+
+    const displayMode = normalizePremiumAppDisplayMode(displaySetting?.value);
+
     return {
       products: productsWithPrice,
-      globalMarkup: { percent: globalPct, fixed: globalFix }
+      globalMarkup: { percent: globalPct, fixed: globalFix },
+      displayMode,
     };
   } catch (error) {
     console.error('fetchAppPremiumProducts error:', error);
-    return { products: [], globalMarkup: { percent: 0, fixed: 0 } };
+    return { products: [], globalMarkup: { percent: 0, fixed: 0 }, displayMode: 'list' };
   }
 }
 
@@ -179,7 +227,7 @@ export default async function PremiumAppPage({
       </div>
 
       <Suspense fallback={<div className="text-center py-8 text-white">กำลังโหลด...</div>}>
-        <AppPremiumProductsList products={data.products} />
+        <AppPremiumProductsList products={data.products} displayMode={data.displayMode} />
       </Suspense>
     </main>
   );

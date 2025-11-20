@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
@@ -37,6 +38,7 @@ type AppPremiumProduct = {
 
 type Props = {
   products: AppPremiumProduct[];
+  displayMode?: 'list' | 'cards';
 };
 
 // Product Card Component with scroll animation
@@ -209,7 +211,13 @@ type Category = {
   icon_url: string | null;
 };
 
-export default function AppPremiumProductsList({ products }: Props) {
+function AppPremiumListLayout({
+  products,
+  onQuickBuy,
+}: {
+  products: AppPremiumProduct[];
+  onQuickBuy: (product: AppPremiumProduct) => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -219,8 +227,6 @@ export default function AppPremiumProductsList({ products }: Props) {
   const [filterSubCategory, setFilterSubCategory] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [quickBuyProduct, setQuickBuyProduct] = useState<AppPremiumProduct | null>(null);
-  const [quickBuyLoading, setQuickBuyLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const handledInvalidCategoryRef = useRef(false);
   const itemsPerPage = 25;
@@ -669,148 +675,10 @@ export default function AppPremiumProductsList({ products }: Props) {
                 product={product}
                 index={index}
                 currencyFormatter={currencyFormatter}
-                onQuickBuy={setQuickBuyProduct}
+                onQuickBuy={onQuickBuy}
               />
             ))}
           </div>
-
-          {/* Quick Buy Dialog - Outside of card loop */}
-          {quickBuyProduct && (
-            <Dialog open={!!quickBuyProduct} onOpenChange={(open) => {
-              if (!open) {
-                setQuickBuyProduct(null);
-              }
-            }}>
-              <DialogContent className="max-w-md bg-[#0a0a0a] border-gray-800">
-                <DialogHeader>
-                  <DialogTitle className="text-xl text-white">ซื้อแอพพรีเมี่ยม</DialogTitle>
-                  <DialogDescription className="pt-4">
-                    <div className="space-y-4">
-                      {/* Product Info */}
-                      <div className="space-y-2 pb-3 border-b border-gray-800">
-                        <div 
-                          className="font-semibold text-white"
-                          dangerouslySetInnerHTML={{ __html: quickBuyProduct.display_name || '' }}
-                          suppressHydrationWarning
-                        />
-                        {quickBuyProduct.description && (
-                          <div 
-                            className="text-sm text-gray-400 max-h-96 overflow-y-auto"
-                            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}
-                            dangerouslySetInnerHTML={{ __html: quickBuyProduct.description }}
-                            suppressHydrationWarning
-                          />
-                        )}
-                      </div>
-
-                      {/* Summary */}
-                      <div className="space-y-2 p-4 rounded-lg border border-emerald-800 bg-emerald-900/20">
-                        <div className="flex justify-between items-center pt-2 border-t border-emerald-800">
-                          <span className="font-semibold text-white">ราคารวม:</span>
-                          <span className="text-xl font-bold text-emerald-600">
-                            {currencyFormatter.format(quickBuyProduct.price)}
-                          </span>
-                        </div>
-                        {quickBuyProduct.stock !== null && quickBuyProduct.stock > 0 && (
-                          <div className="text-xs text-gray-400 pt-1" suppressHydrationWarning>
-                            สต็อกคงเหลือ: {quickBuyProduct.stock} ชิ้น
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="mt-4 p-3 rounded-lg bg-emerald-900/20 border border-emerald-800">
-                        <p className="text-sm text-emerald-400">
-                          หลังจากซื้อ คุณจะได้รับข้อมูลสินค้าที่หน้าประวัติ
-                        </p>
-                      </div>
-                    </div>
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setQuickBuyProduct(null);
-                    }}
-                    disabled={quickBuyLoading}
-                    className="border-gray-700 hover:bg-gray-800 text-gray-300"
-                  >
-                    ยกเลิก
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      if (!quickBuyProduct) return;
-                      
-                      const canBuy = quickBuyProduct.stock === null || quickBuyProduct.stock > 0;
-                      if (!canBuy) {
-                        toast.show({
-                          title: 'เกิดข้อผิดพลาด',
-                          description: 'สินค้าหมด',
-                          variant: 'destructive'
-                        });
-                        return;
-                      }
-
-                      setQuickBuyLoading(true);
-                      try {
-                        // Generate reference
-                        const timestamp = Date.now();
-                        const random = Math.random().toString(36).substring(2, 9).toUpperCase();
-                        const reference = `APP_${timestamp}_${random}`;
-                        
-                        const res = await fetch('/api/app-premium/orders', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            product_id: quickBuyProduct.id,
-                            reference: reference
-                          })
-                        });
-
-                        const json = await res.json();
-                        if (json.ok) {
-                          toast.show({
-                            title: 'สำเร็จ',
-                            description: 'ซื้อสินค้าแอพพรีเมี่ยมเรียบร้อยแล้ว ตรวจสอบที่หน้าประวัติ'
-                          });
-                          window.dispatchEvent(new Event('wallet:changed'));
-                          setQuickBuyProduct(null);
-                          // Refresh page to update stock
-                          window.location.reload();
-                        } else {
-                          toast.show({
-                            title: 'เกิดข้อผิดพลาด',
-                            description: json.detail || json.error || 'ไม่สามารถซื้อได้',
-                            variant: 'destructive'
-                          });
-                        }
-                      } catch (err) {
-                        console.error('Quick buy error:', err);
-                        toast.show({
-                          title: 'เกิดข้อผิดพลาด',
-                          description: 'ไม่สามารถซื้อได้',
-                          variant: 'destructive'
-                        });
-                      } finally {
-                        setQuickBuyLoading(false);
-                      }
-                    }}
-                    disabled={quickBuyLoading}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    {quickBuyLoading ? (
-                      <>
-                        <Spinner className="mr-2 size-4" />
-                        กำลังซื้อ...
-                      </>
-                    ) : (
-                      'ยืนยันซื้อ'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -841,5 +709,524 @@ export default function AppPremiumProductsList({ products }: Props) {
         </>
       )}
     </div>
+  );
+}
+
+type CategoryGroup = {
+  key: string;
+  title: string;
+  iconUrl: string | null;
+  imageUrl: string | null;
+  description: string | null;
+  minPrice: number;
+  products: AppPremiumProduct[];
+  subCategoryBadges: string[];
+};
+
+function AppPremiumGroupedLayout({
+  products,
+  onQuickBuy,
+}: {
+  products: AppPremiumProduct[];
+  onQuickBuy: (product: AppPremiumProduct) => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<CategoryGroup | null>(null);
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat('th-TH', {
+        style: 'currency',
+        currency: 'THB',
+      }),
+    [],
+  );
+
+  const groupedCategories = useMemo<CategoryGroup[]>(() => {
+    if (!products.length) return [];
+    const map = new Map<string, CategoryGroup>();
+    products.forEach((product) => {
+      const rawCategory = (product.app_category || 'บริการอื่นๆ').trim();
+      const key = rawCategory.toLowerCase() || 'others';
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          title: rawCategory || 'บริการอื่นๆ',
+          iconUrl: product.icon_url || product.image_url || null,
+          imageUrl: product.image_url || null,
+          description: product.description,
+          minPrice: Number(product.price) || 0,
+          products: [],
+          subCategoryBadges: [],
+        });
+      }
+      const group = map.get(key)!;
+      group.products.push(product);
+      if (!group.iconUrl && (product.icon_url || product.image_url)) {
+        group.iconUrl = product.icon_url || product.image_url;
+      }
+      const currentPrice = Number(product.price) || 0;
+      if (group.minPrice === 0 || currentPrice < group.minPrice) {
+        group.minPrice = currentPrice;
+      }
+    });
+
+    return Array.from(map.values())
+      .map((group) => {
+        const badges = Array.from(
+          new Set(
+            group.products
+              .map((prod) => (prod.sub_category || '').trim())
+              .filter((name) => name.length > 0),
+          ),
+        ).slice(0, 3);
+        return {
+          ...group,
+          subCategoryBadges: badges,
+          minPrice: group.minPrice || 0,
+        };
+      })
+      .sort((a, b) => a.title.localeCompare(b.title, 'th'));
+  }, [products]);
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groupedCategories;
+    const query = searchQuery.toLowerCase();
+    return groupedCategories.filter(
+      (group) =>
+        group.title.toLowerCase().includes(query) ||
+        group.products.some((product) =>
+          product.display_name.toLowerCase().includes(query),
+        ),
+    );
+  }, [groupedCategories, searchQuery]);
+
+  const activeGroupSubCategories = useMemo(() => {
+    if (!activeGroup) return [];
+    const map = new Map<string, AppPremiumProduct[]>();
+    activeGroup.products.forEach((product) => {
+      const key = (product.sub_category || 'แพ็กเกจอื่นๆ').trim() || 'แพ็กเกจอื่นๆ';
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(product);
+    });
+    return Array.from(map.entries()).map(([name, items]) => ({
+      name,
+      items: items.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0)),
+    }));
+  }, [activeGroup]);
+
+  if (!products.length) {
+    return (
+      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% py-12">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Package className="size-8 text-gray-400" />
+          </EmptyMedia>
+          <EmptyTitle className="text-white">ยังไม่มีบริการ</EmptyTitle>
+          <EmptyDescription className="text-gray-400">
+            บริการจะแสดงที่นี่เมื่อมีการเพิ่มบริการใหม่
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-emerald-900/40 bg-gradient-to-b from-emerald-950/40 via-black/60 to-black/70 p-4 md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-emerald-500">
+                โหมดการ์ดหมวดรวม
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-white">
+                เลือกบริการตามหมวดหลัก
+              </h2>
+              <p className="text-sm text-gray-400">
+                คลิกการ์ดเพื่อดูแพ็กเกจทั้งหมดของบริการนั้น ๆ ในหน้าต่างเดียว
+              </p>
+            </div>
+            <div className="relative w-full md:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
+              <Input
+                type="text"
+                placeholder="ค้นหาบริการหรือแพ็กเกจ..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-[#0f0f0f] border-gray-800 text-white placeholder:text-gray-500 focus:border-emerald-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        {filteredGroups.length === 0 ? (
+          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Package className="size-6" />
+              </EmptyMedia>
+              <EmptyTitle>ไม่พบบริการที่ค้นหา</EmptyTitle>
+              <EmptyDescription>
+                ลองค้นหาด้วยคำอื่น หรือดูบริการทั้งหมด
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredGroups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => {
+                  setActiveGroup(group);
+                  setSheetOpen(true);
+                }}
+                className="flex w-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#0b0b0b] to-[#050505] p-4 text-left shadow-sm transition hover:border-emerald-500/60 hover:shadow-emerald-500/20 focus:outline-none"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                    {group.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={group.iconUrl}
+                        alt={group.title}
+                        className="h-10 w-10 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Package className="size-6 text-emerald-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-lg font-semibold text-white">
+                        {group.title}
+                      </h3>
+                      <Badge className="bg-emerald-600/20 text-emerald-300">
+                        {group.products.length} แพ็กเกจ
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-400 line-clamp-2">
+                      {group.description
+                        ? group.description.replace(/<[^>]+>/g, '')
+                        : 'คลิกเพื่อดูรายละเอียดและเลือกแพ็กเกจทั้งหมด'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {group.subCategoryBadges.map((badge) => (
+                    <Badge
+                      key={badge}
+                      variant="outline"
+                      className="border-emerald-800/40 bg-emerald-900/10 text-xs text-emerald-300"
+                    >
+                      {badge}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-gray-300">
+                  <span>ราคาเริ่มต้น</span>
+                  <span className="text-base font-semibold text-emerald-400">
+                    {currencyFormatter.format(group.minPrice || 0)} / แพ็ก
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Sheet
+        open={sheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+          if (!open) {
+            setActiveGroup(null);
+          }
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="h-[85vh] overflow-y-auto bg-[#050505] text-white"
+        >
+          {activeGroup && (
+            <>
+              <SheetHeader className="space-y-1">
+                <SheetTitle className="text-2xl font-bold">
+                  {activeGroup.title}
+                </SheetTitle>
+                <SheetDescription className="text-sm text-gray-400">
+                  เลือกแพ็กเกจที่ต้องการซื้อ หรือดูรายละเอียดเพิ่มเติม
+                </SheetDescription>
+                <div className="flex flex-wrap gap-2">
+                  <Badge className="bg-emerald-600/20 text-emerald-300">
+                    ทั้งหมด {activeGroup.products.length} แพ็กเกจ
+                  </Badge>
+                  <Badge variant="outline" className="border-white/20 text-white">
+                    เริ่มต้น {currencyFormatter.format(activeGroup.minPrice || 0)}
+                  </Badge>
+                </div>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-5">
+                {activeGroupSubCategories.map((subGroup) => (
+                  <div key={subGroup.name} className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-base font-semibold text-white">
+                          {subGroup.name}
+                        </h4>
+                        <p className="text-xs text-gray-400">
+                          {subGroup.items.length} แพ็กเกจ
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {subGroup.items.map((product) => (
+                        <div
+                          key={product.id}
+                          className="rounded-lg border border-white/10 bg-black/30 p-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div className="space-y-1">
+                              <div
+                                className="text-sm font-semibold text-white"
+                                dangerouslySetInnerHTML={{
+                                  __html: product.display_name || '',
+                                }}
+                              />
+                              {product.description && (
+                                <p className="text-xs text-gray-400 line-clamp-2">
+                                  {product.description.replace(/<[^>]+>/g, '')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xl font-bold text-emerald-400">
+                                {currencyFormatter.format(product.price)}
+                              </p>
+                              {product.stock !== null && (
+                                <p className="text-xs text-gray-400">
+                                  สต็อก: {product.stock} ชิ้น
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500"
+                              onClick={() => onQuickBuy(product)}
+                            >
+                              <ShoppingCart className="mr-2 size-4" />
+                              ซื้อด่วน
+                            </Button>
+                            <Link
+                              href={`/premium-app/${product.id}`}
+                              className="flex-1"
+                              onClick={() => setSheetOpen(false)}
+                            >
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-white/20 text-white hover:border-emerald-400 hover:text-emerald-300"
+                              >
+                                <Info className="mr-2 size-4" />
+                                รายละเอียด
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {activeGroupSubCategories.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-sm text-gray-400">
+                    ยังไม่มีแพ็กเกจให้เลือก
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function QuickBuyDialog({
+  product,
+  onClose,
+}: {
+  product: AppPremiumProduct | null;
+  onClose: () => void;
+}) {
+  const { show } = useToast();
+  const [loading, setLoading] = useState(false);
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat('th-TH', {
+        style: 'currency',
+        currency: 'THB',
+      }),
+    [],
+  );
+
+  const handleConfirm = async () => {
+    if (!product) return;
+    const canBuy = product.stock === null || product.stock > 0;
+    if (!canBuy) {
+      show({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'สินค้าหมด',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 9).toUpperCase();
+      const reference = `APP_${timestamp}_${random}`;
+      const res = await fetch('/api/app-premium/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_id: product.id,
+          reference,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        show({
+          title: 'สำเร็จ',
+          description: 'ซื้อสินค้าแอพพรีเมี่ยมเรียบร้อยแล้ว ตรวจสอบที่หน้าประวัติ',
+        });
+        window.dispatchEvent(new Event('wallet:changed'));
+        onClose();
+        window.location.reload();
+      } else {
+        show({
+          title: 'เกิดข้อผิดพลาด',
+          description: json.detail || json.error || 'ไม่สามารถซื้อได้',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('Quick buy error:', err);
+      show({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'ไม่สามารถซื้อได้',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={!!product}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+          setLoading(false);
+        }
+      }}
+    >
+      {product && (
+        <DialogContent className="max-w-md bg-[#0a0a0a] border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-white">ซื้อแอพพรีเมี่ยม</DialogTitle>
+            <DialogDescription className="pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2 pb-3 border-b border-gray-800">
+                  <div
+                    className="font-semibold text-white"
+                    dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+                    suppressHydrationWarning
+                  />
+                  {product.description && (
+                    <div
+                      className="text-sm text-gray-400 max-h-96 overflow-y-auto"
+                      style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.2) transparent' }}
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                      suppressHydrationWarning
+                    />
+                  )}
+                </div>
+                <div className="space-y-2 p-4 rounded-lg border border-emerald-800 bg-emerald-900/20">
+                  <div className="flex justify-between items-center pt-2 border-t border-emerald-800">
+                    <span className="font-semibold text-white">ราคารวม:</span>
+                    <span className="text-xl font-bold text-emerald-600">
+                      {currencyFormatter.format(product.price)}
+                    </span>
+                  </div>
+                  {product.stock !== null && product.stock > 0 && (
+                    <div className="text-xs text-gray-400 pt-1" suppressHydrationWarning>
+                      สต็อกคงเหลือ: {product.stock} ชิ้น
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 p-3 rounded-lg bg-emerald-900/20 border border-emerald-800">
+                  <p className="text-sm text-emerald-400">
+                    หลังจากซื้อ คุณจะได้รับข้อมูลสินค้าที่หน้าประวัติ
+                  </p>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onClose()}
+              disabled={loading}
+              className="border-gray-700 hover:bg-gray-800 text-gray-300"
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <Spinner className="mr-2 size-4" />
+                  กำลังซื้อ...
+                </>
+              ) : (
+                'ยืนยันซื้อ'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+}
+
+export default function AppPremiumProductsList({
+  products,
+  displayMode = 'list',
+}: Props) {
+  const [quickBuyProduct, setQuickBuyProduct] = useState<AppPremiumProduct | null>(null);
+
+  return (
+    <>
+      {displayMode === 'cards' ? (
+        <AppPremiumGroupedLayout products={products} onQuickBuy={setQuickBuyProduct} />
+      ) : (
+        <AppPremiumListLayout products={products} onQuickBuy={setQuickBuyProduct} />
+      )}
+      <QuickBuyDialog product={quickBuyProduct} onClose={() => setQuickBuyProduct(null)} />
+    </>
   );
 }

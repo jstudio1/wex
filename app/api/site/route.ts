@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag, revalidatePath } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
+import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
 
 export async function GET() {
   const sb = createServiceClient();
@@ -20,7 +21,8 @@ export async function GET() {
     'MAINTENANCE_MODE','REGISTER_ENABLED',
     'RECAPTCHA_SITE_KEY','RECAPTCHA_SECRET_KEY','RECAPTCHA_ENABLED',
     'TERMS_POLICY',
-    'FOOTER_LOGO_URL','FOOTER_DESCRIPTION','FOOTER_OPENING_HOURS','FOOTER_FACEBOOK_URL','FOOTER_LINE_URL','FOOTER_INSTAGRAM_URL','FOOTER_PHONE','FOOTER_EMAIL','FOOTER_WORKING_HOURS','FOOTER_COPYRIGHT'
+    'FOOTER_LOGO_URL','FOOTER_DESCRIPTION','FOOTER_OPENING_HOURS','FOOTER_FACEBOOK_URL','FOOTER_LINE_URL','FOOTER_INSTAGRAM_URL','FOOTER_PHONE','FOOTER_EMAIL','FOOTER_WORKING_HOURS','FOOTER_COPYRIGHT',
+    'PREMIUM_APP_DISPLAY_MODE'
   ]);
   const map: Record<string, string> = {};
   for (const row of data || []) map[row.key as string] = row.value as string;
@@ -137,7 +139,8 @@ export async function GET() {
       email: map.FOOTER_EMAIL || '',
       workingHours: map.FOOTER_WORKING_HOURS || '',
       copyright: map.FOOTER_COPYRIGHT || ''
-    }
+    },
+    premiumAppDisplayMode: normalizePremiumAppDisplayMode(map.PREMIUM_APP_DISPLAY_MODE)
     },
     {
       headers: {
@@ -172,6 +175,7 @@ export async function POST(req: Request) {
   const recaptchaEnabled = body?.recaptchaEnabled === true;
   const termsPolicy = String(body?.termsPolicy || '').trim();
   const footer = body?.footer || {};
+  const premiumAppDisplayMode = normalizePremiumAppDisplayMode(body?.premiumAppDisplayMode);
   const bankAccountsInput = Array.isArray(body?.bankAccounts) ? body.bankAccounts : [];
   const bankAccounts = bankAccountsInput
     .map((item: unknown) => {
@@ -276,6 +280,7 @@ export async function POST(req: Request) {
   await sb.from('settings').upsert({ key: 'FOOTER_EMAIL', value: String(footer.email || '').trim() }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'FOOTER_WORKING_HOURS', value: String(footer.workingHours || '').trim() }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'FOOTER_COPYRIGHT', value: String(footer.copyright || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'PREMIUM_APP_DISPLAY_MODE', value: premiumAppDisplayMode }, { onConflict: 'key' });
   
   // Revalidate public cache for site settings and homepage
   try {
