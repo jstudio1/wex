@@ -84,41 +84,47 @@ function ProductCard({
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
       </div>
       
-      {/* Stock Badge */}
-      {mounted && product.stock !== null && product.stock > 0 && product.stock <= 5 && (
-        <div className="absolute top-3 right-3 z-20">
+      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
+        {mounted && product.stock !== null && product.stock > 0 && product.stock <= 5 && (
           <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white shadow-lg backdrop-blur-sm border-0">
             <Sparkles className="size-3 mr-1" />
             เหลือน้อย
           </Badge>
-        </div>
-      )}
-      
-      {!canBuy && (
-        <div className="absolute top-3 right-3 z-20">
+        )}
+
+        {!canBuy && (
           <Badge variant="secondary" className="bg-gray-700/90 text-gray-300 backdrop-blur-sm border-0">
             สินค้าหมด
           </Badge>
-        </div>
-      )}
+        )}
+      </div>
       
       <div className="relative flex flex-col h-full p-5 z-10">
         {/* Image Section with Overlay */}
-        {product.image_url && (
-          <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-4 group/image flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={product.image_url} 
-              alt={product.display_name} 
-              className="w-full h-full object-contain p-3 transition-transform duration-700 group-hover:scale-105"
-              suppressHydrationWarning
-            />
-            {/* Image Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            {/* Shimmer Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/image:translate-x-full transition-transform duration-1000"></div>
-          </div>
-        )}
+        <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 mb-4 group/image flex items-center justify-center">
+          {product.image_url ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={product.image_url} 
+                alt={product.display_name} 
+                className="w-full h-full object-contain p-3 transition-transform duration-700 group-hover:scale-105"
+                suppressHydrationWarning
+              />
+              {/* Image Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              {/* Shimmer Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/image:translate-x-full transition-transform duration-1000"></div>
+            </>
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-800 text-emerald-300 text-xl font-semibold">
+                {product.display_name?.trim().charAt(0).toUpperCase() || '?'}
+              </div>
+              <p className="text-xs text-gray-500">ไม่มีภาพสินค้า</p>
+            </div>
+          )}
+        </div>
         
         {/* Content Section */}
         <div className="flex flex-col flex-grow space-y-3 mb-4">
@@ -128,16 +134,10 @@ function ProductCard({
             dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
             suppressHydrationWarning
           />
-          
-          {/* Description */}
-          <p
-            className="text-sm text-gray-400/80 line-clamp-2 min-h-[2.5rem] leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: product.description || '&#x00A0;' }}
-            suppressHydrationWarning
-          />
+          {/* Description removed to keep consistent height */}
           
           {/* Price and Stock Section */}
-          <div className="flex items-end justify-between gap-3 pt-2">
+          <div className="flex items-end justify-between gap-3 pt-2 min-h-[4.5rem]">
             <div className="flex-1">
               <div className="flex items-baseline gap-2">
                 <div className="text-2xl font-bold text-white group-hover:text-emerald-400 transition-colors duration-300">
@@ -145,17 +145,19 @@ function ProductCard({
                 </div>
                 <span className="text-xs text-gray-500">พอยต์</span>
               </div>
-              {mounted && product.stock !== null && (
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
-                  <TrendingUp className="size-3" />
-                  <span>คงเหลือ: <span className="font-semibold text-emerald-400">{product.stock}</span> ชิ้น</span>
-                </div>
-              )}
-              {!mounted && product.stock !== null && (
-                <div className="text-xs text-gray-500 mt-2 min-h-[1.25rem]">
-                  &nbsp;
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500 min-h-[1.25rem]">
+                {product.stock !== null ? (
+                  <>
+                    <TrendingUp className="size-3" />
+                    <span>
+                      คงเหลือ:{' '}
+                      <span className="font-semibold text-emerald-400">{product.stock}</span> ชิ้น
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-600">สต็อกไม่จำกัด</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -198,6 +200,81 @@ function ProductCard({
         )}
       </div>
     </div>
+  );
+}
+
+function ProductCompactCard({
+  product,
+  currencyFormatter,
+  onQuickBuy,
+}: {
+  product: AppPremiumProduct;
+  currencyFormatter: Intl.NumberFormat;
+  onQuickBuy: (product: AppPremiumProduct) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onQuickBuy(product)}
+      className="flex w-full flex-col items-center rounded-2xl border border-gray-800/70 bg-gradient-to-br from-[#101010] to-[#050505] p-3 text-center shadow-sm transition hover:border-emerald-500/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+    >
+      <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gray-900">
+        {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image_url}
+            alt={product.display_name}
+            className="h-12 w-12 object-contain"
+            suppressHydrationWarning
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-800 text-lg font-semibold text-emerald-300">
+            {product.display_name?.trim().charAt(0).toUpperCase() || '?'}
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] uppercase tracking-wide text-gray-500">ราคาเริ่มต้น</p>
+      <p className="text-base font-semibold text-emerald-400">{currencyFormatter.format(product.price)}</p>
+    </button>
+  );
+}
+
+type SubCategoryCardGroup = {
+  name: string;
+  iconUrl: string | null;
+  products: AppPremiumProduct[];
+  minPrice: number;
+};
+
+function SubCategoryCompactCard({
+  group,
+  currencyFormatter,
+  onOpen,
+}: {
+  group: SubCategoryCardGroup;
+  currencyFormatter: Intl.NumberFormat;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col items-center gap-2 rounded-2xl border border-gray-800/70 bg-gradient-to-br from-[#0c0c0c] to-[#050505] p-3 text-center transition hover:border-emerald-500/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+    >
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gray-900">
+        {group.iconUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={group.iconUrl} alt={group.name} className="h-10 w-10 object-contain" />
+        ) : (
+          <Package className="size-5 text-emerald-400" />
+        )}
+      </div>
+      <p className="text-xs font-semibold text-white line-clamp-2 h-8">{group.name}</p>
+      <div className="text-[11px] uppercase tracking-wide text-gray-500">ราคาเริ่มต้น</div>
+      <div className="text-base font-semibold text-emerald-400">
+        {currencyFormatter.format(group.minPrice || 0)}
+      </div>
+    </button>
   );
 }
 
@@ -731,18 +808,28 @@ function AppPremiumLayout({
           )}
         </Empty>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" suppressHydrationWarning>
-            {paginatedProducts.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                index={index}
-                currencyFormatter={currencyFormatter}
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:hidden" suppressHydrationWarning>
+              {paginatedProducts.map((product) => (
+                <ProductCompactCard
+                  key={`compact-${product.id}`}
+                  product={product}
+                  currencyFormatter={currencyFormatter}
                   onQuickBuy={onQuickBuy}
-              />
-            ))}
-          </div>
+                />
+              ))}
+            </div>
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6" suppressHydrationWarning>
+              {paginatedProducts.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  index={index}
+                  currencyFormatter={currencyFormatter}
+                  onQuickBuy={onQuickBuy}
+                />
+              ))}
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -787,53 +874,56 @@ function AppPremiumLayout({
               </EmptyHeader>
             </Empty>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {subCategoryCardGroups.map((group) => (
-                <button
-                  key={group.name}
-                  type="button"
-                  onClick={() => setSubCategoryModal({ name: group.name, products: group.products })}
-                  className="flex w-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#0b0b0b] to-[#050505] p-4 text-left shadow-sm transition hover:border-emerald-500/60 hover:shadow-emerald-500/20 focus:outline-none"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-                      {group.iconUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={group.iconUrl}
-                          alt={group.name}
-                          className="h-10 w-10 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <Package className="size-6 text-emerald-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-lg font-semibold text-white">{group.name}</h3>
-                        <Badge className="bg-emerald-600/20 text-emerald-300">
-                          {group.products.length} แพ็กเกจ
-                        </Badge>
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {subCategoryCardGroups.map((group) => (
+                  <SubCategoryCompactCard
+                    key={`sub-compact-${group.name}`}
+                    group={group}
+                    currencyFormatter={currencyFormatter}
+                    onOpen={() => setSubCategoryModal({ name: group.name, products: group.products })}
+                  />
+                ))}
+              </div>
+              <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {subCategoryCardGroups.map((group) => (
+                  <button
+                    key={group.name}
+                    type="button"
+                    onClick={() => setSubCategoryModal({ name: group.name, products: group.products })}
+                    className="flex w-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#0b0b0b] to-[#050505] p-4 text-left shadow-sm transition hover:border-emerald-500/60 hover:shadow-emerald-500/20 focus:outline-none"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                        {group.iconUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={group.iconUrl}
+                            alt={group.name}
+                            className="h-10 w-10 object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Package className="size-6 text-emerald-400" />
+                        )}
                       </div>
-                      <p className="text-sm text-gray-400 line-clamp-2">
-                        {group.description
-                          ? group.description.replace(/<[^>]+>/g, '')
-                          : 'คลิกเพื่อดูรายการสินค้าในหมวดนี้'}
-                      </p>
+                      <div className="flex-1 space-y-2">
+                        <h3 className="text-lg font-semibold text-white">{group.name}</h3>
+                        <div className="min-h-[0.5rem] text-xs text-gray-600">&nbsp;</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-gray-300">
-                    <span>ราคาเริ่มต้น</span>
-                    <span className="text-base font-semibold text-emerald-400">
-                      {currencyFormatter.format(group.minPrice || 0)}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+                    <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-gray-300">
+                      <span>ราคาเริ่มต้น</span>
+                      <span className="text-base font-semibold text-emerald-400">
+                        {currencyFormatter.format(group.minPrice || 0)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -855,55 +945,46 @@ function AppPremiumLayout({
                   เลือกแพ็กเกจที่ต้องการซื้อ หรือดูรายละเอียดเพิ่มเติม
                 </DialogDescription>
               </DialogHeader>
-              <div className="mt-4 grid max-h-[65vh] grid-cols-1 gap-4 overflow-y-auto pr-2 sm:grid-cols-2">
+
+              <div className="mt-4 hidden md:grid grid-cols-[1.6fr_0.6fr_0.6fr_0.8fr] px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <span>แพ็กเกจ</span>
+                <span>ราคา</span>
+                <span>สต็อก</span>
+                <span className="text-right">จัดการ</span>
+              </div>
+
+              <div className="mt-2 max-h-[65vh] space-y-3 overflow-y-auto pr-1">
                 {subCategoryModal.products
                   .slice()
                   .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
                   .map((product) => (
                     <div
                       key={product.id}
-                      className="flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#101010] to-[#050505] p-4 shadow-lg"
+                      className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#101010] to-[#050505] p-4 shadow-lg"
                     >
-                      <div className="space-y-2">
-                        <div
-                          className="text-base font-semibold text-white leading-snug"
-                          dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
-                          suppressHydrationWarning
-                        />
-                        {product.description ? (
-                          <p className="text-xs text-gray-400 line-clamp-3">
-                            {product.description.replace(/<[^>]+>/g, '')}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-gray-500">ยังไม่มีรายละเอียดเพิ่มเติม</p>
-                        )}
-                      </div>
-                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3 text-sm text-gray-300">
-                        <span>ราคา</span>
-                        <span className="text-lg font-semibold text-emerald-400">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.6fr_0.6fr_0.6fr_0.8fr] md:items-center">
+                        <div>
+                          <div
+                            className="text-base font-semibold text-white leading-snug"
+                            dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+                            suppressHydrationWarning
+                          />
+                        </div>
+                        <div className="text-lg font-semibold text-emerald-400">
                           {currencyFormatter.format(product.price)}
-                        </span>
-                      </div>
-                      {product.stock !== null && (
-                        <p className="text-xs text-gray-500">สต็อกคงเหลือ: {product.stock} ชิ้น</p>
-                      )}
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        <Button
-                          className="h-10 w-full bg-emerald-600 hover:bg-emerald-500"
-                          onClick={() => onQuickBuy(product)}
-                        >
-                          <ShoppingCart className="mr-2 size-4" />
-                          ซื้อด่วน
-                        </Button>
-                        <Link href={`/premium-app/${product.id}`} onClick={() => setSubCategoryModal(null)}>
+                        </div>
+                        <div className="text-sm text-gray-300">
+                          {product.stock !== null ? `${product.stock} ชิ้น` : 'ไม่จำกัด'}
+                        </div>
+                        <div className="flex flex-col gap-2 md:flex-row md:justify-end">
                           <Button
-                            variant="outline"
-                            className="h-10 w-full border-white/20 text-white hover:border-emerald-400 hover:text-emerald-300"
+                            className="bg-emerald-600 hover:bg-emerald-500"
+                            onClick={() => onQuickBuy(product)}
                           >
-                            <Info className="mr-2 size-4" />
-                            รายละเอียด
+                            <ShoppingCart className="mr-2 size-4" />
+                            ซื้อ
                           </Button>
-                        </Link>
+                        </div>
                       </div>
                     </div>
                   ))}
