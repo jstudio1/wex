@@ -1,8 +1,9 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getBaseUrl } from '@/lib/url';
 import { cache } from 'react';
-import { CACHE_CONFIG } from '@/lib/cache';
 import GameAccountDetailClient from './GameAccountDetailClient';
+
+export const dynamic = 'force-dynamic';
 
 type GameAccount = {
   id: number;

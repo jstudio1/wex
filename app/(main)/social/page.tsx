@@ -15,7 +15,10 @@ export const dynamic = 'force-dynamic';
 async function fetchSocialServices() {
   try {
     const base = getBaseUrl();
-    const res = await fetch(`${base}/api/social/services`, { next: { revalidate: 120, tags: ['social-services', 'social-categories'] } });
+    const res = await fetch(`${base}/api/social/services`, {
+      cache: 'no-store',
+      next: { revalidate: 0, tags: ['social-services', 'social-categories'] },
+    });
     if (!res.ok) return { services: [], categories: [], globalMarkup: { percent: 0, fixed: 0 } };
     const json = await res.json();
     return json.data || { services: [], categories: [], globalMarkup: { percent: 0, fixed: 0 } };

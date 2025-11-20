@@ -58,7 +58,7 @@ export async function GET() {
 
     return NextResponse.json(
       { data: { services: servicePayload, categories, globalMarkup: { percent: globalPct, fixed: globalFix } } },
-      { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=240' } }
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
     console.error('social services error', error);
