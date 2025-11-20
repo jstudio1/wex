@@ -434,9 +434,6 @@ function SubCategoryPriceRow({
           />
           <div className="flex flex-wrap gap-2 text-xs text-gray-400">
             <span className="rounded-full border border-white/10 px-3 py-1">
-              {product.name || 'แพ็กเกจ'}
-            </span>
-            <span className="rounded-full border border-white/10 px-3 py-1">
               สต็อก: <span className="font-semibold text-emerald-300">{stockLabel}</span>
             </span>
           </div>
@@ -498,7 +495,7 @@ function AppPremiumLayout({
   const [currentPage, setCurrentPage] = useState(1);
   const handledInvalidCategoryRef = useRef(false);
   const itemsPerPage = 25;
-  const [subCategoryModal, setSubCategoryModal] = useState<{ name: string; products: AppPremiumProduct[] } | null>(null);
+  const [subCategoryModal, setSubCategoryModal] = useState<{ name: string; iconUrl: string | null; products: AppPremiumProduct[] } | null>(null);
   const [selectedSubCategoryProductId, setSelectedSubCategoryProductId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -1151,7 +1148,7 @@ function AppPremiumLayout({
                     key={`sub-compact-${group.name}`}
                     group={group}
                     currencyFormatter={currencyFormatter}
-                    onOpen={() => setSubCategoryModal({ name: group.name, products: group.products })}
+                    onOpen={() => setSubCategoryModal({ name: group.name, iconUrl: group.iconUrl, products: group.products })}
                   />
                 ))}
               </div>
@@ -1160,7 +1157,7 @@ function AppPremiumLayout({
                   <button
                     key={group.name}
                     type="button"
-                    onClick={() => setSubCategoryModal({ name: group.name, products: group.products })}
+                    onClick={() => setSubCategoryModal({ name: group.name, iconUrl: group.iconUrl, products: group.products })}
                     className="flex w-full flex-col rounded-2xl border border-white/10 bg-gradient-to-br from-[#0b0b0b] to-[#050505] p-4 text-left shadow-sm transition hover:border-emerald-500/60 hover:shadow-emerald-500/20 focus:outline-none"
                   >
                     <div className="flex items-start gap-3">
@@ -1210,10 +1207,29 @@ function AppPremiumLayout({
           {subCategoryModal && (
             <DialogContent className="max-w-4xl bg-[#050505] text-white">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-semibold">{subCategoryModal.name}</DialogTitle>
-                <DialogDescription className="text-sm text-gray-400">
-                  เลือกแพ็กเกจที่ต้องการซื้อ หรือดูรายละเอียดเพิ่มเติม
-                </DialogDescription>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                    {subCategoryModal.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={subCategoryModal.iconUrl}
+                        alt={subCategoryModal.name}
+                        className="h-8 w-8 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Package className="size-6 text-emerald-400" />
+                    )}
+                  </div>
+                  <div>
+                    <DialogTitle className="text-2xl font-semibold">{subCategoryModal.name}</DialogTitle>
+                    <DialogDescription className="text-sm text-gray-400">
+                      เลือกแพ็กเกจที่ต้องการซื้อ หรือดูรายละเอียดเพิ่มเติม
+                    </DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
 
               {sortedModalProducts.length === 0 ? (
@@ -1233,7 +1249,24 @@ function AppPremiumLayout({
                       {sortedModalProducts.map((product) => (
                         <SelectItem key={product.id} value={product.id.toString()}>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-sm" dangerouslySetInnerHTML={{ __html: product.display_name || '' }} />
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/5 flex-shrink-0">
+                                {product.icon_url || product.image_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={product.icon_url || product.image_url || ''}
+                                    alt=""
+                                    className="h-4 w-4 object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <Package className="size-3 text-emerald-400" />
+                                )}
+                              </div>
+                              <span className="text-sm" dangerouslySetInnerHTML={{ __html: product.display_name || '' }} />
+                            </div>
                             <span className="text-xs text-emerald-300">
                               {currencyFormatter.format(product.price)}
                             </span>
