@@ -442,11 +442,16 @@ function AppPremiumLayout({
   }, [products, filterCategory]);
 
   const subCategoryCardGroups = useMemo(() => {
-    if (filterCategory === 'all') return [];
-    const categoryProducts = products.filter((product: any) => {
-      const productAppCategory = (product.app_category || '').toLowerCase();
-      return productAppCategory === filterCategory.toLowerCase();
-    });
+    const categoryProducts =
+      filterCategory === 'all'
+        ? products
+        : products.filter((product: AppPremiumProduct) => {
+            const productAppCategory = (product.app_category || '').toLowerCase();
+            return productAppCategory === filterCategory.toLowerCase();
+          });
+
+    if (!categoryProducts.length) return [];
+
     const map = new Map<
       string,
       {
@@ -702,42 +707,42 @@ function AppPremiumLayout({
       {/* Products Grid / Subcategory Cards */}
       {displayMode === 'list' ? (
         filteredProducts.length === 0 ? (
-          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Package className="size-6" />
-              </EmptyMedia>
-              <EmptyTitle>
-                {searchQuery ? 'ไม่พบสินค้าที่ค้นหา' : 'ยังไม่มีสินค้าแอพพรีเมี่ยม'}
-              </EmptyTitle>
-              <EmptyDescription>
-                {searchQuery
-                  ? 'ลองค้นหาด้วยคำอื่น หรือดูรายการทั้งหมด'
-                  : 'สินค้าจะแสดงที่นี่เมื่อมีการเพิ่มสินค้าใหม่'}
-              </EmptyDescription>
-            </EmptyHeader>
-            {searchQuery && (
-              <EmptyContent>
-                <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                  <RefreshCcw className="size-4" />
-                  รีเฟรช
-                </Button>
-              </EmptyContent>
-            )}
-          </Empty>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" suppressHydrationWarning>
-              {paginatedProducts.map((product, index) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  index={index}
-                  currencyFormatter={currencyFormatter}
+        <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Package className="size-6" />
+            </EmptyMedia>
+            <EmptyTitle>
+            {searchQuery ? 'ไม่พบสินค้าที่ค้นหา' : 'ยังไม่มีสินค้าแอพพรีเมี่ยม'}
+            </EmptyTitle>
+            <EmptyDescription>
+              {searchQuery 
+                ? 'ลองค้นหาด้วยคำอื่น หรือดูรายการทั้งหมด'
+                : 'สินค้าจะแสดงที่นี่เมื่อมีการเพิ่มสินค้าใหม่'}
+            </EmptyDescription>
+          </EmptyHeader>
+          {searchQuery && (
+            <EmptyContent>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                <RefreshCcw className="size-4" />
+                รีเฟรช
+              </Button>
+            </EmptyContent>
+          )}
+        </Empty>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" suppressHydrationWarning>
+            {paginatedProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                index={index}
+                currencyFormatter={currencyFormatter}
                   onQuickBuy={onQuickBuy}
-                />
-              ))}
-            </div>
+              />
+            ))}
+          </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -769,19 +774,7 @@ function AppPremiumLayout({
         )
       ) : (
         <div className="space-y-4">
-          {filterCategory === 'all' ? (
-            <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Package className="size-6" />
-                </EmptyMedia>
-                <EmptyTitle>เลือกหมวดหมู่หลักก่อน</EmptyTitle>
-                <EmptyDescription>
-                  กรุณาเลือกหมวดหมู่หลักด้านบน เพื่อดูแพ็กเกจ/หมวดหมู่ย่อยในรูปแบบการ์ด
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : subCategoryCardGroups.length === 0 ? (
+          {subCategoryCardGroups.length === 0 ? (
             <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -789,7 +782,7 @@ function AppPremiumLayout({
                 </EmptyMedia>
                 <EmptyTitle>ยังไม่มีหมวดหมู่ย่อย</EmptyTitle>
                 <EmptyDescription>
-                  หมวดหมู่ย่อยจะปรากฏที่นี่เมื่อมีการเพิ่มแพ็กเกจในหมวดนี้
+                  หมวดหมู่ย่อยจะปรากฏที่นี่เมื่อมีการเพิ่มแพ็กเกจที่ตรงเงื่อนไข
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -835,7 +828,7 @@ function AppPremiumLayout({
                   <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-gray-300">
                     <span>ราคาเริ่มต้น</span>
                     <span className="text-base font-semibold text-emerald-400">
-                      {currencyFormatter.format(group.minPrice || 0)} / แพ็ก
+                      {currencyFormatter.format(group.minPrice || 0)}
                     </span>
                   </div>
                 </button>
@@ -878,9 +871,9 @@ function AppPremiumLayout({
                           {product.description && (
                             <p className="text-xs text-gray-400 line-clamp-2">
                               {product.description.replace(/<[^>]+>/g, '')}
-                            </p>
+                        </p>
                           )}
-                        </div>
+                      </div>
                         <div className="text-right">
                           <p className="text-xl font-bold text-emerald-400">
                             {currencyFormatter.format(product.price)}
@@ -888,19 +881,19 @@ function AppPremiumLayout({
                           {product.stock !== null && (
                             <p className="text-xs text-gray-400">สต็อก: {product.stock} ชิ้น</p>
                           )}
-                        </div>
+                    </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button
+                  <Button
                           size="sm"
                           className="flex-1 bg-emerald-600 hover:bg-emerald-500"
                           onClick={() => onQuickBuy(product)}
                         >
                           <ShoppingCart className="mr-2 size-4" />
                           ซื้อด่วน
-                        </Button>
+                  </Button>
                         <Link href={`/premium-app/${product.id}`} className="flex-1" onClick={() => setSubCategoryModal(null)}>
-                          <Button
+                  <Button
                             variant="outline"
                             size="sm"
                             className="w-full border-white/20 text-white hover:border-emerald-400 hover:text-emerald-300"
@@ -943,51 +936,51 @@ function QuickBuyDialog({
   const handleConfirm = async () => {
     if (!product) return;
     const canBuy = product.stock === null || product.stock > 0;
-    if (!canBuy) {
+                      if (!canBuy) {
       show({
-        title: 'เกิดข้อผิดพลาด',
-        description: 'สินค้าหมด',
+                          title: 'เกิดข้อผิดพลาด',
+                          description: 'สินค้าหมด',
         variant: 'destructive',
-      });
-      return;
-    }
+                        });
+                        return;
+                      }
     setLoading(true);
-    try {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 9).toUpperCase();
-      const reference = `APP_${timestamp}_${random}`;
-      const res = await fetch('/api/app-premium/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+                      try {
+                        const timestamp = Date.now();
+                        const random = Math.random().toString(36).substring(2, 9).toUpperCase();
+                        const reference = `APP_${timestamp}_${random}`;
+                        const res = await fetch('/api/app-premium/orders', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
           product_id: product.id,
           reference,
         }),
-      });
-      const json = await res.json();
-      if (json.ok) {
+                        });
+                        const json = await res.json();
+                        if (json.ok) {
         show({
-          title: 'สำเร็จ',
+                            title: 'สำเร็จ',
           description: 'ซื้อสินค้าแอพพรีเมี่ยมเรียบร้อยแล้ว ตรวจสอบที่หน้าประวัติ',
-        });
-        window.dispatchEvent(new Event('wallet:changed'));
+                          });
+                          window.dispatchEvent(new Event('wallet:changed'));
         onClose();
-        window.location.reload();
-      } else {
+                          window.location.reload();
+                        } else {
         show({
-          title: 'เกิดข้อผิดพลาด',
-          description: json.detail || json.error || 'ไม่สามารถซื้อได้',
+                            title: 'เกิดข้อผิดพลาด',
+                            description: json.detail || json.error || 'ไม่สามารถซื้อได้',
           variant: 'destructive',
-        });
-      }
-    } catch (err) {
-      console.error('Quick buy error:', err);
+                          });
+                        }
+                      } catch (err) {
+                        console.error('Quick buy error:', err);
       show({
-        title: 'เกิดข้อผิดพลาด',
-        description: 'ไม่สามารถซื้อได้',
+                          title: 'เกิดข้อผิดพลาด',
+                          description: 'ไม่สามารถซื้อได้',
         variant: 'destructive',
-      });
-    } finally {
+                        });
+                      } finally {
       setLoading(false);
     }
   };
@@ -999,8 +992,8 @@ function QuickBuyDialog({
         if (!open) {
           onClose();
           setLoading(false);
-        }
-      }}
+                      }
+                    }}
     >
       {product && (
         <DialogContent className="max-w-md bg-[#0a0a0a] border-gray-800">
@@ -1056,21 +1049,21 @@ function QuickBuyDialog({
             <Button
               onClick={handleConfirm}
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
               {loading ? (
-                <>
-                  <Spinner className="mr-2 size-4" />
-                  กำลังซื้อ...
-                </>
-              ) : (
-                'ยืนยันซื้อ'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+                      <>
+                        <Spinner className="mr-2 size-4" />
+                        กำลังซื้อ...
+                      </>
+                    ) : (
+                      'ยืนยันซื้อ'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
       )}
-    </Dialog>
+            </Dialog>
   );
 }
 
