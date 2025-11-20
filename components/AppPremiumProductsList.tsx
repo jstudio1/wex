@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { Search, ShoppingCart, Info, Package, RefreshCcw, Sparkles, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -246,6 +247,35 @@ type SubCategoryCardGroup = {
   minPrice: number;
 };
 
+type SubCategoryInfo = {
+  name: string;
+  iconUrl: string | null;
+  count: number;
+};
+
+function sanitizeHtmlContent(html?: string | null): string {
+  if (!html) return '';
+  const baseSanitized = html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(['"]).*?\1/gi, '');
+
+  if (typeof window === 'undefined') {
+    return baseSanitized;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(baseSanitized, 'text/html');
+  doc.querySelectorAll('script,style').forEach((el) => el.remove());
+  doc.querySelectorAll('*').forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      if (attr.name.toLowerCase().startsWith('on')) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
+}
+
 function SubCategoryCompactCard({
   group,
   currencyFormatter,
@@ -275,6 +305,166 @@ function SubCategoryCompactCard({
         {currencyFormatter.format(group.minPrice || 0)}
       </div>
     </button>
+  );
+}
+
+function CategoryFilterButton({
+  active,
+  label,
+  iconUrl,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  iconUrl?: string | null;
+  count?: number;
+  onClick: () => void;
+}) {
+  const initial = label?.trim().charAt(0).toUpperCase() || '';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative flex min-w-[140px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-200 ${
+        active
+          ? 'border-emerald-400/70 bg-gradient-to-r from-emerald-600/90 to-emerald-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)]'
+          : 'border-white/10 bg-gradient-to-br from-[#0b0b0b] to-[#050505] text-gray-200 hover:border-emerald-400/40'
+      }`}
+    >
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
+          active ? 'border-white/20 bg-white/10' : 'border-white/5 bg-white/5'
+        }`}
+      >
+        {iconUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={iconUrl} alt={label} className="h-7 w-7 object-contain" />
+        ) : (
+          <span className="text-sm font-semibold uppercase">{initial}</span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col">
+        <span className="text-sm font-semibold tracking-wide">{label}</span>
+        <span className={`text-[11px] ${active ? 'text-white/90' : 'text-gray-400'}`}>
+          {count ?? 0} รายการ
+        </span>
+      </div>
+      <span
+        className={`pointer-events-none absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent transition-opacity ${
+          active ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+    </button>
+  );
+}
+
+function SubCategoryFilterChip({
+  active,
+  label,
+  iconUrl,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  iconUrl?: string | null;
+  count?: number;
+  onClick: () => void;
+}) {
+  const initial = label?.trim().charAt(0).toUpperCase() || '';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-wide transition-all duration-200 ${
+        active
+          ? 'border-emerald-400/70 bg-emerald-500/15 text-white'
+          : 'border-white/10 bg-white/5 text-gray-300 hover:border-emerald-400/40'
+      }`}
+    >
+      <div
+        className={`flex h-7 w-7 items-center justify-center rounded-full ${
+          active ? 'bg-emerald-500/30' : 'bg-white/10'
+        }`}
+      >
+        {iconUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={iconUrl} alt={label} className="h-4 w-4 object-contain" />
+        ) : (
+          <span className="text-[10px] font-bold text-emerald-300">{initial}</span>
+        )}
+      </div>
+      <span>{label}</span>
+      {typeof count === 'number' && (
+        <span className="text-[10px] font-medium text-gray-400 normal-case">{count}</span>
+      )}
+    </button>
+  );
+}
+
+function SubCategoryPriceRow({
+  product,
+  currencyFormatter,
+  onQuickBuy,
+}: {
+  product: AppPremiumProduct;
+  currencyFormatter: Intl.NumberFormat;
+  onQuickBuy: (product: AppPremiumProduct) => void;
+}) {
+  const stockLabel =
+    product.stock === null
+      ? 'ไม่จำกัด'
+      : product.stock <= 0
+      ? 'หมดชั่วคราว'
+      : `${product.stock} ชิ้น`;
+  const sanitizedDescription = useMemo(
+    () => sanitizeHtmlContent(product.description),
+    [product.description],
+  );
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#101010] to-[#050505] p-4 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-2">
+          <div
+            className="text-base font-semibold text-white leading-snug"
+            dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
+            suppressHydrationWarning
+          />
+          <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+            <span className="rounded-full border border-white/10 px-3 py-1">
+              {product.name || 'แพ็กเกจ'}
+            </span>
+            <span className="rounded-full border border-white/10 px-3 py-1">
+              สต็อก: <span className="font-semibold text-emerald-300">{stockLabel}</span>
+            </span>
+          </div>
+          {sanitizedDescription && (
+            <div
+              className="text-sm leading-relaxed text-gray-300"
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+              suppressHydrationWarning
+            />
+          )}
+        </div>
+        <div className="flex flex-col items-start gap-3 md:items-end">
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-emerald-400">
+              {currencyFormatter.format(product.price)}
+            </span>
+            <span className="text-xs text-gray-500">บาท</span>
+          </div>
+          <Button
+            className="h-10 rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-500"
+            onClick={() => onQuickBuy(product)}
+          >
+            <ShoppingCart className="mr-2 size-4" />
+            ซื้อ
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -309,6 +499,7 @@ function AppPremiumLayout({
   const handledInvalidCategoryRef = useRef(false);
   const itemsPerPage = 25;
   const [subCategoryModal, setSubCategoryModal] = useState<{ name: string; products: AppPremiumProduct[] } | null>(null);
+  const [selectedSubCategoryProductId, setSelectedSubCategoryProductId] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -490,32 +681,40 @@ function AppPremiumLayout({
   }, []);
 
   // Get sub categories for current main category with icon from products
-  const subCategoriesWithIcon = useMemo(() => {
-    if (filterCategory === 'all') return [];
-    
+  const { subCategoriesWithIcon, currentCategoryProductCount } = useMemo(() => {
+    if (filterCategory === 'all') {
+      return { subCategoriesWithIcon: [] as SubCategoryInfo[], currentCategoryProductCount: 0 };
+    }
+
     const categoryProducts = products.filter((product: any) => {
       const productAppCategory = (product.app_category || '').toLowerCase();
       return productAppCategory === filterCategory.toLowerCase();
     });
-    
-    // Group by sub_category and get icon from first product in each group
-    const subCatMap = new Map<string, string | null>();
+
+    const subCatMap = new Map<string, { iconUrl: string | null; count: number }>();
     categoryProducts.forEach((product: any) => {
       if (product.sub_category && product.sub_category.trim()) {
         const subCat = product.sub_category.trim();
-        // Use icon_url from product if not already set
         if (!subCatMap.has(subCat)) {
-          subCatMap.set(subCat, product.icon_url || null);
+          subCatMap.set(subCat, { iconUrl: product.icon_url || product.image_url || null, count: 0 });
         }
+        const entry = subCatMap.get(subCat)!;
+        if (!entry.iconUrl && (product.icon_url || product.image_url)) {
+          entry.iconUrl = product.icon_url || product.image_url;
+        }
+        entry.count += 1;
       }
     });
-    
-    return Array.from(subCatMap.entries())
+
+    const subCategories = Array.from(subCatMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([name, iconUrl]) => ({
+      .map(([name, data]) => ({
         name,
-        iconUrl
+        iconUrl: data.iconUrl,
+        count: data.count,
       }));
+
+    return { subCategoriesWithIcon: subCategories, currentCategoryProductCount: categoryProducts.length };
   }, [products, filterCategory]);
 
   const subCategoryCardGroups = useMemo(() => {
@@ -584,6 +783,21 @@ function AppPremiumLayout({
     setFilterSubCategory('all');
   }, [filterCategory]);
 
+  const sortedModalProducts = useMemo(() => {
+    if (!subCategoryModal?.products?.length) return [];
+    return subCategoryModal.products
+      .slice()
+      .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+  }, [subCategoryModal]);
+
+  useEffect(() => {
+    if (sortedModalProducts.length) {
+      setSelectedSubCategoryProductId(sortedModalProducts[0].id);
+    } else {
+      setSelectedSubCategoryProductId(null);
+    }
+  }, [sortedModalProducts]);
+
   // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -631,6 +845,32 @@ function AppPremiumLayout({
   }, [filteredProducts, currentPage]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  const categoryCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    map.set('all', products.length);
+    products.forEach((product) => {
+      const key = (product.app_category || '').toLowerCase();
+      if (!key) return;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return map;
+  }, [products]);
+
+  const handleCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    if (value === 'all') {
+      params.delete('category');
+    } else {
+      params.set('category', value);
+    }
+    router.push(`/premium-app?${params.toString()}`, { scroll: false });
+  };
+
+  const handleSubCategoryChange = (value: string) => {
+    setFilterSubCategory(value);
+  };
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -685,37 +925,60 @@ function AppPremiumLayout({
       {/* Filter Buttons - Main Categories */}
       {loadingCategories ? (
         <div className="flex flex-wrap gap-3">
-          <div className="h-11 w-24 bg-gray-800 rounded-lg animate-pulse"></div>
-          <div className="h-11 w-28 bg-gray-800 rounded-lg animate-pulse"></div>
-          <div className="h-11 w-24 bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="h-14 w-32 rounded-2xl bg-gray-800/70 animate-pulse"></div>
+          <div className="h-14 w-32 rounded-2xl bg-gray-800/70 animate-pulse"></div>
+          <div className="h-14 w-32 rounded-2xl bg-gray-800/70 animate-pulse"></div>
         </div>
       ) : filterButtons.length > 1 ? (
-        <div className="flex flex-wrap gap-3" suppressHydrationWarning>
-          {filterButtons.map((button) => (
-            <Button
-              key={button.value}
-              variant={filterCategory === button.value ? 'default' : 'outline'}
-              size="default"
-              onClick={() => {
-                setFilterCategory(button.value);
-                // Update URL without page reload
-                const params = new URLSearchParams(searchParams?.toString() || '');
-                if (button.value === 'all') {
-                  params.delete('category');
-                } else {
-                  params.set('category', button.value);
-                }
-                router.push(`/premium-app?${params.toString()}`, { scroll: false });
-              }}
-              className={
-                filterCategory === button.value
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 text-base font-semibold shadow-md'
-                  : 'border-2 border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white px-6 py-2.5 text-base font-medium'
-              }
-            >
-              {button.label}
-            </Button>
-          ))}
+        <div className="space-y-3" suppressHydrationWarning>
+          <div className="sm:hidden">
+            <Select value={filterCategory} onValueChange={handleCategoryChange}>
+              <SelectTrigger className="h-12 rounded-2xl border-white/15 bg-[#0b0b0b] text-white">
+                <SelectValue placeholder="เลือกหมวดหมู่" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#050505] text-white">
+                {filterButtons.map((button) => (
+                  <SelectItem key={button.value} value={button.value}>
+                    <div className="flex items-center gap-2">
+                      {button.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={button.iconUrl} alt={button.label} className="h-5 w-5 object-contain" />
+                      ) : (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold uppercase">
+                          {button.label.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="flex-1 text-sm">{button.label}</span>
+                      <span className="text-xs text-gray-400">
+                        {button.value === 'all'
+                          ? products.length
+                          : categoryCounts.get(button.value.toLowerCase()) ?? 0}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="-mx-2 hidden sm:block sm:mx-0">
+            <div className="flex gap-3 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
+              {filterButtons.map((button) => (
+                <CategoryFilterButton
+                  key={button.value}
+                  active={filterCategory === button.value}
+                  label={button.label}
+                  iconUrl={button.iconUrl}
+                  count={
+                    button.value === 'all'
+                      ? products.length
+                      : categoryCounts.get(button.value.toLowerCase()) ?? 0
+                  }
+                  onClick={() => handleCategoryChange(button.value)}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="text-sm text-gray-400 italic">กำลังโหลดหมวดหมู่...</div>
@@ -723,52 +986,59 @@ function AppPremiumLayout({
 
       {/* Sub Categories - Show when main category is selected */}
       {displayMode === 'list' && filterCategory !== 'all' && subCategoriesWithIcon.length > 0 && (
-        <div className="space-y-2" suppressHydrationWarning>
-          <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
+        <div className="space-y-3" suppressHydrationWarning>
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-300">
             <Package className="size-4 text-emerald-600" />
-            หมวดหมู่ย่อย:
+            หมวดหมู่ย่อย
           </div>
-          <div className="flex flex-wrap gap-1.5" suppressHydrationWarning>
-            <Button
-              variant={filterSubCategory === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterSubCategory('all')}
-              className={
-                filterSubCategory === 'all'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 h-7'
-                  : 'border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white text-xs px-3 py-1.5 h-7'
-              }
-            >
-              ทั้งหมด
-            </Button>
+          <div className="sm:hidden">
+            <Select value={filterSubCategory} onValueChange={handleSubCategoryChange}>
+              <SelectTrigger className="h-11 rounded-xl border-white/15 bg-[#0b0b0b] text-white">
+                <SelectValue placeholder="เลือกหมวดหมู่ย่อย" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#050505] text-white">
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-sm">ทั้งหมด</span>
+                    <span className="text-xs text-gray-400">{currentCategoryProductCount}</span>
+                  </div>
+                </SelectItem>
+                {subCategoriesWithIcon.map((subCat) => (
+                  <SelectItem key={subCat.name} value={subCat.name}>
+                    <div className="flex items-center gap-2">
+                      {subCat.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={subCat.iconUrl} alt={subCat.name} className="h-4 w-4 object-contain" />
+                      ) : (
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/10 text-[8px] font-bold uppercase text-emerald-300">
+                          {subCat.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="flex-1 text-sm">{subCat.name}</span>
+                      <span className="text-xs text-gray-400">{subCat.count}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="hidden sm:flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
+            <SubCategoryFilterChip
+              key="sub-all"
+              active={filterSubCategory === 'all'}
+              label="ทั้งหมด"
+              count={currentCategoryProductCount}
+              onClick={() => handleSubCategoryChange('all')}
+            />
             {subCategoriesWithIcon.map((subCat) => (
-              <Button
+              <SubCategoryFilterChip
                 key={subCat.name}
-                variant={filterSubCategory === subCat.name ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterSubCategory(subCat.name)}
-                className={
-                  filterSubCategory === subCat.name
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 h-7'
-                    : 'border-gray-700 hover:bg-gray-800 hover:border-emerald-600 text-white text-xs px-3 py-1.5 h-7'
-                }
-              >
-                {subCat.iconUrl && (
-                  <span className="mr-1.5 flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src={subCat.iconUrl} 
-                      alt={subCat.name}
-                      className="w-3.5 h-3.5 object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                      suppressHydrationWarning
-                    />
-                  </span>
-                )}
-                {subCat.name}
-              </Button>
+                active={filterSubCategory === subCat.name}
+                label={subCat.name}
+                iconUrl={subCat.iconUrl}
+                count={subCat.count}
+                onClick={() => handleSubCategoryChange(subCat.name)}
+              />
             ))}
           </div>
         </div>
@@ -946,49 +1216,48 @@ function AppPremiumLayout({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 hidden md:grid grid-cols-[1.6fr_0.6fr_0.6fr_0.8fr] px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <span>แพ็กเกจ</span>
-                <span>ราคา</span>
-                <span>สต็อก</span>
-                <span className="text-right">จัดการ</span>
-              </div>
+              {sortedModalProducts.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-6 text-center text-sm text-gray-400">
+                  ยังไม่มีแพ็กเกจในหมวดนี้
+                </div>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <Select
+                    value={selectedSubCategoryProductId?.toString() ?? sortedModalProducts[0].id.toString()}
+                    onValueChange={(value) => setSelectedSubCategoryProductId(Number(value))}
+                  >
+                    <SelectTrigger className="h-12 rounded-2xl border-white/15 bg-[#0b0b0b] text-white">
+                      <SelectValue placeholder="เลือกแพ็กเกจ" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 bg-[#050505] text-white">
+                      {sortedModalProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id.toString()}>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm" dangerouslySetInnerHTML={{ __html: product.display_name || '' }} />
+                            <span className="text-xs text-emerald-300">
+                              {currencyFormatter.format(product.price)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <div className="mt-2 max-h-[65vh] space-y-3 overflow-y-auto pr-1">
-                {subCategoryModal.products
-                  .slice()
-                  .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
-                  .map((product) => (
-                    <div
-                      key={product.id}
-                      className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#101010] to-[#050505] p-4 shadow-lg"
-                    >
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.6fr_0.6fr_0.6fr_0.8fr] md:items-center">
-                        <div>
-                          <div
-                            className="text-base font-semibold text-white leading-snug"
-                            dangerouslySetInnerHTML={{ __html: product.display_name || '' }}
-                            suppressHydrationWarning
-                          />
-                        </div>
-                        <div className="text-lg font-semibold text-emerald-400">
-                          {currencyFormatter.format(product.price)}
-                        </div>
-                        <div className="text-sm text-gray-300">
-                          {product.stock !== null ? `${product.stock} ชิ้น` : 'ไม่จำกัด'}
-                        </div>
-                        <div className="flex flex-col gap-2 md:flex-row md:justify-end">
-                          <Button
-                            className="bg-emerald-600 hover:bg-emerald-500"
-                            onClick={() => onQuickBuy(product)}
-                          >
-                            <ShoppingCart className="mr-2 size-4" />
-                            ซื้อ
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
+                  {(() => {
+                    const selectedProduct =
+                      sortedModalProducts.find((prod) => prod.id === selectedSubCategoryProductId) ??
+                      sortedModalProducts[0];
+                    return (
+                      <SubCategoryPriceRow
+                        key={selectedProduct.id}
+                        product={selectedProduct}
+                        currencyFormatter={currencyFormatter}
+                        onQuickBuy={onQuickBuy}
+                      />
+                    );
+                  })()}
+                </div>
+              )}
             </DialogContent>
           )}
         </Dialog>
