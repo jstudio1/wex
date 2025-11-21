@@ -305,7 +305,7 @@ async function HomeServer() {
                   </Link>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-5 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
                   {catData.products.map((product: any, index: number) => (
                     <Link 
                       key={product.id} 
@@ -313,62 +313,62 @@ async function HomeServer() {
                       className="group block h-full"
                       prefetch={index < 6}
                     >
-                      <div className="flex h-full flex-col rounded-2xl sm:rounded-3xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-4 sm:p-5 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
+                      <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
                         {/* Product Image */}
-                        <div className="relative h-48 sm:h-40 w-full rounded-xl sm:rounded-2xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-4">
+                        <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4">
                           {product.image_url || product.icon_url ? (
                             <Image 
                               src={product.image_url || product.icon_url} 
                               alt={product.display_name || product.name} 
                               fill
-                              className="object-contain p-4 sm:p-3 transition-transform duration-300 group-hover:scale-105" 
-                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 200px"
+                              className="object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-105" 
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
                               loading={index < 6 ? 'eager' : 'lazy'}
                               priority={index < 3}
                             />
                           ) : (
-                            <AppWindow className="h-16 w-16 sm:h-20 sm:w-20 text-gray-600" />
+                            <AppWindow className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
                         
                         {/* Product Info */}
-                        <div className="flex flex-col gap-3 flex-1">
+                        <div className="flex flex-col gap-2 sm:gap-3 flex-1">
                           {/* Product Name */}
                           <div
-                            className="text-base sm:text-sm font-semibold text-white line-clamp-2 min-h-[3rem] sm:min-h-[2.8rem] text-center leading-tight"
+                            className="text-xs sm:text-sm font-semibold text-white line-clamp-2 min-h-[2.5rem] sm:min-h-[2.8rem] text-center leading-snug sm:leading-tight"
                             dangerouslySetInnerHTML={{ __html: product.display_name || product.name || '' }}
                             suppressHydrationWarning
                           />
                           
                           {/* Product Details */}
-                          <div className="flex-1 rounded-xl sm:rounded-2xl border border-emerald-900/40 bg-emerald-900/5 px-3 sm:px-4 py-3 sm:py-4 space-y-2 sm:space-y-3 shadow-inner">
-                            {/* Summary - แสดงแค่ 1-2 บรรทัดบนมือถือ */}
+                          <div className="flex-1 rounded-lg sm:rounded-xl border border-emerald-900/40 bg-emerald-900/5 px-2.5 sm:px-3 py-2 sm:py-3 space-y-1.5 sm:space-y-2 shadow-inner">
+                            {/* Summary - แสดงแค่ 1-2 บรรทัด */}
                             {product.summary && product.summary.length > 0 ? (
-                              <ul className="text-xs sm:text-xs text-gray-300 space-y-1.5 sm:space-y-1">
+                              <ul className="text-[10px] sm:text-xs text-gray-300 space-y-1">
                                 {product.summary.slice(0, 2).map((line: string, idx: number) => (
-                                  <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-2">
-                                    <span className="text-emerald-500 leading-5 flex-shrink-0 mt-0.5">•</span>
-                                    <span className="flex-1 leading-5 line-clamp-2">{line.replace(/^•\s*/, '')}</span>
+                                  <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-1.5">
+                                    <span className="text-emerald-500 leading-4 flex-shrink-0 mt-0.5 text-[10px]">•</span>
+                                    <span className="flex-1 leading-4 line-clamp-2">{line.replace(/^•\s*/, '')}</span>
                                   </li>
                                 ))}
                               </ul>
                             ) : (
-                              <p className="text-xs sm:text-xs text-gray-500 text-center py-1">ยังไม่มีรายละเอียด</p>
+                              <p className="text-[10px] sm:text-xs text-gray-500 text-center py-0.5">ยังไม่มีรายละเอียด</p>
                             )}
                             
                             {/* Price and Stock */}
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3 border-t border-emerald-900/20">
-                              <div className="rounded-lg sm:rounded-xl bg-black/30 px-2.5 sm:px-3 py-2.5 sm:py-2.5 border border-white/5">
-                                <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 mb-1">ราคา</div>
-                                <div className="text-lg sm:text-lg font-bold text-emerald-400 leading-none">{product.finalPrice.toFixed(0)} ฿</div>
+                            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 border-t border-emerald-900/20">
+                              <div className="rounded-md sm:rounded-lg bg-black/30 px-2 sm:px-2.5 py-1.5 sm:py-2 border border-white/5">
+                                <div className="text-[9px] sm:text-[10px] uppercase tracking-wide text-gray-500 mb-0.5 sm:mb-1">ราคา</div>
+                                <div className="text-sm sm:text-base font-bold text-emerald-400 leading-none">{product.finalPrice.toFixed(0)} ฿</div>
                               </div>
-                              <div className="rounded-lg sm:rounded-xl bg-black/30 px-2.5 sm:px-3 py-2.5 sm:py-2.5 border border-white/5">
-                                <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-gray-500 mb-1">คงเหลือ</div>
+                              <div className="rounded-md sm:rounded-lg bg-black/30 px-2 sm:px-2.5 py-1.5 sm:py-2 border border-white/5">
+                                <div className="text-[9px] sm:text-[10px] uppercase tracking-wide text-gray-500 mb-0.5 sm:mb-1">คงเหลือ</div>
                                 {product.stock > 0 ? (
-                                  <div className="text-base sm:text-base font-semibold text-white leading-none">{product.stock}</div>
+                                  <div className="text-sm sm:text-base font-semibold text-white leading-none">{product.stock}</div>
                                 ) : (
-                                  <div className="text-sm sm:text-sm font-semibold text-red-400 leading-none">หมด</div>
+                                  <div className="text-xs sm:text-sm font-semibold text-red-400 leading-none">หมด</div>
                                 )}
                               </div>
                             </div>
