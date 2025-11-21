@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { getApiKey } from '@/lib/api-keys';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
+import { createCashcardOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
 import { z } from 'zod';
 
-const API_URL = 'https://api.peamsub24hr.com/v2/cashcard';
+const FALLBACK_BASE =
+  process.env.WEPAY_WEBHOOK_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
 
 const createOrderSchema = z.object({
-  product_id: z.number().min(1),
-  reference: z.string().max(100).optional(),
+  product_key: z.string().min(1),
+  item_sku: z.string().min(1),
+  webhookURL: z.string().url().optional(),
+  coupon_code: z.string().optional()
 });
 
 export async function GET(req: Request) {
@@ -20,34 +26,52 @@ export async function GET(req: Request) {
   try {
     const sb = createServiceClient();
     const { data: orders, error } = await sb
-      .from('cashcard_orders')
-      .select(`
-        id,
-        reference,
-        product_data,
-        price,
-        status,
-        raw_response,
-        created_at,
-        updated_at,
-        cashcard_products (
-          id,
-          display_name,
-          name,
-          image_url,
-          category
-        )
-      `)
+      .from('orders')
+      .select('transaction_id, product_id, created_at, updated_at, finished_at, state, result_code, price, input_json')
       .eq('user_id', user.id)
+      .eq('product_type', 'cashcard')
       .order('created_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data: orders || [] });
+    const productIds = Array.from(new Set((orders || []).map((o: any) => o.product_id as number)));
+    let productMap = new Map<number, { id: number; name: string; image_url: string | null; key: string }>();
+    
+    if (productIds.length) {
+      const { data: products } = await sb
+        .from('products')
+        .select('id, name, image_url, key')
+        .in('id', productIds)
+        .eq('product_type', 'cashcard');
+      for (const p of products || []) {
+        productMap.set((p as any).id as number, {
+          id: (p as any).id as number,
+          name: (p as any).name as string,
+          image_url: (p as any).image_url as string | null,
+          key: (p as any).key as string
+        });
+      }
+    }
+
+    const ordersWithProducts = (orders || [])
+      .map((o: any) => {
+        const prod = productMap.get(o.product_id);
+        return {
+          ...o,
+          product: prod || null
+        };
+      })
+      .sort((a: any, b: any) => {
+        const aDate = new Date(a.updated_at || a.finished_at || a.created_at || 0).getTime();
+        const bDate = new Date(b.updated_at || b.finished_at || b.created_at || 0).getTime();
+        return bDate - aDate;
+      });
+
+    return NextResponse.json({ ok: true, data: ordersWithProducts });
   } catch (error) {
-    console.error('Cashcard orders fetch error:', error);
+    console.error('cashcard orders fetch error', error);
     return NextResponse.json({ error: 'unexpected' }, { status: 500 });
   }
 }
@@ -56,48 +80,94 @@ export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const apiKey = await getApiKey('peamsubapi');
-  if (!apiKey) return NextResponse.json({ error: 'missing_peamsub_api_key' }, { status: 500 });
-
   try {
     const body = await req.json();
     const parsed = createOrderSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'invalid_payload', detail: parsed.error.flatten() }, { status: 400 });
+      // Format error messages จาก zod
+      const errorMessages = parsed.error.issues.map((issue) => {
+        if (issue.path.length > 0) {
+          return `${issue.path.join('.')}: ${issue.message}`;
+        }
+        return issue.message;
+      });
+      
+      return NextResponse.json({
+        error: 'invalid_payload',
+        message: 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง',
+        detail: errorMessages.join(', ')
+      }, { status: 400 });
     }
 
-    const { product_id, reference } = parsed.data;
-    
-    // Generate reference if not provided
-    const finalReference = reference?.trim() || `CASH_${Date.now()}_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    const { product_key, item_sku, webhookURL, coupon_code } = parsed.data;
 
     const sb = createServiceClient();
+
+    // ดึง product จาก database
     const { data: product, error: productError } = await sb
-      .from('cashcard_products')
-      .select('*')
-      .eq('id', product_id)
+      .from('products')
+      .select('id, name, key, image_url, provider_company_id, product_type')
+      .eq('key', product_key)
       .eq('is_published', true)
+      .eq('product_type', 'cashcard')
       .maybeSingle();
 
     if (productError) return NextResponse.json({ error: 'db_error', detail: productError.message }, { status: 500 });
     if (!product) return NextResponse.json({ error: 'product_not_found' }, { status: 404 });
 
-    // คำนวณราคา
-    const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
+    // ดึง item จาก database
+    const { data: item, error: itemError } = await sb
+      .from('product_items')
+      .select('id, name, sku, price')
+      .eq('product_id', product.id)
+      .eq('sku', item_sku)
+      .maybeSingle();
 
-    const basePrice = Number(product.base_price || 0);
-    const finalPrice = computePrice(
-      basePrice,
-      Number(product.markup_percent || 0),
-      Number(product.markup_fixed || 0),
-      globalPct,
-      globalFix
-    );
+    if (itemError) return NextResponse.json({ error: 'db_error', detail: itemError.message }, { status: 500 });
+    if (!item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 });
+
+    const itemPrice = Number(item.price || 0);
+
+    // ตรวจสอบและคำนวณ coupon ถ้ามี
+    let finalPrice = itemPrice;
+    let couponDiscount = 0;
+    if (coupon_code) {
+      try {
+        const couponRes = await fetch(`${req.url.split('/api/cashcard/orders')[0]}/api/coupons/validate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: coupon_code, total_amount: itemPrice })
+        });
+        if (couponRes.ok) {
+          const couponData = await couponRes.json();
+          if (couponData.coupon) {
+            finalPrice = couponData.coupon.final_amount;
+            couponDiscount = itemPrice - finalPrice;
+            // อัพเดท used_count ของ coupon
+            const { data: currentCoupon } = await sb
+              .from('coupons')
+              .select('used_count')
+              .eq('code', coupon_code)
+              .single();
+            
+            if (currentCoupon) {
+              await sb
+                .from('coupons')
+                .update({ used_count: Number(currentCoupon.used_count || 0) + 1 })
+                .eq('code', coupon_code);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Coupon validation error:', err);
+        // ถ้า validate coupon ไม่ได้ ให้ใช้ราคาเต็ม
+      }
+    }
 
     // ตรวจสอบว่า user มี points เพียงพอหรือไม่
     const { data: userData, error: userError } = await sb
       .from('users')
-      .select('points')
+      .select('id, username, points')
       .eq('id', user.id)
       .single();
 
@@ -113,65 +183,64 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // หัก points จาก wallet
+    // หัก points จาก wallet (ใช้ finalPrice ที่หัก coupon แล้ว)
     const debitRes = await sb.rpc('wallet_debit', { u: user.id, amt: finalPrice });
     if (debitRes.error || debitRes.data === false || debitRes.data === null) {
       console.error('wallet_debit error:', debitRes.error);
       return NextResponse.json({ error: 'deduct_failed', detail: 'ไม่สามารถหักเงินได้' }, { status: 500 });
     }
 
-    // Encode API key ด้วย Base64
-    const encodedKey = Buffer.from(apiKey).toString('base64');
+    const providerCompanyId = (product as any).provider_company_id || product.key;
+    const destRef = generateDestRef('CC');
+    const webhookUrl = webhookURL || (FALLBACK_BASE ? `${FALLBACK_BASE.replace(/\/$/, '')}/api/webhooks/wepay` : undefined);
 
-    // เรียก Peamsub API
-    const upstream = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${encodedKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: product.provider_product_id,
-        reference: finalReference
-      })
-    });
-
-    const responseJson = await upstream.json();
-
-    // ถ้า API ล้มเหลว ให้คืน points กลับ
-    if (!upstream.ok || responseJson.statusCode !== 200) {
+    if (!webhookUrl) {
       await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
-      // Log error details for debugging แต่ไม่แสดงให้ user
-      console.error('Peamsub API error:', {
-        status: upstream.status,
-        statusText: upstream.statusText,
-        response: responseJson
-      });
-      return NextResponse.json({ 
-        error: 'provider_error', 
-        detail: 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง' 
-      }, { status: 502 });
+      return NextResponse.json({
+        error: 'missing_webhook',
+        detail: 'ระบบยังไม่ได้ตั้งค่า WEPAY_WEBHOOK_URL หรือ NEXT_PUBLIC_BASE_URL',
+      }, { status: 500 });
     }
 
-    // สำหรับ cashcard การซื้อจะใช้เวลา 1-2 นาที จึงตั้ง status เป็น pending
-    // บันทึก order ลง database
+    let upstreamOrder;
+    try {
+      upstreamOrder = await createCashcardOrder({
+        companyId: providerCompanyId,
+        amount: itemPrice,
+        respUrl: webhookUrl,
+        destRef,
+      });
+    } catch (err) {
+      await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
+      throw err;
+    }
+
+    const transactionId = upstreamOrder.transaction_id
+      ? String(upstreamOrder.transaction_id)
+      : upstreamOrder.transactionId
+        ? String(upstreamOrder.transactionId)
+        : destRef;
+
+    // บันทึกออเดอร์ลง database (cashcard ไม่ต้องใช้ input)
     const { data: orderInsert, error: insertError } = await sb
-      .from('cashcard_orders')
+      .from('orders')
       .insert({
+        transaction_id: transactionId,
         user_id: user.id,
         product_id: product.id,
-        provider_product_id: product.provider_product_id,
-        reference: finalReference,
+        item_id: item.id,
         price: finalPrice,
-        status: 'pending',
-        product_data: null,
-        raw_response: responseJson
+        state: 'processing',
+        result_code: upstreamOrder.code === '00000' ? null : (upstreamOrder.code || null),
+        input_json: null,
+        finished_at: null,
+        product_type: 'cashcard'
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error('Cashcard order insert error:', insertError);
+      console.error('order insert error:', insertError);
       // ถ้าบันทึกไม่สำเร็จแต่ External API ส่งสำเร็จแล้ว ให้คืนเงิน
       await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
       return NextResponse.json({ error: 'db_error', detail: 'ไม่สามารถบันทึกออเดอร์ได้' }, { status: 500 });
@@ -190,13 +259,14 @@ export async function POST(req: Request) {
         type: 'cashcard',
         username: user.username,
         userId: user.id,
-        productName: product.display_name || product.name,
+        productName: product.name,
         amount: finalPrice,
-        reference: finalReference,
-        status: 'pending',
+        transactionId: transactionId,
+        status: 'processing',
         imageUrl: product.image_url,
         additionalInfo: {
-          '📂 หมวดหมู่': product.category || '-',
+          '📦 สินค้า': item.name,
+          '🆔 SKU': item.sku,
         }
       });
     } catch (err) {
@@ -204,24 +274,64 @@ export async function POST(req: Request) {
       // ไม่ throw error
     }
 
-    return NextResponse.json({ 
-      ok: true, 
+    // บันทึกสถานะเริ่มต้นลง logs (ถ้ามีตาราง)
+    try {
+      await sb.from('order_status_logs').insert({
+        transaction_id: transactionId,
+        state: 'processing',
+        message: 'สร้างออเดอร์'
+      });
+    } catch {}
+
+    // สร้าง response ตาม API documentation
+    const response = {
+      ok: true,
       order: {
-        id: orderInsert.id,
-        reference: orderInsert.reference,
-        price: finalPrice,
-        status: orderInsert.status,
-        created_at: orderInsert.created_at
+        transactionId: transactionId,
+        price: String(finalPrice),
+        userId: user.id,
+        state: 'processing' as 'pending' | 'completed' | 'refunded' | 'failed' | 'processing' | 'confirming',
+        result_code: upstreamOrder.code === '00000' ? undefined : upstreamOrder.code,
+        productMetadata: {
+          id: product.id,
+          name: product.name,
+          key: product.key,
+          price: itemPrice,
+          itemId: item.id,
+          itemName: item.name,
+          itemSku: item.sku
+        },
+        createdAt: orderInsert.created_at,
+        updatedAt: orderInsert.updated_at,
+        finishedAt: orderInsert.finished_at || undefined,
+        user: {
+          id: user.id,
+          username: userData.username
+        }
       },
       user: {
         id: user.id,
+        username: userData.username,
         balance: String(updatedUser?.points || 0),
         balance_used: String(finalPrice)
-      },
-      message: 'โปรดรอ 1-2 นาที เพื่อให้การดำเนินการซื้อบัตรเงินสดเสร็จสิ้น'
-    });
+      }
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Cashcard order error:', error);
+    console.error('create cashcard order error:', error);
+    if (error instanceof WepayError) {
+      return NextResponse.json({ 
+        error: 'provider_error', 
+        detail: error.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง' 
+      }, { status: 502 });
+    }
+    if (error instanceof Error && error.message.includes('fetch')) {
+      return NextResponse.json({ 
+        error: 'provider_error', 
+        detail: 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง' 
+      }, { status: 502 });
+    }
     return NextResponse.json({ 
       error: 'unexpected', 
       detail: 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง' 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Settings2, SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,17 @@ import {
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import PricingDialog from '@/components/backoffice/PricingDialog';
+import { Spinner } from '@/components/ui/spinner';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
 
 type Product = {
 	id: number;
@@ -41,16 +52,6 @@ type Category = {
 };
 
 type ProductCategoryMap = Map<number, number[]>;
-type ProviderDiscountResponse = {
-  provider_company_id: string;
-  provider_name: string;
-  discount_percent: number;
-  product_count: number;
-};
-
-type ProviderDiscount = ProviderDiscountResponse & {
-  draft_percent: string;
-};
 
 
 type ProductFormState = {
@@ -98,11 +99,18 @@ export default function NewTopupServicesManager() {
   const [editSaving, setEditSaving] = useState(false);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [pricingProductId, setPricingProductId] = useState<number | null>(null);
-  const [discountDialogOpen, setDiscountDialogOpen] = useState(false);
-  const [discountProviders, setDiscountProviders] = useState<ProviderDiscount[]>([]);
-  const [discountLoading, setDiscountLoading] = useState(false);
-  const [discountSaving, setDiscountSaving] = useState(false);
-  const [discountSearch, setDiscountSearch] = useState('');
+  
+  // State สำหรับ dialog เลือกเกม
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [games, setGames] = useState<Array<{ company_id: string; company_name: string; exists: boolean }>>([]);
+  const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set());
+  const [loadingGames, setLoadingGames] = useState(false);
+  const [gameSearch, setGameSearch] = useState('');
+  
+  // State สำหรับ sync progress
+  const [syncProgress, setSyncProgress] = useState<number>(0);
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  const [syncController, setSyncController] = useState<AbortController | null>(null);
 
 	useEffect(() => {
 		fetchAll();
@@ -116,8 +124,9 @@ export default function NewTopupServicesManager() {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 30000);
 
+			// ส่ง product_type=gtopup เพื่อดึงเฉพาะเกม
 			const [p, c, pc] = await Promise.all([
-				fetch(`/api/admin/products?filter=${filter}`, { signal: controller.signal }),
+				fetch(`/api/admin/products?filter=${filter}&product_type=gtopup`, { signal: controller.signal }),
 				fetch('/api/admin/categories', { signal: controller.signal }),
 				fetch('/api/admin/products/categories', { signal: controller.signal }),
 			]);
@@ -166,137 +175,165 @@ export default function NewTopupServicesManager() {
     return list.filter((p) => p.name?.toLowerCase().includes(q) || p.key?.toLowerCase().includes(q));
   }, [products, query, filter]);
 
-  const runSync = async () => {
-		setSyncing(true);
+  const fetchGames = async () => {
+    setLoadingGames(true);
 		try {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 120000);
-			const res = await fetch('/api/admin/products/sync', { method: 'POST', signal: controller.signal });
-			clearTimeout(timeoutId);
-			if (!res.ok) {
-				const j = await res.json().catch(() => ({}));
-				throw new Error(j.error || 'Sync ไม่สำเร็จ');
-			}
-      toast.show({ title: 'Sync สำเร็จ', description: 'รีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว' });
-			await fetchAll();
-      return true;
-		} catch (err) {
+      // ดึงข้อมูลใหม่จาก wePAY API ทุกครั้ง (ไม่ใช้ cache)
+      const res = await fetch(`/api/admin/products/list?product_type=gtopup`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        throw new Error('ไม่สามารถดึงรายชื่อเกมได้');
+      }
+      const json = await res.json();
+      setGames(json.data || []);
+      // เลือกทั้งหมดโดย default
+      setSelectedGames(new Set((json.data || []).map((g: any) => g.company_id)));
+    } catch (err) {
       toast.show({
-        title: 'Sync ไม่สำเร็จ',
+        title: 'โหลดรายชื่อเกมไม่สำเร็จ',
         description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
         variant: 'destructive',
       });
+      setGames([]);
+    } finally {
+      setLoadingGames(false);
+    }
+  };
+
+  const handleOpenSyncDialog = () => {
+    setSyncDialogOpen(true);
+    fetchGames();
+  };
+
+  const handleToggleGame = (companyId: string) => {
+    setSelectedGames((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(companyId)) {
+        newSet.delete(companyId);
+    } else {
+        newSet.add(companyId);
+    }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedGames(new Set(games.map((g) => g.company_id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedGames(new Set());
+  };
+
+  const runSync = async (companyIds: string[]) => {
+		setSyncing(true);
+		setSyncProgress(0);
+		setSyncStatus('กำลังเริ่ม sync...');
+		
+		const controller = new AbortController();
+		setSyncController(controller);
+		
+		// เพิ่ม timeout เป็น 6 นาที (360,000 ms) เพื่อให้สอดคล้องกับ server-side timeout
+		const timeoutId = setTimeout(() => controller.abort(), 360000);
+		
+		// Simulate progress (เนื่องจาก API ไม่ได้ส่ง progress กลับมา)
+		const progressInterval = setInterval(() => {
+			setSyncProgress((prev) => {
+				if (prev >= 90) return prev; // หยุดที่ 90% รอ response
+				return prev + Math.random() * 5;
+			});
+		}, 500);
+		
+		try {
+			// ส่ง product_type=gtopup และ company_ids ที่เลือก
+			const url = new URL('/api/admin/products/sync', window.location.origin);
+			url.searchParams.set('product_type', 'gtopup');
+			
+			setSyncStatus(`กำลัง sync ${companyIds.length} เกม...`);
+			
+			const res = await fetch(url.toString(), { 
+				method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ company_ids: companyIds }),
+				signal: controller.signal 
+      });
+			
+			clearInterval(progressInterval);
+			clearTimeout(timeoutId);
+			
+      if (!res.ok) {
+				const j = await res.json().catch(() => ({}));
+				throw new Error(j.detail || j.error || 'Sync ไม่สำเร็จ');
+      }
+			
+			setSyncProgress(100);
+			setSyncStatus('Sync สำเร็จ!');
+			
+			const data = await res.json();
+			toast.show({ 
+				title: 'Sync สำเร็จ', 
+				description: `Sync ${companyIds.length} เกมเรียบร้อยแล้ว${data.counts ? `: ${data.counts.products} สินค้า, ${data.counts.items} รายการ` : ''}` 
+			});
+			
+			await fetchAll();
+			
+			// ปิด dialog หลังจาก 1.5 วินาที
+			setTimeout(() => {
+				setSyncDialogOpen(false);
+				setSyncProgress(0);
+				setSyncStatus('');
+			}, 1500);
+			
+      return true;
+    } catch (err) {
+			clearInterval(progressInterval);
+			setSyncProgress(0);
+			setSyncStatus('');
+			
+			if ((err as Error).name === 'AbortError') {
+      toast.show({
+					title: 'Sync ถูกยกเลิก',
+					description: 'การ Sync ถูกยกเลิกโดยผู้ใช้',
+					variant: 'destructive',
+				});
+			} else {
+				toast.show({
+					title: 'Sync ไม่สำเร็จ',
+        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+        variant: 'destructive',
+      });
+			}
       return false;
-		} finally {
+    } finally {
 			setSyncing(false);
+			setSyncController(null);
 		}
 	};
 
-  const fetchDiscountProviders = useCallback(async () => {
-    setDiscountLoading(true);
-    try {
-      const res = await fetch('/api/admin/products/agent-discounts');
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || 'โหลดส่วนลดไม่สำเร็จ');
-      }
-      const json = await res.json();
-      const rows = (json.data || []).map((row: ProviderDiscountResponse) => ({
-        ...row,
-        discount_percent: Number(row.discount_percent ?? 0),
-        draft_percent: String(Number(row.discount_percent ?? 0)),
-      }));
-      setDiscountProviders(rows);
-    } catch (err) {
-      toast.show({
-        title: 'โหลดข้อมูลส่วนลดไม่สำเร็จ',
-        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
-        variant: 'destructive',
-      });
-      setDiscountProviders([]);
-    } finally {
-      setDiscountLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (discountDialogOpen) {
-      fetchDiscountProviders();
-    } else {
-      setDiscountSearch('');
-    }
-  }, [discountDialogOpen, fetchDiscountProviders]);
-
-  const filteredDiscountProviders = useMemo(() => {
-    const q = discountSearch.trim().toLowerCase();
-    if (!q) return discountProviders;
-    return discountProviders.filter((provider) => provider.provider_name.toLowerCase().includes(q));
-  }, [discountProviders, discountSearch]);
-
-  const handleChangeDiscountPercent = (providerId: string, value: string) => {
-    if (!/^\d*\.?\d*$/.test(value)) return;
-    setDiscountProviders((prev) =>
-      prev.map((item) => {
-        if (item.provider_company_id !== providerId) return item;
-        const numeric = value === '' ? null : parseFloat(value);
-        const clamp =
-          numeric === null || Number.isNaN(numeric) ? 0 : Math.min(100, Math.max(0, numeric));
-        return {
-          ...item,
-          discount_percent: clamp,
-          draft_percent: value,
-        };
-      }),
-    );
-  };
-
-  const handleResetDiscounts = () => {
-    setDiscountProviders((prev) =>
-      prev.map((item) => ({ ...item, discount_percent: 0, draft_percent: '0' })),
-    );
-  };
-
-  const saveDiscountOverrides = async () => {
-    setDiscountSaving(true);
-    try {
-      const payload = {
-        providers: discountProviders.map((provider) => ({
-          provider_company_id: provider.provider_company_id,
-          provider_name: provider.provider_name,
-          discount_percent: provider.discount_percent,
-        })),
-      };
-      const res = await fetch('/api/admin/products/agent-discounts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.detail || json.error || 'บันทึกส่วนลดไม่สำเร็จ');
-      }
-      toast.show({ title: 'บันทึกส่วนลดสำเร็จ', description: 'บันทึกส่วนลดตัวแทนเรียบร้อยแล้ว' });
-      return true;
-    } catch (err) {
-      toast.show({
-        title: 'บันทึกส่วนลดไม่สำเร็จ',
-        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setDiscountSaving(false);
-    }
+  const handleCancelSync = () => {
+		if (syncController) {
+			syncController.abort();
+			setSyncController(null);
+		}
+		setSyncing(false);
+		setSyncProgress(0);
+		setSyncStatus('');
   };
 
   const handleConfirmSync = async () => {
-    const saved = await saveDiscountOverrides();
-    if (!saved) return;
-    const synced = await runSync();
-    if (synced) {
-      setDiscountDialogOpen(false);
+    if (selectedGames.size === 0) {
+      toast.show({
+        title: 'กรุณาเลือกเกม',
+        description: 'กรุณาเลือกเกมอย่างน้อย 1 เกม',
+        variant: 'destructive',
+      });
+      return;
     }
+    // ไม่ปิด dialog เพื่อแสดง progress
+    await runSync(Array.from(selectedGames));
   };
+
 
 	const handlePublishAll = async () => {
 		if (!confirm('คุณต้องการเผยแพร่ทุกเกมที่ยังไม่เผยแพร่หรือไม่?')) return;
@@ -425,7 +462,7 @@ export default function NewTopupServicesManager() {
           <Button variant="outline" onClick={handlePublishAll} disabled={loading}>
 						เผยแพร่ทุกเกม
           </Button>
-          <Button variant="outline" onClick={() => setDiscountDialogOpen(true)} disabled={syncing}>
+          <Button variant="outline" onClick={handleOpenSyncDialog} disabled={syncing}>
 						{syncing ? 'กำลังซิงก์...' : 'Sync จากผู้ให้บริการ'}
           </Button>
 				</div>
@@ -715,125 +752,129 @@ export default function NewTopupServicesManager() {
         }}
       />
 
-      <Dialog open={discountDialogOpen} onOpenChange={(open) => setDiscountDialogOpen(open)}>
-        <DialogContent className="max-w-4xl bg-[#050505] border border-white/10 text-white">
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="max-w-4xl bg-[#050505] border border-white/10 text-white max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>ปรับ % ส่วนลดตัวแทนก่อนซิงก์</DialogTitle>
+            <DialogTitle>เลือกเกมที่จะ Sync</DialogTitle>
             <DialogDescription className="text-gray-400">
-              ตรวจสอบและกำหนดเปอร์เซ็นต์ส่วนลดของแต่ละเกม ก่อนดึงข้อมูลจาก wePAY
+              เลือกเกมที่ต้องการ sync จาก wePAY (สามารถเลือกได้หลายเกม)
             </DialogDescription>
           </DialogHeader>
-          {discountLoading ? (
-            <div className="py-10 text-center text-gray-400">กำลังโหลดข้อมูล...</div>
-          ) : discountProviders.length === 0 ? (
-            <div className="py-10 text-center text-gray-400">
-              ไม่พบข้อมูลเกมที่ต้องปรับส่วนลด
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[65vh] overflow-hidden">
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex-1 min-w-[220px]">
-                  <Input
+          
+          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+            <div className="flex items-center gap-2">
+              <InputGroup className="flex-1">
+                <InputGroupInput
                     placeholder="ค้นหาเกม..."
-                    value={discountSearch}
-                    onChange={(e) => setDiscountSearch(e.target.value)}
-                    className="bg-[#0f0f0f] border border-gray-700 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleResetDiscounts}
-                  className="border-white/20 text-white hover:bg-white/10"
-                >
-                  รีเซ็ตเป็น 0%
+                  value={gameSearch}
+                  onChange={(e) => setGameSearch(e.target.value)}
+                />
+                <InputGroupAddon>
+                  <SearchIcon size={16} />
+                </InputGroupAddon>
+              </InputGroup>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                เลือกทั้งหมด
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDeselectAll}>
+                ยกเลิกทั้งหมด
                 </Button>
               </div>
-              <div className="border border-white/10 rounded-xl max-h-[55vh] overflow-y-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-white/5 text-gray-300 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">เกม</th>
-                      <th className="px-4 py-3 font-medium">มีในระบบ</th>
-                      <th className="px-4 py-3 font-medium text-right">% ส่วนลด</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDiscountProviders.map((provider) => (
-                      <tr
-                        key={provider.provider_company_id}
-                        className="border-t border-white/5 hover:bg-white/5 transition-colors"
+            
+            <div className="flex-1 overflow-y-auto border border-white/10 rounded-xl">
+              {loadingGames ? (
+                <div className="py-10 text-center text-gray-400">กำลังโหลดรายชื่อเกม...</div>
+              ) : games.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">ไม่พบข้อมูลเกม</div>
+              ) : (
+                <div className="p-4 space-y-2">
+                  {games
+                    .filter((g) => 
+                      !gameSearch || 
+                      g.company_name.toLowerCase().includes(gameSearch.toLowerCase()) ||
+                      g.company_id.toLowerCase().includes(gameSearch.toLowerCase())
+                    )
+                    .map((game) => (
+                      <label
+                        key={game.company_id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
                       >
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-white">{provider.provider_name}</div>
-                          <div className="text-xs text-gray-400">ID: {provider.provider_company_id}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {provider.product_count > 0 ? (
-                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-300">
-                              {provider.product_count} รายการ
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="border-white/20 text-gray-400">
-                              ยังไม่มีในระบบ
+                        <input
+                          type="checkbox"
+                          checked={selectedGames.has(game.company_id)}
+                          onChange={() => handleToggleGame(game.company_id)}
+                          className="w-4 h-4 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{game.company_name}</span>
+                            {game.exists && (
+                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 text-xs">
+                                มีในระบบแล้ว
                             </Badge>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={provider.draft_percent}
-                              onChange={(e) =>
-                                handleChangeDiscountPercent(provider.provider_company_id, e.target.value)
-                              }
-                              className="w-24 text-right bg-[#0f0f0f] border border-gray-700 text-white focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
-                              placeholder="0"
-                            />
-                            <span className="text-gray-400 text-xs">%</span>
                           </div>
-                        </td>
-                      </tr>
+                          <div className="text-xs text-gray-400">ID: {game.company_id}</div>
+                        </div>
+                      </label>
                     ))}
-                    {filteredDiscountProviders.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
-                          ไม่พบเกมตามคำค้นหา
-                        </td>
-                      </tr>
+                  {games.filter((g) => 
+                    !gameSearch || 
+                    g.company_name.toLowerCase().includes(gameSearch.toLowerCase()) ||
+                    g.company_id.toLowerCase().includes(gameSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="py-10 text-center text-gray-400">ไม่พบเกมตามคำค้นหา</div>
                     )}
-                  </tbody>
-                </table>
-			</div>
             </div>
           )}
-          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-            <p className="text-xs text-gray-500">
-              * ส่วนลดนี้จะถูกนำไปใช้คำนวณราคาทุนทันทีเมื่อซิงก์จาก wePAY
-            </p>
-            <div className="flex gap-2">
+            </div>
+            
+            <div className="text-sm text-gray-400">
+              เลือกแล้ว: {selectedGames.size} / {games.length} เกม
+            </div>
+          </div>
+          
+          {syncing ? (
+            <div className="flex w-full flex-col gap-4">
+              <Item variant="outline">
+                <ItemMedia>
+                  <Spinner />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>กำลัง Sync...</ItemTitle>
+                  <ItemDescription>{syncStatus || `กำลัง sync ${selectedGames.size} เกม...`}</ItemDescription>
+                </ItemContent>
+                <ItemActions className="hidden sm:flex">
+                  <Button variant="outline" size="sm" onClick={handleCancelSync}>
+                    ยกเลิก
+                  </Button>
+                </ItemActions>
+                <ItemFooter>
+                  <Progress value={syncProgress} />
+                </ItemFooter>
+              </Item>
+            </div>
+          ) : (
+            <DialogFooter>
               <Button
-                type="button"
                 variant="outline"
-                onClick={() => setDiscountDialogOpen(false)}
-                disabled={discountSaving || syncing}
-                className="border-white/20 text-white hover:bg-white/10"
+                onClick={() => setSyncDialogOpen(false)}
+                disabled={syncing}
               >
                 ยกเลิก
               </Button>
               <Button
-                type="button"
                 onClick={handleConfirmSync}
-                disabled={discountSaving || syncing || discountProviders.length === 0}
-                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
+                disabled={syncing || selectedGames.size === 0}
+                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
               >
-                {discountSaving || syncing ? 'กำลังบันทึกและซิงก์...' : 'บันทึกและซิงก์'}
+                Sync {selectedGames.size} เกม
               </Button>
-            </div>
           </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
+
 		</div>
 	);
 }

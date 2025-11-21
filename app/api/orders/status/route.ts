@@ -47,7 +47,7 @@ export async function POST(req: Request) {
             // อ่านสถานะเดิม
             const { data: existing } = await sb
               .from('orders')
-              .select('state')
+              .select('state, product_type, output_json')
               .eq('transaction_id', txId)
               .eq('user_id', user.id)
               .maybeSingle();
@@ -62,6 +62,20 @@ export async function POST(req: Request) {
             };
             if (isTerminal) {
               updatePayload.finished_at = new Date().toISOString();
+              
+              // สำหรับ cashcard เมื่อสถานะเป็น completed ให้ดึง output (รหัสบัตรเติมเงิน)
+              if (existing?.product_type === 'cashcard' && (newState === 'completed' || newState === 'success') && !existing.output_json) {
+                try {
+                  const output = await getWepayOrderOutput(txId);
+                  if (output) {
+                    updatePayload.output_json = output;
+                    console.log('[ORDERS][STATUS] Fetched output for cashcard:', txId, output);
+                  }
+                } catch (err) {
+                  console.error('[ORDERS][STATUS] Failed to fetch output:', err);
+                  // ไม่ throw error เพราะ order update สำเร็จแล้ว
+                }
+              }
             }
 
             const { error: updateErr, count } = await sb

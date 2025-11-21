@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { toWepayState } from '@/lib/providers/wepay';
+import { toWepayState, getWepayOrderOutput } from '@/lib/providers/wepay';
 
 function parseFormBody(formBody: string) {
   const params = new URLSearchParams(formBody);
@@ -45,6 +45,14 @@ export async function POST(req: Request) {
 
     const sb = createServiceClient();
     const { state, isTerminal } = toWepayState(statusCode);
+    
+    // ดึงข้อมูล order เพื่อตรวจสอบ product_type
+    const { data: existing } = await sb
+      .from('orders')
+      .select('state, product_type')
+      .eq('transaction_id', transactionId)
+      .maybeSingle();
+
     const updatePayload: Record<string, any> = {
       state,
       result_code: statusCode || null,
@@ -52,13 +60,53 @@ export async function POST(req: Request) {
     };
     if (isTerminal) {
       updatePayload.finished_at = new Date().toISOString();
+      
+      // สำหรับ cashcard เมื่อสถานะเป็น completed ให้ดึง output (รหัสบัตรเติมเงิน)
+      if (existing?.product_type === 'cashcard' && (state === 'completed' || state === 'success')) {
+        // ดึงข้อมูลจาก webhook payload ก่อน (cashcard_ref1, cashcard_ref2, sms)
+        const output: Record<string, string> = {};
+        
+        if (body.cashcard_ref1) {
+          output.serial = body.cashcard_ref1;
+          output.card_code = body.cashcard_ref1;
+        }
+        if (body.cashcard_ref2) {
+          output.password = body.cashcard_ref2;
+          output.card_pin = body.cashcard_ref2;
+          output.pin = body.cashcard_ref2;
+        }
+        
+        // ถ้ามี sms ให้ parse
+        if (body.sms) {
+          const smsMatch = body.sms.match(/serial_no:([^,]+),password:(.+)/);
+          if (smsMatch) {
+            output.serial = smsMatch[1];
+            output.card_code = smsMatch[1];
+            output.password = smsMatch[2];
+            output.card_pin = smsMatch[2];
+            output.pin = smsMatch[2];
+          }
+        }
+        
+        // ถ้ามีข้อมูล output จาก webhook ให้เก็บไว้
+        if (Object.keys(output).length > 0) {
+          updatePayload.output_json = output;
+          console.log('[WEBHOOK][WEPAY] Extracted output from webhook payload:', transactionId, output);
+        } else {
+          // ถ้าไม่มีใน webhook payload ให้ลองดึงจาก API (อาจจะช้า)
+          try {
+            const apiOutput = await getWepayOrderOutput(transactionId);
+            if (apiOutput) {
+              updatePayload.output_json = apiOutput;
+              console.log('[WEBHOOK][WEPAY] Fetched output from API:', transactionId, apiOutput);
+            }
+          } catch (err) {
+            console.warn('[WEBHOOK][WEPAY] Failed to fetch output from API (will retry later):', err);
+            // ไม่ throw error เพราะ order update สำเร็จแล้ว
+          }
+        }
+      }
     }
-
-    const { data: existing } = await sb
-      .from('orders')
-      .select('state')
-      .eq('transaction_id', transactionId)
-      .maybeSingle();
 
     const { error } = await sb
       .from('orders')

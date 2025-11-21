@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -25,7 +25,6 @@ import GameCategoriesContent from '@/components/backoffice/GameCategoriesContent
 import GamesContent from '@/components/backoffice/GamesContent';
 import GamePrizesContent from '@/components/backoffice/GamePrizesContent';
 import AppPremiumContent from '@/components/backoffice/AppPremiumContent';
-import CashcardContent from '@/components/backoffice/CashcardContent';
 import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
 import TopupHistoryContent from '@/components/backoffice/TopupHistoryContent';
 import AdminLoginForm from '@/components/backoffice/AdminLoginForm';
@@ -89,11 +88,22 @@ const menuSections: MenuSection[] = [
     ]
   },
   {
+    label: 'เติมเงินมือถือ',
+    items: [
+      { id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone },
+    ]
+  },
+  {
+    label: 'บัตรเติมเงิน',
+    items: [
+      { id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard },
+    ]
+  },
+  {
     label: 'สินค้าอื่นๆ',
     items: [
       { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
       { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
-      { id: 'cashcard', label: 'บัตรเติมเงิน', icon: CreditCard },
     ]
   },
   {
@@ -556,8 +566,10 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <GamePrizesContent />;
     case 'app-premium':
       return <AppPremiumContent />;
-    case 'cashcard':
-      return <CashcardContent />;
+    case 'mtopup':
+      return <ProductsContentWrapper productType="mtopup" />;
+    case 'cashcard-wepay':
+      return <ProductsContentWrapper productType="cashcard" />;
     case 'tickets':
       return <TicketsContent />;
     case 'blog-posts':
@@ -880,4 +892,8 @@ function SocialServicesContentWrapper() {
 
 function SiteContentWrapper() {
   return <AdminSiteForm />;
+}
+
+function ProductsContentWrapper({ productType }: { productType?: string }) {
+  return <ProductsContent productType={productType} />;
 }

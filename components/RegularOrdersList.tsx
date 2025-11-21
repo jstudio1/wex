@@ -33,6 +33,11 @@ type Order = {
     image_url: string | null;
     key: string;
   } | null;
+  item: {
+    id: number;
+    name: string;
+    sku: string;
+  } | null;
 };
 
 function translateState(state: string): string {
@@ -78,7 +83,7 @@ export default function RegularOrdersList() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/orders');
+      const res = await fetch('/api/orders?product_type=gtopup');
       const json = await res.json();
       if (json.ok && json.data) {
         setOrders(json.data);
@@ -97,7 +102,7 @@ export default function RegularOrdersList() {
       
       setTimeout(async () => {
         try {
-          const res = await fetch('/api/orders');
+          const res = await fetch('/api/orders?product_type=gtopup');
           const json = await res.json();
           
           if (json.ok && json.data && json.data.length > 0) {
@@ -235,7 +240,12 @@ export default function RegularOrdersList() {
                       ) : (
                         <div className="h-10 w-10 rounded bg-gray-800" />
                       )}
-                      <div className="truncate font-medium text-white">{prod?.name || 'บริการ'}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-white">{prod?.name || 'บริการ'}</div>
+                        {order.item?.name && (
+                          <div className="text-xs text-gray-400 mt-0.5 truncate">{order.item.name}</div>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-1 text-[10px] text-gray-500">TX: {order.transaction_id}</div>
                   </TableCell>

@@ -14,19 +14,47 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 const AdminManageStatusSelect = dynamic(() => import('@/components/AdminManageStatusSelect'), { ssr: false });
 
-async function syncAction() {
+function ProductTypeFilter({ currentType }: { currentType: string }) {
+  'use client';
+  return (
+    <select 
+      className="input text-xs"
+      defaultValue={currentType}
+      onChange={(e) => {
+        const url = new URL(window.location.href);
+        if (e.target.value === 'all') {
+          url.searchParams.delete('type');
+        } else {
+          url.searchParams.set('type', e.target.value);
+        }
+        window.location.href = url.toString();
+      }}
+    >
+      <option value="all">ทุกประเภท</option>
+      <option value="gtopup">Gtopup (เติมเกม)</option>
+      <option value="mtopup">Mtopup (เติมเงินมือถือ)</option>
+      <option value="cashcard">Cashcard (บัตรเติมเงิน)</option>
+    </select>
+  );
+}
+
+async function syncAction(productType?: string) {
   'use server';
   const admin = await requireAdmin();
   if (!admin) { return; }
   const secret = process.env.WEBHOOK_SECRET;
   if (!secret) { return; }
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products/sync`, {
+  const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products/sync`);
+  if (productType) {
+    url.searchParams.set('product_type', productType);
+  }
+  const res = await fetch(url.toString(), {
     method: 'POST',
     headers: { Authorization: `Bearer ${secret}` }
   });
   await res.json();
   revalidatePath('/admin/products/manage');
-  redirect('/admin/products/manage?status=ok');
+  redirect(`/admin/products/manage?status=ok${productType ? `&type=${productType}` : ''}`);
 }
 
 async function batchUpdateAction(formData: FormData) {
@@ -83,9 +111,13 @@ export default async function AdminProductsManagePage({ searchParams }: { search
   const globalMarkup = await getGlobalMarkup();
   const sb = createServiceClient();
   const filter = typeof searchParams?.filter === 'string' ? searchParams.filter : 'all';
-  let q = sb.from('products').select('id, name, key, is_published, image_url, banner_url, badge_enabled, badge_percent, badge_text, badge_apply_price');
+  const productType = typeof searchParams?.type === 'string' ? searchParams.type : 'all';
+  let q = sb.from('products').select('id, name, key, is_published, image_url, banner_url, badge_enabled, badge_percent, badge_text, badge_apply_price, product_type');
   if (filter === 'published') q = q.eq('is_published', true);
   if (filter === 'unpublished') q = q.eq('is_published', false);
+  if (productType === 'gtopup') q = q.eq('product_type', 'gtopup');
+  if (productType === 'mtopup') q = q.eq('product_type', 'mtopup');
+  if (productType === 'cashcard') q = q.eq('product_type', 'cashcard');
   const { data: products } = await q.order('is_published', { ascending: false }).order('name');
   const { data: categories } = await sb.from('categories').select('id, name, slug').eq('is_published', true).order('name');
   const { data: pc } = await sb.from('product_categories').select('product_id, category_id');
@@ -106,13 +138,13 @@ export default async function AdminProductsManagePage({ searchParams }: { search
           <h1 className="text-xl font-semibold">จัดการบริการ</h1>
         </div>
         <div className="flex items-center gap-3">
-          <form action={syncAction}>
-            <AdminSyncSubmit />
+          <form action={() => syncAction(productType !== 'all' ? productType : undefined)}>
+            <AdminSyncSubmit label={productType !== 'all' ? `Sync ${productType === 'gtopup' ? 'เติมเกม' : productType === 'mtopup' ? 'เติมเงินมือถือ' : 'บัตรเติมเงิน'}` : 'Sync ทั้งหมด'} />
           </form>
         </div>
       </div>
-      <div className="flex justify-between items-center -mt-2">
-        <div />
+      <div className="flex justify-between items-center -mt-2 gap-2">
+        <ProductTypeFilter currentType={productType} />
         <AdminManageStatusSelect />
       </div>
       {searchParams?.status === 'ok' && (

@@ -20,6 +20,7 @@ import {
   Trophy,
   CreditCard,
   BookOpen,
+  Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -65,11 +66,22 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
+    label: 'เติมเงินมือถือ',
+    items: [
+      { id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone },
+    ],
+  },
+  {
+    label: 'บัตรเติมเงิน',
+    items: [
+      { id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard },
+    ],
+  },
+  {
     label: 'สินค้าอื่นๆ',
     items: [
       { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
       { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
-      { id: 'cashcard', label: 'บัตรเติมเงิน', icon: CreditCard },
     ],
   },
   {

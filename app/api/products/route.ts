@@ -27,7 +27,8 @@ export async function GET(req: Request) {
     let productsQuery = sb
       .from('products')
       .select('id, name, key, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price')
-      .eq('is_published', true);
+      .eq('is_published', true)
+      .eq('product_type', 'gtopup');
     
     // Support fetching by IDs for admin orders
     if (idsParam) {

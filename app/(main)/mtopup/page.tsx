@@ -1,0 +1,86 @@
+import { getBaseUrl } from '@/lib/url';
+import MtopupProductsLayout from '@/components/MtopupProductsLayout';
+import ProductsHeroBanner from '@/components/ProductsHeroBanner';
+import { cache } from 'react';
+import type { Metadata } from 'next';
+import { Smartphone, Phone } from 'lucide-react';
+
+type ProductCard = {
+  id: number;
+  name: string;
+  key: string;
+  image_url?: string | null;
+  items: { id: number; name: string; sku: string; price: string; originalPrice: string }[];
+  badge?: { text?: string | null; percent?: number | null } | null;
+};
+
+const fetchProducts = cache(async (): Promise<ProductCard[]> => {
+  const base = getBaseUrl();
+  const p = await fetch(`${base}/api/mtopup`, { cache: 'no-store' });
+  const products = p.ok ? (await p.json()).data : [];
+  return products;
+});
+
+const fetchSite = cache(async () => {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/api/site`, { cache: 'no-store' });
+  return res.ok ? res.json() : { flashStart: null, flashEnd: null };
+});
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'เติมเงินมือถือ - ราคาถูก เติมเร็ว ปลอดภัย',
+  description: 'เติมเงินมือถือทุกเครือข่าย ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus',
+  alternates: { canonical: '/mtopup' },
+  openGraph: {
+    title: 'เติมเงินมือถือ - ราคาถูก เติมเร็ว ปลอดภัย',
+    description: 'เติมเงินมือถือทุกเครือข่าย ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus',
+    url: '/mtopup',
+    type: 'website',
+  },
+  twitter: { card: 'summary', title: 'เติมเงินมือถือ - ราคาถูก เติมเร็ว ปลอดภัย', description: 'เติมเงินมือถือทุกเครือข่าย ราคาถูกที่สุด เติมไว ปลอดภัย 100% จาก WeXPlus' },
+};
+
+export default async function MtopupPage() {
+  const products = await fetchProducts();
+  const site = await fetchSite();
+  return (
+    <>
+      {/* Hero Banner */}
+      <ProductsHeroBanner
+        title="เติมเงินมือถือ"
+        subtitle="บริการเติมเงินมือถือทุกเครือข่าย รวดเร็ว ปลอดภัย ราคาถูก"
+        iconName="phone"
+        gradientFrom="from-emerald-950"
+        gradientVia="via-emerald-900"
+        gradientTo="to-emerald-950"
+        primaryButtonText="เติมเงินมือถือ"
+        primaryButtonHref="/mtopup"
+        primaryButtonIconName="phone"
+      />
+      
+      {/* Main Content */}
+      <main className="bg-black py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Section Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
+                <Smartphone className="h-6 w-6 text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white sm:text-3xl">เติมเงินมือถือ</h1>
+                <p className="text-sm text-gray-400">Mobile Topup</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Products Layout */}
+          <MtopupProductsLayout products={products} />
+        </div>
+      </main>
+    </>
+  );
+}
+

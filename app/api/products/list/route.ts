@@ -1,99 +1,98 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
-export async function GET() {
+const WEPAY_PRODUCTS_URL =
+  process.env.WEPAY_PRODUCTS_URL ||
+  'https://www.wepay.in.th/comp_export.php?json';
+
+type WepayGame = {
+  company_id: string;
+  company_name: string;
+  fee?: number;
+  denomination?: Array<{ price: number; description: string | null }>;
+  gameservers?: Array<{ value: string; name: string }>;
+  refs_format?: { ref1?: string };
+};
+
+export async function GET(req: Request) {
+  const auth = req.headers.get('authorization');
+  if (!auth || auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
   try {
-    const sb = createServiceClient();
-    const { pct: gpct, fix: gfix } = await getGlobalMarkup();
+    const { searchParams } = new URL(req.url);
+    const productType = searchParams.get('product_type') as 'gtopup' | 'mtopup' | 'cashcard' | null;
     
-    // ดึงบริการทั้งหมดที่เผยแพร่
-    const { data: products, error: perr } = await sb
+    const upstream = await fetch(WEPAY_PRODUCTS_URL, { 
+      cache: 'no-store',
+    });
+    
+    if (!upstream.ok) {
+      console.error('[wePAY list] fetch failed', upstream.status, upstream.statusText);
+      return NextResponse.json({ error: 'fetch_failed', detail: 'ไม่สามารถดึงข้อมูลจาก wePAY ได้' }, { status: upstream.status || 500 });
+    }
+    
+    const payload = await upstream.json();
+    
+    const gtopupProducts: WepayGame[] = Array.isArray(payload?.data?.gtopup) ? payload.data.gtopup : [];
+    const mtopupProducts = Array.isArray(payload?.data?.mtopup) ? payload.data.mtopup : [];
+    const cashcardProducts = Array.isArray(payload?.data?.cashcard) ? payload.data.cashcard : [];
+    
+    // ดึงข้อมูลเกมที่มีอยู่ในระบบแล้ว
+    const sb = createServiceClient();
+    let existingProductsQuery = sb
       .from('products')
-      .select('id, name, key')
-      .eq('is_published', true)
-      .order('name');
-    if (perr) return NextResponse.json({ error: 'db_error', detail: perr.message }, { status: 500 });
-
-    // ดึง items ของทุกบริการ
-    const { data: items, error: ierr } = await sb
-      .from('product_items')
-      .select('id, product_id, name, sku, price, original_price, markup_percent, markup_fixed, icon_url');
-    if (ierr) return NextResponse.json({ error: 'db_error', detail: ierr.message }, { status: 500 });
-
-    // ดึง inputs ของทุกบริการ
-    const { data: inputs, error: inperr } = await sb
-      .from('product_inputs')
-      .select('id, product_id, key, title, regex, type, placeholder')
-      .order('id');
-    if (inperr) return NextResponse.json({ error: 'db_error', detail: inperr.message }, { status: 500 });
-
-    // ดึง options ของ inputs
-    const inputIds = (inputs || []).map((x) => x.id);
-    let optionsByInput = new Map<number, { label: string; value: string }[]>();
-    if (inputIds.length) {
-      const { data: options, error: oerr } = await sb
-        .from('product_input_options')
-        .select('id, input_id, label, value')
-        .in('input_id', inputIds)
-        .order('id');
-      if (oerr) return NextResponse.json({ error: 'db_error', detail: oerr.message }, { status: 500 });
-      for (const o of options || []) {
-        const arr = optionsByInput.get(o.input_id as number) || [];
-        arr.push({ label: o.label, value: o.value });
-        optionsByInput.set(o.input_id as number, arr);
+      .select('provider_company_id, name, product_type');
+    
+    if (productType) {
+      existingProductsQuery = existingProductsQuery.eq('product_type', productType);
+    }
+    
+    const { data: existingProducts } = await existingProductsQuery;
+    const existingMap = new Map<string, boolean>();
+    for (const p of existingProducts || []) {
+      const companyId = String(p.provider_company_id || '').trim();
+      if (companyId) {
+        existingMap.set(companyId, true);
       }
     }
-
-    // จัดกลุ่ม items และ inputs ตาม product_id
-    const itemsByProduct = new Map<number, any[]>();
-    for (const it of items || []) {
-      const arr = itemsByProduct.get(it.product_id as number) || [];
-      const base = Number(it.price ?? 0);
-      const pct = Number((it as any).markup_percent ?? 0);
-      const fix = Number((it as any).markup_fixed ?? 0);
-      const computed = computePrice(base, pct, fix, gpct, gfix);
-      arr.push({
-        name: it.name,
-        sku: it.sku,
-        price: computed.toFixed(2),
-        originalPrice: String(it.original_price || computed.toFixed(2)),
-        icon_url: (it as any).icon_url || null
-      });
-      itemsByProduct.set(it.product_id as number, arr);
+    
+    // สร้างรายการเกมพร้อมสถานะ
+    let games: Array<{ company_id: string; company_name: string; exists: boolean }> = [];
+    
+    if (productType === 'gtopup' || !productType) {
+      games = gtopupProducts.map((g) => ({
+        company_id: g.company_id,
+        company_name: g.company_name || g.company_id,
+        exists: existingMap.has(g.company_id),
+      }));
+    } else if (productType === 'mtopup') {
+      games = mtopupProducts.map((g: any) => ({
+        company_id: g.company_id,
+        company_name: g.company_name || g.company_id,
+        exists: existingMap.has(g.company_id),
+      }));
+    } else if (productType === 'cashcard') {
+      games = cashcardProducts.map((g: any) => ({
+        company_id: g.company_id,
+        company_name: g.company_name || g.company_id,
+        exists: existingMap.has(g.company_id),
+      }));
     }
 
-    const inputsByProduct = new Map<number, any[]>();
-    for (const inp of inputs || []) {
-      const arr = inputsByProduct.get(inp.product_id as number) || [];
-      arr.push({
-        key: inp.key,
-        title: inp.title,
-        regex: inp.regex || '',
-        type: inp.type || 'text',
-        placeholder: inp.placeholder || '',
-        options: optionsByInput.get(inp.id) || []
-      });
-      inputsByProduct.set(inp.product_id as number, arr);
-    }
+    // เรียงตามชื่อ
+    games.sort((a, b) => a.company_name.localeCompare(b.company_name, 'th'));
 
-    // สร้าง response ตามรูปแบบที่ doc กำหนด
-    // ใช้ inputs จาก DB โดยตรง ไม่ใส่ default
-    const result = (products || []).map((p) => {
-      const pid = (p as any).id as number;
-      const productInputs = inputsByProduct.get(pid) || [];
-
-      return {
-        name: (p as any).name as string,
-        key: (p as any).key as string,
-        items: itemsByProduct.get(pid) || [],
-        inputs: productInputs // ใช้ inputs จาก DB โดยตรง
-      };
+    return NextResponse.json({ 
+      ok: true, 
+      data: games 
     });
-
-    return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json({ error: 'unexpected', detail: String(err) }, { status: 500 });
+    console.error('[wePAY list] error:', err);
+    return NextResponse.json({ 
+      error: 'unexpected', 
+      detail: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด' 
+    }, { status: 500 });
   }
 }
-

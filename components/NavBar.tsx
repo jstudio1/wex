@@ -13,16 +13,17 @@ const NavAuthButtons = dynamic(() => import('@/components/NavAuthButtons'), { ss
 const NAVBAR_MENU_KEYS = [
   'NAVBAR_MENU_HOME',
   'NAVBAR_MENU_PRODUCTS',
+  'NAVBAR_MENU_MTOPUP',
+  'NAVBAR_MENU_CASHCARD',
   'NAVBAR_MENU_SOCIAL',
   'NAVBAR_MENU_CATEGORIES',
   'NAVBAR_MENU_GAMES',
   'NAVBAR_MENU_PREMIUM_APP',
-  'NAVBAR_MENU_CASHCARD',
   'NAVBAR_MENU_CONTACT',
   'NAVBAR_MENU_ORDER',
 ];
 
-const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
+const DEFAULT_MENU_ORDER = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
 
 async function getNavbarMenus() {
   try {
@@ -68,11 +69,12 @@ async function getNavbarMenus() {
     return {
       home: getNavbarSetting('NAVBAR_MENU_HOME', true),
       products: getNavbarSetting('NAVBAR_MENU_PRODUCTS', true),
+      mtopup: getNavbarSetting('NAVBAR_MENU_MTOPUP', true),
+      cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', true),
       social: getNavbarSetting('NAVBAR_MENU_SOCIAL', true),
       categories: getNavbarSetting('NAVBAR_MENU_CATEGORIES', true),
       games: getNavbarSetting('NAVBAR_MENU_GAMES', true),
       premiumApp: getNavbarSetting('NAVBAR_MENU_PREMIUM_APP', true),
-      cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', true),
       contact: getNavbarSetting('NAVBAR_MENU_CONTACT', true),
       blog: true,
       menuOrder,
@@ -87,11 +89,12 @@ async function getNavbarMenus() {
     return {
       home: true,
       products: true,
+      mtopup: true,
+      cashcard: true,
       social: true,
       categories: true,
       games: true,
       premiumApp: true,
-      cashcard: true,
       contact: true,
       blog: true,
       menuOrder: [...DEFAULT_MENU_ORDER],
@@ -190,7 +193,7 @@ export default async function NavBar() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden flex-1 items-center lg:flex">
+            <div className="hidden flex-1 items-center lg:flex min-w-0">
               <NavLinks
                 isAdmin={!!adminUser}
                 navbarMenus={navbarMenus}

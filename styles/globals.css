@@ -493,6 +493,16 @@ main {
   scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
 }
 
+/* Hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Navbar Animations */
 @keyframes gradient-x {
   0%, 100% {

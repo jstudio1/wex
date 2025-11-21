@@ -6,16 +6,18 @@ import Link from 'next/link';
 import RegularOrdersList from '@/components/RegularOrdersList';
 import AppPremiumOrdersList from '@/components/AppPremiumOrdersList';
 import SocialOrdersList from '@/components/SocialOrdersList';
-import { ShoppingBag, Smartphone, Users } from 'lucide-react';
+import CashcardOrdersList from '@/components/CashcardOrdersList';
+import MtopupOrdersList from '@/components/MtopupOrdersList';
+import { ShoppingBag, Smartphone, Users, Phone, CreditCard } from 'lucide-react';
 
 export default function OrdersPage() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<'products' | 'premium-app' | 'social'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'mtopup' | 'cashcard' | 'premium-app' | 'social'>('products');
 
   useEffect(() => {
     if (!searchParams) return;
     const tab = searchParams.get('tab');
-    if (tab === 'premium-app' || tab === 'products' || tab === 'social') {
+    if (tab === 'premium-app' || tab === 'products' || tab === 'social' || tab === 'mtopup' || tab === 'cashcard') {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -56,10 +58,10 @@ export default function OrdersPage() {
 
       {/* Tabs */}
         <div className="bg-[#0a0a0a] rounded-2xl shadow-sm border border-gray-800 overflow-hidden">
-          <div className="flex border-b border-gray-800">
+          <div className="flex border-b border-gray-800 overflow-x-auto">
           <button
             onClick={() => setActiveTab('products')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 font-semibold transition-colors whitespace-nowrap min-w-[120px] ${
               activeTab === 'products'
                   ? 'bg-emerald-900/20 text-emerald-600 border-b-2 border-emerald-600'
                   : 'text-gray-300 hover:bg-gray-800'
@@ -69,8 +71,30 @@ export default function OrdersPage() {
             เติมเกม
           </button>
           <button
+            onClick={() => setActiveTab('mtopup')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 font-semibold transition-colors whitespace-nowrap min-w-[120px] ${
+              activeTab === 'mtopup'
+                  ? 'bg-blue-900/20 text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-300 hover:bg-gray-800'
+            }`}
+          >
+              <Phone className="h-5 w-5" />
+            เติมเงินมือถือ
+          </button>
+          <button
+            onClick={() => setActiveTab('cashcard')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 font-semibold transition-colors whitespace-nowrap min-w-[120px] ${
+              activeTab === 'cashcard'
+                  ? 'bg-purple-900/20 text-purple-600 border-b-2 border-purple-600'
+                  : 'text-gray-300 hover:bg-gray-800'
+            }`}
+          >
+              <CreditCard className="h-5 w-5" />
+            บัตรเติมเงิน
+          </button>
+          <button
             onClick={() => setActiveTab('premium-app')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 font-semibold transition-colors whitespace-nowrap min-w-[120px] ${
               activeTab === 'premium-app'
                   ? 'bg-emerald-900/20 text-emerald-600 border-b-2 border-emerald-600'
                   : 'text-gray-300 hover:bg-gray-800'
@@ -81,7 +105,7 @@ export default function OrdersPage() {
           </button>
           <button
             onClick={() => setActiveTab('social')}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 font-semibold transition-colors whitespace-nowrap min-w-[120px] ${
               activeTab === 'social'
                   ? 'bg-emerald-900/20 text-emerald-600 border-b-2 border-emerald-600'
                   : 'text-gray-300 hover:bg-gray-800'
@@ -97,6 +121,16 @@ export default function OrdersPage() {
           {activeTab === 'products' && (
             <div>
               <RegularOrdersList />
+            </div>
+          )}
+          {activeTab === 'mtopup' && (
+            <div>
+              <MtopupOrdersList />
+            </div>
+          )}
+          {activeTab === 'cashcard' && (
+            <div>
+              <CashcardOrdersList />
             </div>
           )}
 

@@ -1,18 +1,49 @@
 'use client';
 
 import Link from 'next/link';
-import { Gamepad2, Home } from 'lucide-react';
+import { Gamepad2, Home, Smartphone, CreditCard, Phone } from 'lucide-react';
 
-export default function ProductsHeroBanner() {
+type ProductsHeroBannerProps = {
+  title?: string;
+  subtitle?: string;
+  iconName?: 'gamepad' | 'phone' | 'creditcard' | 'smartphone';
+  gradientFrom?: string;
+  gradientVia?: string;
+  gradientTo?: string;
+  primaryButtonText?: string;
+  primaryButtonHref?: string;
+  primaryButtonIconName?: 'gamepad' | 'phone' | 'creditcard' | 'smartphone';
+};
+
+const iconMap = {
+  gamepad: Gamepad2,
+  phone: Phone,
+  creditcard: CreditCard,
+  smartphone: Smartphone,
+};
+
+export default function ProductsHeroBanner({
+  title = 'เติมเกมออนไลน์',
+  subtitle = 'บริการเติมเกมครบวงจร รวดเร็ว ปลอดภัย ราคาถูก',
+  iconName = 'gamepad',
+  gradientFrom = 'from-emerald-950',
+  gradientVia = 'via-emerald-900',
+  gradientTo = 'to-emerald-950',
+  primaryButtonText = 'เติมเกมออนไลน์',
+  primaryButtonHref = '/products',
+  primaryButtonIconName = 'gamepad',
+}: ProductsHeroBannerProps) {
+  const Icon = iconMap[iconName] || Gamepad2;
+  const PrimaryButtonIcon = iconMap[primaryButtonIconName] || Gamepad2;
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 py-16 shadow-lg">
+    <div className={`relative overflow-hidden bg-gradient-to-br ${gradientFrom} ${gradientVia} ${gradientTo} py-16 shadow-lg`}>
       {/* Decorative Background Pattern - Light Orbs */}
       <div className="absolute inset-0 opacity-20">
-        <div className="absolute -left-4 -top-4 h-32 w-32 rounded-full bg-emerald-400 blur-3xl" />
-        <div className="absolute -right-4 -bottom-4 h-32 w-32 rounded-full bg-emerald-400 blur-3xl" />
+        <div className={`absolute -left-4 -top-4 h-32 w-32 rounded-full ${gradientFrom.includes('emerald') ? 'bg-emerald-400' : gradientFrom.includes('blue') ? 'bg-blue-400' : 'bg-purple-400'} blur-3xl`} />
+        <div className={`absolute -right-4 -bottom-4 h-32 w-32 rounded-full ${gradientFrom.includes('emerald') ? 'bg-emerald-400' : gradientFrom.includes('blue') ? 'bg-blue-400' : 'bg-purple-400'} blur-3xl`} />
         <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white blur-3xl" />
         <div className="absolute left-20 top-10 h-24 w-24 rounded-full bg-white blur-2xl" />
-        <div className="absolute right-32 top-8 h-20 w-20 rounded-full bg-emerald-300 blur-2xl" />
+        <div className={`absolute right-32 top-8 h-20 w-20 rounded-full ${gradientFrom.includes('emerald') ? 'bg-emerald-300' : gradientFrom.includes('blue') ? 'bg-blue-300' : 'bg-purple-300'} blur-2xl`} />
       </div>
       
       {/* Geometric Patterns */}
@@ -44,17 +75,17 @@ export default function ProductsHeroBanner() {
         <div className="flex flex-col items-center justify-center text-center">
           {/* Icon */}
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-            <Gamepad2 className="h-8 w-8 text-white" strokeWidth={2.5} />
+            <Icon className="h-8 w-8 text-white" strokeWidth={2.5} />
           </div>
           
           {/* Title */}
           <h1 className="text-3xl font-bold text-white sm:text-4xl md:text-5xl">
-            เติมเกมออนไลน์
+            {title}
           </h1>
           
           {/* Subtitle */}
           <p className="mt-3 text-base text-white/90 sm:text-lg">
-            บริการเติมเกมครบวงจร รวดเร็ว ปลอดภัย ราคาถูก
+            {subtitle}
           </p>
           
           {/* Navigation Buttons */}
@@ -68,11 +99,11 @@ export default function ProductsHeroBanner() {
             </Link>
             
             <Link
-              href="/products"
-              className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-bold text-emerald-600 shadow-md transition-all duration-200 hover:bg-white/95 hover:shadow-lg"
+              href={primaryButtonHref}
+              className={`inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-bold ${gradientFrom.includes('emerald') ? 'text-emerald-600' : gradientFrom.includes('blue') ? 'text-blue-600' : 'text-purple-600'} shadow-md transition-all duration-200 hover:bg-white/95 hover:shadow-lg`}
             >
-              <Gamepad2 className="h-4 w-4" />
-              <span>เติมเกมออนไลน์</span>
+              <PrimaryButtonIcon className="h-4 w-4" />
+              <span>{primaryButtonText}</span>
             </Link>
           </div>
         </div>

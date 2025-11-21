@@ -791,49 +791,49 @@ export default function AdminSiteForm() {
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <GripVertical className={`size-4 text-[color:var(--text)]/60 ${isDragging ? 'text-accent' : ''} transition-colors`} />
-                </div>
+        </div>
                 
                 <div className="flex-1 min-w-0 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <Label htmlFor={`menu-label-${menuKey}`} className="text-[10px] text-[color:var(--text)]/60 mb-0.5 block">ชื่อเมนู</Label>
-                      <Input
-                        id={`menu-label-${menuKey}`}
-                        value={displayLabel}
-                        onChange={(e) => {
-                          const newLabels = {
-                            ...(form.navbarMenuLabels || {}),
-                            [menu.key]: e.target.value
-                          };
-                          setForm({
-                            ...form,
-                            navbarMenuLabels: newLabels
-                          });
-                        }}
-                        placeholder={menu.label}
+                        <Input
+                          id={`menu-label-${menuKey}`}
+                          value={displayLabel}
+                          onChange={(e) => {
+                            const newLabels = {
+                              ...(form.navbarMenuLabels || {}),
+                              [menu.key]: e.target.value
+                            };
+                            setForm({
+                              ...form,
+                              navbarMenuLabels: newLabels
+                            });
+                          }}
+                          placeholder={menu.label}
                         className="w-full h-8 text-sm"
-                      />
+                        />
+                      </div>
                     </div>
-                  </div>
                     <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-[color:var(--text)]/50 truncate">
-                        {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
+                      {isEnabled ? 'แสดงใน NavBar' : 'ซ่อนใน NavBar'}
                         {isInOrder && menuKey !== 'home' && ` • ลำดับที่ ${orderIndex}`}
                         {menuKey === 'home' && isInOrder && ' • อยู่แรกเสมอ'}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={(checked) => {
-                        const key = menu.key as keyof typeof form.navbarMenus;
-                        setForm({
-                          ...form,
-                          navbarMenus: { 
-                            ...(form.navbarMenus || {}),
-                            [key]: checked
-                          } as typeof form.navbarMenus
-                        });
+                    </p>
+          </div>
+          <Switch
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => {
+                      const key = menu.key as keyof typeof form.navbarMenus;
+                      setForm({
+              ...form,
+              navbarMenus: { 
+                          ...(form.navbarMenus || {}),
+                          [key]: checked
+                        } as typeof form.navbarMenus
+                      });
                         // Auto-add to order when enabled
                         if (checked && !currentOrder.includes(menuKey)) {
                           setForm(prev => ({
@@ -841,12 +841,12 @@ export default function AdminSiteForm() {
                             navbarMenuOrder: [...(prev.navbarMenuOrder || []), menuKey]
                           }));
                         }
-                      }}
+                    }}
                       className="scale-75"
-                    />
+          />
                   </div>
-                </div>
-              </div>
+        </div>
+          </div>
             );
           });
         })()}

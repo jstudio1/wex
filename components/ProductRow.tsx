@@ -17,9 +17,10 @@ type Props = {
   rowIndex: number;
   flashStart?: string | null;
   flashEnd?: string | null;
+  basePath?: string;
 };
 
-export default function ProductRow({ row, rowIndex, flashStart, flashEnd }: Props) {
+export default function ProductRow({ row, rowIndex, flashStart, flashEnd, basePath }: Props) {
   const { ref, isVisible } = useRowGroupAnimation();
 
   return (
@@ -44,6 +45,7 @@ export default function ProductRow({ row, rowIndex, flashStart, flashEnd }: Prop
           flashStart={flashStart}
           flashEnd={flashEnd}
           noAnimation={true}
+          basePath={basePath}
         />
       ))}
     </div>

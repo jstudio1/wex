@@ -13,8 +13,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { SearchIcon, ChevronDown, Package, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import PricingDialog from './PricingDialog';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
 import {
   Empty,
   EmptyContent,
@@ -70,7 +80,12 @@ const defaultEditForm: ProductFormState = {
   categories: [],
 };
 
-export default function ProductsContent() {
+export default function ProductsContent({ productType }: { productType?: string }) {
+  const getTitle = () => {
+    if (productType === 'mtopup') return 'จัดการเติมเงินมือถือ';
+    if (productType === 'cashcard') return 'จัดการบัตรเติมเงิน';
+    return 'จัดการเติมเกม';
+  };
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -87,10 +102,22 @@ export default function ProductsContent() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState<ProductFormState>(defaultEditForm);
   const [editSaving, setEditSaving] = useState(false);
+  
+  // State สำหรับ dialog เลือกเกม/บริการ
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [games, setGames] = useState<Array<{ company_id: string; company_name: string; exists: boolean }>>([]);
+  const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set());
+  const [loadingGames, setLoadingGames] = useState(false);
+  const [gameSearch, setGameSearch] = useState('');
+  
+  // State สำหรับ sync progress
+  const [syncProgress, setSyncProgress] = useState<number>(0);
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  const [syncController, setSyncController] = useState<AbortController | null>(null);
 
   useEffect(() => {
     fetchData();
-  }, [filter]);
+  }, [filter, productType]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -100,8 +127,9 @@ export default function ProductsContent() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
+      const productTypeParam = productType ? `&product_type=${productType}` : '';
       const [productsRes, categoriesRes, pcRes] = await Promise.all([
-        fetch(`/api/admin/products?filter=${filter}`, { signal: controller.signal }),
+        fetch(`/api/admin/products?filter=${filter}${productTypeParam}`, { signal: controller.signal }),
         fetch('/api/admin/categories', { signal: controller.signal }),
         fetch('/api/admin/products/categories', { signal: controller.signal }),
       ]);
@@ -161,49 +189,134 @@ export default function ProductsContent() {
     }
   };
 
-  const handleSync = async () => {
-    // แสดงคำเตือนก่อน Sync
-    const confirmed = confirm(
-      '⚠️ คำเตือน: การ Sync จะรีเซ็ตการตั้งค่ากำไรทั้งหมดเป็น 0\n\n' +
-      '- กำไรพื้นฐานทั้งเว็บ → 0%\n' +
-      '- กำไรต่อรายการสินค้า → 0%\n' +
-      '- ราคาที่แสดงจะเป็นราคาต้นทุนจากผู้ให้บริการ\n\n' +
-      'คุณแน่ใจหรือไม่ที่จะ Sync?'
-    );
-    
-    if (!confirmed) return;
+  const fetchGames = async () => {
+    setLoadingGames(true);
+    try {
+      // ดึงข้อมูลใหม่จาก wePAY API ทุกครั้ง (ไม่ใช้ cache)
+      const res = await fetch(`/api/admin/products/list?product_type=${productType || 'gtopup'}`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        throw new Error('ไม่สามารถดึงรายชื่อบริการได้');
+      }
+      const json = await res.json();
+      setGames(json.data || []);
+      // เลือกทั้งหมดโดย default
+      setSelectedGames(new Set((json.data || []).map((g: any) => g.company_id)));
+    } catch (err) {
+      toast.show({
+        title: 'โหลดรายชื่อบริการไม่สำเร็จ',
+        description: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+        variant: 'destructive',
+      });
+      setGames([]);
+    } finally {
+      setLoadingGames(false);
+    }
+  };
+
+  const handleOpenSyncDialog = () => {
+    setSyncDialogOpen(true);
+    fetchGames();
+  };
+
+  const handleToggleGame = (companyId: string) => {
+    setSelectedGames((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(companyId)) {
+        newSet.delete(companyId);
+      } else {
+        newSet.add(companyId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedGames(new Set(games.map((g) => g.company_id)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedGames(new Set());
+  };
+
+  const handleSync = async (companyIds: string[]) => {
+    const productTypeLabel = productType === 'mtopup' ? 'เติมเงินมือถือ' : 
+                             productType === 'cashcard' ? 'บัตรเติมเงิน' : 
+                             'เติมเกม';
     
     setSyncing(true);
-    try {
-      // เพิ่ม timeout 2 นาที (120,000 ms)
+    setSyncProgress(0);
+    setSyncStatus('กำลังเริ่ม sync...');
+    
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
+    setSyncController(controller);
+    
+    // เพิ่ม timeout 6 นาที (360,000 ms)
+    const timeoutId = setTimeout(() => controller.abort(), 360000);
       
-      const res = await fetch('/api/admin/products/sync', {
+    // Simulate progress (เนื่องจาก API ไม่ได้ส่ง progress กลับมา)
+    const progressInterval = setInterval(() => {
+      setSyncProgress((prev) => {
+        if (prev >= 90) return prev; // หยุดที่ 90% รอ response
+        return prev + Math.random() * 5;
+      });
+    }, 500);
+    
+    try {
+      const url = new URL('/api/admin/products/sync', window.location.origin);
+      if (productType) {
+        url.searchParams.set('product_type', productType);
+      }
+      
+      setSyncStatus(`กำลัง sync ${companyIds.length} รายการ...`);
+      
+      const res = await fetch(url.toString(), {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_ids: companyIds }),
         signal: controller.signal,
       });
       
+      clearInterval(progressInterval);
       clearTimeout(timeoutId);
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Sync ไม่สำเร็จ');
+        if (res.status === 504 || errorData.error === 'timeout') {
+          throw new Error('การ Sync ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง');
+        }
+        throw new Error(errorData.detail || errorData.error || 'Sync ไม่สำเร็จ');
       }
+      
+      setSyncProgress(100);
+      setSyncStatus('Sync สำเร็จ!');
       
       const data = await res.json();
       toast.show({ 
         title: 'Sync สำเร็จ', 
         description: data.counts ? 
-          `Sync เรียบร้อย: ${data.counts.products} สินค้า, ${data.counts.items} รายการ\nรีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว` :
-          'Sync เรียบร้อย และรีเซ็ตกำไรทั้งหมดเป็น 0% แล้ว'
+          `Sync ${productTypeLabel} ${companyIds.length} รายการเรียบร้อย: ${data.counts.products} สินค้า, ${data.counts.items} รายการ\nรีเซ็ตกำไรเป็น 0% แล้ว` :
+          `Sync ${productTypeLabel} ${companyIds.length} รายการเรียบร้อย และรีเซ็ตกำไรเป็น 0% แล้ว`
       });
+      
       await fetchData();
+      
+      // ปิด dialog หลังจาก 1.5 วินาที
+      setTimeout(() => {
+        setSyncDialogOpen(false);
+        setSyncProgress(0);
+        setSyncStatus('');
+      }, 1500);
     } catch (err) {
+      clearInterval(progressInterval);
+      setSyncProgress(0);
+      setSyncStatus('');
+      
       if ((err as Error).name === 'AbortError') {
         toast.show({
-          title: 'Timeout',
-          description: 'การ Sync ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง',
+          title: 'Sync ถูกยกเลิก',
+          description: 'การ Sync ถูกยกเลิกโดยผู้ใช้',
           variant: 'destructive',
         });
       } else {
@@ -215,11 +328,38 @@ export default function ProductsContent() {
       }
     } finally {
       setSyncing(false);
+      setSyncController(null);
     }
   };
 
+  const handleCancelSync = () => {
+    if (syncController) {
+      syncController.abort();
+      setSyncController(null);
+    }
+    setSyncing(false);
+    setSyncProgress(0);
+    setSyncStatus('');
+  };
+
+  const handleConfirmSync = async () => {
+    if (selectedGames.size === 0) {
+      toast.show({
+        title: 'กรุณาเลือกบริการ',
+        description: 'กรุณาเลือกบริการอย่างน้อย 1 รายการ',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // ไม่ปิด dialog เพื่อแสดง progress
+    await handleSync(Array.from(selectedGames));
+  };
+
   const handlePublishAll = async () => {
-    if (!confirm('คุณต้องการเผยแพร่ทุกเกมที่ยังไม่เผยแพร่หรือไม่?')) {
+    const productTypeLabel = productType === 'mtopup' ? 'บริการเติมเงินมือถือ' : 
+                             productType === 'cashcard' ? 'บัตรเติมเงิน' : 
+                             'เกม';
+    if (!confirm(`คุณต้องการเผยแพร่ทุก${productTypeLabel}ที่ยังไม่เผยแพร่หรือไม่?`)) {
       return;
     }
     setSaving(true);
@@ -231,7 +371,7 @@ export default function ProductsContent() {
         const json = await res.json();
         throw new Error(json.error || 'เผยแพร่ไม่สำเร็จ');
       }
-      toast.show({ title: 'สำเร็จ', description: 'เผยแพร่ทุกเกมเรียบร้อย' });
+      toast.show({ title: 'สำเร็จ', description: `เผยแพร่ทุก${productTypeLabel}เรียบร้อย` });
       await fetchData();
     } catch (err) {
       toast.show({
@@ -384,7 +524,7 @@ export default function ProductsContent() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h2 className="text-xl font-semibold">จัดการเติมเกม</h2>
+          <h2 className="text-xl font-semibold">{getTitle()}</h2>
         </div>
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
           <div className="text-center space-y-2">
@@ -402,7 +542,7 @@ export default function ProductsContent() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-xl font-semibold">จัดการเติมเกม</h2>
+        <h2 className="text-xl font-semibold">{getTitle()}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button 
             type="button" 
@@ -417,11 +557,12 @@ export default function ProductsContent() {
                 กำลังเผยแพร่...
               </span>
             ) : (
+              productType === 'mtopup' ? 'เผยแพร่ทุกบริการ' :
+              productType === 'cashcard' ? 'เผยแพร่ทุกบัตร' :
               'เผยแพร่ทุกเกม'
             )}
           </Button>
-          <form onSubmit={(e) => { e.preventDefault(); handleSync(); }} className="inline-block">
-            <Button type="submit" variant="outline" size="sm" disabled={syncing}>
+          <Button variant="outline" size="sm" onClick={handleOpenSyncDialog} disabled={syncing}>
               {syncing ? (
                 <span className="inline-flex items-center gap-2">
                   <Spinner />
@@ -431,7 +572,6 @@ export default function ProductsContent() {
                 'Sync จากผู้ให้บริการ'
               )}
             </Button>
-          </form>
         </div>
       </div>
 
@@ -598,7 +738,7 @@ export default function ProductsContent() {
       >
         <DialogContent className="max-w-3xl bg-[#050505] border border-white/15">
           <DialogHeader>
-            <DialogTitle>แก้ไขบริการเติมเกม</DialogTitle>
+            <DialogTitle>แก้ไข{productType === 'mtopup' ? 'บริการเติมเงินมือถือ' : productType === 'cashcard' ? 'บัตรเติมเงิน' : 'บริการเติมเกม'}</DialogTitle>
             <p className="text-sm text-gray-400">ปรับรายละเอียดการแสดงผลและสถานะการเผยแพร่</p>
           </DialogHeader>
           {editingProduct ? (
@@ -756,6 +896,129 @@ export default function ProductsContent() {
         onOpenChange={setPricingDialogOpen}
         productId={selectedProductId}
       />
+
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="max-w-4xl bg-[#050505] border border-white/10 text-white max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>เลือก{productType === 'mtopup' ? 'บริการเติมเงินมือถือ' : productType === 'cashcard' ? 'บัตรเติมเงิน' : 'เกม'}ที่จะ Sync</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              เลือก{productType === 'mtopup' ? 'บริการ' : productType === 'cashcard' ? 'บัตรเติมเงิน' : 'เกม'}ที่ต้องการ sync จาก wePAY (สามารถเลือกได้หลายรายการ)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+            <div className="flex items-center gap-2">
+              <InputGroup className="flex-1">
+                <InputGroupInput
+                  placeholder="ค้นหา..."
+                  value={gameSearch}
+                  onChange={(e) => setGameSearch(e.target.value)}
+                />
+                <InputGroupAddon>
+                  <SearchIcon size={16} />
+                </InputGroupAddon>
+              </InputGroup>
+              <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                เลือกทั้งหมด
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDeselectAll}>
+                ยกเลิกทั้งหมด
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto border border-white/10 rounded-xl">
+              {loadingGames ? (
+                <div className="py-10 text-center text-gray-400">กำลังโหลดรายชื่อ...</div>
+              ) : games.length === 0 ? (
+                <div className="py-10 text-center text-gray-400">ไม่พบข้อมูล</div>
+              ) : (
+                <div className="p-4 space-y-2">
+                  {games
+                    .filter((g) => 
+                      !gameSearch || 
+                      g.company_name.toLowerCase().includes(gameSearch.toLowerCase()) ||
+                      g.company_id.toLowerCase().includes(gameSearch.toLowerCase())
+                    )
+                    .map((game) => (
+                      <label
+                        key={game.company_id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedGames.has(game.company_id)}
+                          onChange={() => handleToggleGame(game.company_id)}
+                          className="w-4 h-4 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{game.company_name}</span>
+                            {game.exists && (
+                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 text-xs">
+                                มีในระบบแล้ว
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-400">ID: {game.company_id}</div>
+                        </div>
+                      </label>
+                    ))}
+                  {games.filter((g) => 
+                    !gameSearch || 
+                    g.company_name.toLowerCase().includes(gameSearch.toLowerCase()) ||
+                    g.company_id.toLowerCase().includes(gameSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="py-10 text-center text-gray-400">ไม่พบรายการตามคำค้นหา</div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="text-sm text-gray-400">
+              เลือกแล้ว: {selectedGames.size} / {games.length} รายการ
+            </div>
+          </div>
+          
+          {syncing ? (
+            <div className="flex w-full flex-col gap-4 pt-4">
+              <Item variant="outline">
+                <ItemMedia>
+                  <Spinner />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>กำลัง Sync...</ItemTitle>
+                  <ItemDescription>{syncStatus || `กำลัง sync ${selectedGames.size} รายการ...`}</ItemDescription>
+                </ItemContent>
+                <ItemActions className="hidden sm:flex">
+                  <Button variant="outline" size="sm" onClick={handleCancelSync}>
+                    ยกเลิก
+                  </Button>
+                </ItemActions>
+                <ItemFooter>
+                  <Progress value={syncProgress} />
+                </ItemFooter>
+              </Item>
+            </div>
+          ) : (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSyncDialogOpen(false)}
+                disabled={syncing}
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleConfirmSync}
+                disabled={syncing || selectedGames.size === 0}
+                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
+              >
+                Sync {selectedGames.size} รายการ
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

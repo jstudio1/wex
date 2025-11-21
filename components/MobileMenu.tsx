@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText, MessageSquare, Wrench, Shield, BookOpen } from 'lucide-react';
+import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText, MessageSquare, Wrench, Shield, BookOpen, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,11 +16,12 @@ import ReCaptcha from '@/components/ReCaptcha';
 type NavbarMenus = {
   home: boolean;
   products: boolean;
+  mtopup: boolean;
+  cashcard: boolean;
   social: boolean;
   categories: boolean;
   games: boolean;
   premiumApp: boolean;
-  cashcard: boolean;
   contact: boolean;
   blog: boolean;
 };
@@ -194,17 +195,19 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                 const allItemsMap: Record<string, { href: string; label: string; icon: typeof Gamepad2; key: keyof NavbarMenus; requireAuth?: boolean }> = {
                   home: { href: '/', label: 'หน้าหลัก', icon: Home, key: 'home' },
                   products: { href: '/products', label: navbarMenuLabels?.products || 'เติมเกม', icon: Gamepad2, key: 'products' },
+                  mtopup: { href: '/mtopup', label: 'เติมเงินมือถือ', icon: Phone, key: 'mtopup' },
+                  cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
                   premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
                   social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
                   blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
                 };
 
                 // ใช้ logic เดียวกับ NavLinks.tsx
-                const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+                const defaultOrder = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
                 const order = navbarMenuOrder || defaultOrder;
-                
+
                 // Ensure 'home' is always first if it exists in the order (same as NavLinks.tsx)
-                const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+                const validKeys = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
                 const orderedKeys = order.includes('home') 
                   ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
                   : ['home', ...validKeys.filter(key => key !== 'home')];

@@ -21,6 +21,7 @@ type Props = {
   index?: number;
   flashStart?: string | null;
   flashEnd?: string | null;
+  basePath?: string;
 };
 
 function CountdownBadge({ flashStart, flashEnd }: { flashStart?: string | null; flashEnd?: string | null }) {
@@ -58,7 +59,7 @@ function CountdownBadge({ flashStart, flashEnd }: { flashStart?: string | null; 
   );
 }
 
-export default function AnimatedProductCard({ product: p, isHighlight = false, index = 0, flashStart, flashEnd, noAnimation = false }: Props & { noAnimation?: boolean }) {
+export default function AnimatedProductCard({ product: p, isHighlight = false, index = 0, flashStart, flashEnd, noAnimation = false, basePath = '/products' }: Props & { noAnimation?: boolean }) {
   const scrollAnimation = useScrollAnimation();
   const { ref, isVisible } = noAnimation ? { ref: null, isVisible: true } : scrollAnimation;
   const manualPercent = typeof p.badge?.percent === 'number' ? Math.round(Number(p.badge?.percent)) : null;
@@ -71,7 +72,7 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
   const recommendedItem = p.items?.find(item => item.is_recommended === true);
   
   return (
-    <Link href={`/products/${p.key}`} className="group block">
+    <Link href={`${basePath}/${p.key}`} className="group block">
       <div 
         ref={ref}
         className={`flex flex-col items-center text-center ${

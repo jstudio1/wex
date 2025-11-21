@@ -91,5 +91,33 @@ const ItemDescription = React.forwardRef<
 })
 ItemDescription.displayName = "ItemDescription"
 
-export { Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, itemVariants }
+const ItemActions = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn("flex items-center gap-2", className)}
+      {...props}
+    />
+  )
+})
+ItemActions.displayName = "ItemActions"
+
+const ItemFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn("mt-2", className)}
+      {...props}
+    />
+  )
+})
+ItemFooter.displayName = "ItemFooter"
+
+export { Item, ItemMedia, ItemContent, ItemTitle, ItemDescription, ItemActions, ItemFooter, itemVariants }
 

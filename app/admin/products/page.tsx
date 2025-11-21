@@ -5,13 +5,18 @@ import Link from 'next/link';
 import { getBaseUrl } from '@/lib/url';
 import { Package, ShoppingCart, Users, Tag, Gift, Coins, Globe, Grid3x3 } from 'lucide-react';
 
-async function syncAction() {
+async function syncAction(formData: FormData) {
   'use server';
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: 'unauthorized' };
   const secret = process.env.WEBHOOK_SECRET;
   if (!secret) return { ok: false, error: 'missing_secret' };
-  const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products/sync`, {
+  const productType = formData.get('product_type')?.toString();
+  const url = new URL(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products/sync`);
+  if (productType) {
+    url.searchParams.set('product_type', productType);
+  }
+  const res = await fetch(url.toString(), {
     method: 'POST',
     headers: { Authorization: `Bearer ${secret}` }
   });

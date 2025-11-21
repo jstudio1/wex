@@ -17,23 +17,30 @@ import {
 } from '@/components/ui/empty';
 
 type CashcardOrder = {
-  id: number;
-  reference: string;
-  product_data: any;
-  price: number;
-  status: string;
+  transaction_id: string;
+  product_id: number;
   created_at: string;
-  updated_at: string;
-  cashcard_products: {
+  updated_at?: string | null;
+  finished_at?: string | null;
+  state: string;
+  result_code?: string | null;
+  price: number;
+  input_json?: Record<string, any> | null;
+  output_json?: Record<string, any> | null;
+  product: {
     id: number;
-    display_name: string | null;
     name: string;
     image_url: string | null;
-    category: string | null;
+    key: string;
+  } | null;
+  item: {
+    id: number;
+    name: string;
+    sku: string;
   } | null;
 };
 
-function translateStatus(status: string): string {
+function translateState(state: string): string {
   const map: Record<string, string> = {
     'success': 'สำเร็จ',
     'completed': 'สำเร็จ',
@@ -41,22 +48,26 @@ function translateStatus(status: string): string {
     'failed': 'ล้มเหลว',
     'cancelled': 'ยกเลิก',
     'processing': 'กำลังดำเนินการ',
+    'confirming': 'กำลังยืนยัน',
+    'refunded': 'คืนเงิน'
   };
-  return map[status.toLowerCase()] || status;
+  return map[state.toLowerCase()] || state;
 }
 
-function getStatusColorClass(status: string): string {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'success' || statusLower === 'completed') {
+function getStateColorClass(state: string): string {
+  const stateLower = state.toLowerCase();
+  if (stateLower === 'success' || stateLower === 'completed') {
     return 'bg-emerald-600/30 text-emerald-300 border-emerald-500/30';
-  } else if (statusLower === 'pending') {
+  } else if (stateLower === 'pending') {
     return 'bg-amber-600/30 text-amber-300 border-amber-500/30';
-  } else if (statusLower === 'failed') {
+  } else if (stateLower === 'failed') {
     return 'bg-red-600/30 text-red-300 border-red-500/30';
-  } else if (statusLower === 'cancelled') {
+  } else if (stateLower === 'cancelled') {
     return 'bg-slate-600/30 text-slate-300 border-slate-500/30';
-  } else if (statusLower === 'processing') {
+  } else if (stateLower === 'processing' || stateLower === 'confirming') {
     return 'bg-blue-600/30 text-blue-300 border-blue-500/30';
+  } else if (stateLower === 'refunded') {
+    return 'bg-orange-600/30 text-orange-300 border-orange-500/30';
   }
   return 'bg-white/10 text-[color:var(--text)]/70 border-white/20';
 }
@@ -86,7 +97,7 @@ export default function CashcardOrdersList() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/cashcard/orders');
+      const res = await fetch('/api/cashcard/wepay/orders');
       const json = await res.json();
       if (json.ok && json.data) {
         setOrders(json.data);
@@ -123,7 +134,7 @@ export default function CashcardOrdersList() {
               <thead className="bg-white/5 border-b border-white/10">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">สินค้า</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">Reference</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">Transaction ID</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ข้อมูลสินค้า</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-[color:var(--text)]/90">ราคา</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">สถานะ</th>
@@ -211,7 +222,7 @@ export default function CashcardOrdersList() {
             <thead className="bg-white/5 border-b border-white/10">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">สินค้า</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">Reference</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">Transaction ID</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ข้อมูลสินค้า</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-[color:var(--text)]/90">ราคา</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">สถานะ</th>
@@ -220,17 +231,11 @@ export default function CashcardOrdersList() {
             </thead>
             <tbody>
               {orders.map((order) => {
-                const productName = order.cashcard_products?.display_name || order.cashcard_products?.name || 'ไม่ทราบชื่อสินค้า';
-                const productImage = order.cashcard_products?.image_url;
-                const productCategory = order.cashcard_products?.category;
-                
-                // Display product_data if available
-                const productDataDisplay = order.product_data 
-                  ? (typeof order.product_data === 'string' ? JSON.parse(order.product_data) : order.product_data)
-                  : null;
+                const productName = order.product?.name || 'ไม่ทราบชื่อสินค้า';
+                const productImage = order.product?.image_url;
 
                 return (
-                  <tr key={order.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={order.transaction_id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {productImage && (
@@ -241,8 +246,11 @@ export default function CashcardOrdersList() {
                         )}
                         <div className="min-w-0">
                           <div className="font-medium text-[color:var(--text)] truncate">{productName}</div>
-                          {productCategory && (
-                            <div className="text-xs text-[color:var(--text)]/50">{productCategory}</div>
+                          {order.item?.name && (
+                            <div className="text-sm text-[color:var(--text)]/70 mt-0.5 truncate">{order.item.name}</div>
+                          )}
+                          {order.product?.key && (
+                            <div className="text-xs text-[color:var(--text)]/50 mt-0.5">{order.product.key}</div>
                           )}
                         </div>
                       </div>
@@ -250,14 +258,14 @@ export default function CashcardOrdersList() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-mono text-[color:var(--text)]/70">
-                          {order.reference}
+                          {order.transaction_id}
                         </span>
                         <button
-                          onClick={() => copyToClipboard(order.reference, `ref-${order.id}`)}
+                          onClick={() => copyToClipboard(order.transaction_id, `ref-${order.transaction_id}`)}
                           className="p-1 hover:bg-white/10 rounded transition-colors"
                           title="คัดลอก"
                         >
-                          {copied[`ref-${order.id}`] ? (
+                          {copied[`ref-${order.transaction_id}`] ? (
                             <Check className="size-4 text-green-400" />
                           ) : (
                             <Copy className="size-4 text-[color:var(--text)]/50" />
@@ -266,19 +274,60 @@ export default function CashcardOrdersList() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {productDataDisplay ? (
-                        <details className="text-sm">
-                          <summary className="cursor-pointer text-[color:var(--text)]/70 hover:text-[color:var(--text)]">
-                            ดูข้อมูลสินค้า
-                          </summary>
-                          <div className="mt-2 p-3 rounded bg-black/40 border border-white/10">
-                            <pre className="text-xs text-[color:var(--text)]/80 whitespace-pre-wrap break-words">
-                              {JSON.stringify(productDataDisplay, null, 2)}
-                            </pre>
-                          </div>
-                        </details>
-                      ) : order.status === 'pending' ? (
+                      {order.state === 'pending' || order.state === 'processing' ? (
                         <span className="text-sm text-[color:var(--text)]/50">รอการดำเนินการ...</span>
+                      ) : order.output_json && (order.state === 'completed' || order.state === 'success') ? (
+                        <div className="space-y-2">
+                          {/* แสดง PIN เป็นรหัสบัตร (PIN คือรหัสบัตรที่ต้องใช้) */}
+                          {order.output_json && (order.output_json.card_pin || order.output_json.pin || order.output_json.password) && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-[color:var(--text)]/50">รหัสบัตร:</span>
+                              <span className="text-sm font-mono text-[color:var(--text)] bg-white/5 px-2 py-1 rounded">
+                                {order.output_json.card_pin || order.output_json.pin || order.output_json.password}
+                              </span>
+                              <button
+                                onClick={() => copyToClipboard(
+                                  order.output_json?.card_pin || order.output_json?.pin || order.output_json?.password || '',
+                                  `code-${order.transaction_id}`
+                                )}
+                                className="p-1 hover:bg-white/10 rounded transition-colors"
+                                title="คัดลอกรหัสบัตร"
+                              >
+                                {copied[`code-${order.transaction_id}`] ? (
+                                  <Check className="size-4 text-green-400" />
+                                ) : (
+                                  <Copy className="size-4 text-[color:var(--text)]/50" />
+                                )}
+                              </button>
+                            </div>
+                          )}
+                          {/* ถ้าไม่มี PIN ให้แสดง output อื่นๆ (ยกเว้น serial) */}
+                          {order.output_json && !order.output_json.card_pin && !order.output_json.pin && !order.output_json.password && (
+                            <div className="space-y-1">
+                              {Object.entries(order.output_json)
+                                .filter(([key]) => key !== 'serial' && key !== 'card_code' && key !== 'serial_no')
+                                .map(([key, value]) => (
+                                  <div key={key} className="flex items-center gap-2">
+                                    <span className="text-xs text-[color:var(--text)]/50 capitalize">{key}:</span>
+                                    <span className="text-sm font-mono text-[color:var(--text)] bg-white/5 px-2 py-1 rounded">
+                                      {String(value)}
+                                    </span>
+                                    <button
+                                      onClick={() => copyToClipboard(String(value), `${key}-${order.transaction_id}`)}
+                                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                                      title="คัดลอก"
+                                    >
+                                      {copied[`${key}-${order.transaction_id}`] ? (
+                                        <Check className="size-4 text-green-400" />
+                                      ) : (
+                                        <Copy className="size-4 text-[color:var(--text)]/50" />
+                                      )}
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-sm text-[color:var(--text)]/50">-</span>
                       )}
@@ -289,12 +338,12 @@ export default function CashcardOrdersList() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge className={getStatusColorClass(order.status)}>
-                        {translateStatus(order.status)}
+                      <Badge className={getStateColorClass(order.state)}>
+                        {translateState(order.state)}
                       </Badge>
-                      {order.status === 'pending' && (
+                      {(order.state === 'pending' || order.state === 'processing') && (
                         <div className="text-xs text-[color:var(--text)]/50 mt-1">
-                          โปรดรอ 1-2 นาที
+                          กำลังดำเนินการ
                         </div>
                       )}
                     </td>
@@ -302,6 +351,11 @@ export default function CashcardOrdersList() {
                       <div className="text-sm text-[color:var(--text)]/70">
                         {formatDate(order.created_at)}
                       </div>
+                      {order.finished_at && (
+                        <div className="text-xs text-[color:var(--text)]/50 mt-1">
+                          เสร็จ: {formatDate(order.finished_at)}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

@@ -29,11 +29,15 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
+    const { searchParams } = new URL(req.url);
+    const productType = searchParams.get('product_type') || 'gtopup';
+    
     const sb = createServiceClient();
     const { data: orders, error } = await sb
       .from('orders')
-      .select('transaction_id, product_id, created_at, updated_at, finished_at, state, result_code, price, input_json')
+      .select('transaction_id, product_id, item_id, created_at, updated_at, finished_at, state, result_code, price, input_json')
       .eq('user_id', user.id)
+      .eq('product_type', productType)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -41,7 +45,10 @@ export async function GET(req: Request) {
     }
 
     const productIds = Array.from(new Set((orders || []).map((o: any) => o.product_id as number)));
+    const itemIds = Array.from(new Set((orders || []).map((o: any) => o.item_id).filter((id: any) => id !== null && id !== undefined)));
+    
     let productMap = new Map<number, { id: number; name: string; image_url: string | null; key: string }>();
+    let itemMap = new Map<number, { id: number; name: string; sku: string }>();
     
     if (productIds.length) {
       const { data: products } = await sb
@@ -58,12 +65,28 @@ export async function GET(req: Request) {
       }
     }
 
+    if (itemIds.length) {
+      const { data: items } = await sb
+        .from('product_items')
+        .select('id, name, sku')
+        .in('id', itemIds);
+      for (const item of items || []) {
+        itemMap.set((item as any).id as number, {
+          id: (item as any).id as number,
+          name: (item as any).name as string,
+          sku: (item as any).sku as string
+        });
+      }
+    }
+
     const ordersWithProducts = (orders || [])
       .map((o: any) => {
         const prod = productMap.get(o.product_id);
+        const item = o.item_id ? itemMap.get(o.item_id) : null;
         return {
           ...o,
-          product: prod || null
+          product: prod || null,
+          item: item || null
         };
       })
       .sort((a: any, b: any) => {

@@ -29,7 +29,7 @@ type ProductCard = {
   badge?: { text?: string | null; percent?: number | null } | null;
 };
 
-export default function PublicProductsSearch({ products, controlledQuery, onQueryChange, hideSearch, flashStart, flashEnd, isLoading }: { products: ProductCard[]; controlledQuery?: string; onQueryChange?: (v: string) => void; hideSearch?: boolean; flashStart?: string | null; flashEnd?: string | null; isLoading?: boolean }) {
+export default function PublicProductsSearch({ products, controlledQuery, onQueryChange, hideSearch, flashStart, flashEnd, isLoading, basePath = '/products' }: { products: ProductCard[]; controlledQuery?: string; onQueryChange?: (v: string) => void; hideSearch?: boolean; flashStart?: string | null; flashEnd?: string | null; isLoading?: boolean; basePath?: string }) {
   const [internal, setInternal] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const q = controlledQuery !== undefined ? controlledQuery : internal;
@@ -151,6 +151,7 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
                 rowIndex={rowIndex}
                 flashStart={flashStart}
                 flashEnd={flashEnd}
+                basePath={basePath}
               />
             ));
           })()}

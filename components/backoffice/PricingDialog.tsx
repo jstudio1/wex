@@ -71,7 +71,7 @@ const computeDiscountFromCost = (publicPrice: number | null, agentCost: number) 
 };
 
 const normalizeItem = (item: any) => {
-  const publicPrice = toNullableNumber(item.public_price ?? item.original_price);
+  const originalPrice = toNullableNumber(item.original_price);
   const agentCost = toNumber(item.agent_cost_price ?? item.price);
   const discountPercent = toNumber(item.agent_discount_percent, 0);
   return {
@@ -80,8 +80,7 @@ const normalizeItem = (item: any) => {
     sku: item.sku ?? '',
     price: agentCost,
     agent_cost_price: agentCost,
-    public_price: publicPrice,
-    original_price: publicPrice,
+    original_price: originalPrice,
     agent_discount_percent: discountPercent,
     markup_percent: toNumber(item.markup_percent),
     markup_fixed: toNumber(item.markup_fixed),
@@ -252,7 +251,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
 
   const applyDiscountToItems = (list: ProductItem[], percent: number) => {
     return list.map((item) => {
-      const base = item.public_price ?? item.original_price ?? item.price ?? 0;
+      const base = item.original_price ?? item.price ?? 0;
       const cost =
         base !== null && base !== undefined
           ? computeAgentCostFromDiscount(Number(base), percent) ?? Number(item.price ?? 0)
@@ -373,7 +372,6 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
           sku: trimmedSku,
           price: Number.isFinite(agentCostValue) ? agentCostValue : 0,
           original_price: effectivePublicPrice,
-          public_price: effectivePublicPrice,
           agent_discount_percent: discountPercentNum,
           agent_cost_price: Number.isFinite(agentCostValue) ? agentCostValue : 0,
           markup_percent: markupPercentNum,
@@ -497,8 +495,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
             name: item.name.trim(),
             sku: item.sku.trim(),
             price: item.agent_cost_price,
-            original_price: item.public_price ?? item.original_price,
-            public_price: item.public_price ?? item.original_price,
+            original_price: item.original_price,
             agent_cost_price: item.agent_cost_price,
             agent_discount_percent: item.agent_discount_percent,
             markup_percent: item.markup_percent,
@@ -768,7 +765,6 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                         <TableHead className="min-w-[220px] text-gray-300">แพ็กเกจ</TableHead>
                         <TableHead className="min-w-[140px] text-gray-300">SKU</TableHead>
                         <TableHead className="min-w-[260px] text-gray-300">Icon URL</TableHead>
-                        <TableHead className="min-w-[150px] text-gray-300">ราคา Public</TableHead>
                         <TableHead className="min-w-[150px] text-gray-300">ราคาทุน</TableHead>
                         <TableHead className="min-w-[120px] text-gray-300">Markup %</TableHead>
                         <TableHead className="min-w-[120px] text-gray-300">Markup ฿</TableHead>
@@ -884,48 +880,6 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                               <Input
                                 type="text"
                                 inputMode="decimal"
-                              value={
-                                item.public_price === null || item.public_price === undefined
-                                  ? ''
-                                  : String(item.public_price)
-                              }
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                  setItems((prevItems) =>
-                                    prevItems.map((i) => {
-                                      if (i.id !== item.id) return i;
-                                      if (val === '') {
-                                        return {
-                                          ...i,
-                                          public_price: null,
-                                          original_price: null,
-                                        };
-                                      }
-                                      const parsed = parseFloat(val);
-                                      if (Number.isNaN(parsed) || parsed < 0) return i;
-                                      const recalculatedCost =
-                                        computeAgentCostFromDiscount(parsed, i.agent_discount_percent) ??
-                                        i.agent_cost_price;
-                                      return {
-                                        ...i,
-                                        public_price: parsed,
-                                        original_price: parsed,
-                                        price: recalculatedCost,
-                                        agent_cost_price: recalculatedCost,
-                                      };
-                                    }),
-                                    );
-                                  }
-                                }}
-                              placeholder="0.00"
-                              className={`${darkInputClass} w-full min-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
                               value={item.agent_cost_price ?? item.price}
                                 onChange={(e) => {
                                   const val = e.target.value;
@@ -935,7 +889,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                                       if (i.id !== item.id) return i;
                                       const parsed = val === '' ? 0 : parseFloat(val) || 0;
                                       const newDiscount = computeDiscountFromCost(
-                                        i.public_price ?? i.original_price,
+                                        i.original_price,
                                         parsed,
                                       );
                                       return {

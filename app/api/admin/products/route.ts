@@ -8,6 +8,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const filter = searchParams.get('filter') || 'all';
+  const productType = searchParams.get('product_type');
 
   const sb = createServiceClient();
   
@@ -17,6 +18,10 @@ export async function GET(req: Request) {
     query = query.eq('is_published', true);
   } else if (filter === 'unpublished') {
     query = query.eq('is_published', false);
+  }
+
+  if (productType) {
+    query = query.eq('product_type', productType);
   }
 
   // Select all columns and map to only needed fields

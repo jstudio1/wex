@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { getWepayServiceInfo, WepayError } from '@/lib/providers/wepay';
 
 type WepayGame = {
   company_id: string;
@@ -10,86 +11,61 @@ type WepayGame = {
   refs_format?: { ref1?: string };
 };
 
+type WepayMtopup = {
+  company_id: string;
+  company_name: string;
+  fee?: number;
+  minimum_amount?: number;
+  maximum_amount?: number;
+  refundable?: boolean;
+  denomination?: Array<{ price: number; description: string | null }>;
+};
+
+type WepayCashcard = {
+  company_id: string;
+  company_name: string;
+  fee?: number;
+  denomination?: Array<{ price: number; description: string | null }>;
+};
+
 const WEPAY_PRODUCTS_URL =
   process.env.WEPAY_PRODUCTS_URL ||
   'https://www.wepay.in.th/comp_export.php?json';
 
-const defaultAgentDiscountMap = (() => {
-  const entries: Array<[string, number]> = [
-    ['ZEPETO', 46],
-    ['Blood Strike', 35.5],
-    ['Marvel Rivals', 27.5],
-    ['Zenless Zone Zero', 27],
-    ['Honkai: Star Rail', 27],
-    ['Dragon Nest M: Classic', 27],
-    ['Genshin Impact', 27],
-    ['Delta Force (Steam)', 26],
-    ['Arena Breakout', 26],
-    ['Harry Potter: Magic Awakened', 25.5],
-    ['Sword of Justice', 22],
-    ['Racing Master', 22],
-    ['Ace Racer', 21],
-    ['Seal M', 20.5],
-    ['Ragnarok X: Next Generation', 20.5],
-    ['X-HERO', 20.5],
-    ['GODDESS OF VICTORY: NIKKE', 20.5],
-    ['Sausage Man', 20.5],
-    ['Dragon Raja', 20.5],
-    ['Magic Chess: Go Go', 20.5],
-    ['Onmyoji Arena', 19],
-    ['Dunk City Dynasty', 18],
-    ['Diablo: Immortal', 17.5],
-    ['PUBG Mobile (Thai)', 17],
-    ['Ragnarok Original', 15],
-    ['MARVEL SNAP', 15],
-    ['Ragnarok M: Eternal Love', 15],
-    ['Diablo IV', 13.5],
-    ['PUBG Mobile (โปรโมชั่น UC STATION)', 13.5],
-    ['Seven Knights Re:BIRTH', 13.5],
-    ['Overwatch 2', 13.5],
-    ['PUBG Mobile (Global)', 13.5],
-    ['Ragnarok M: Classic', 13.5],
-    ['Honor of Kings', 12],
-    ['MU Origin 3', 12],
-    ['MU Archangel', 12],
-    ['Counter:Side', 12],
-    ['EOS RED', 12],
-    ['Love and Deepspace', 10.5],
-    ['Mobile Legends: Bang Bang', 10],
-    ['HAIKYU!! FLY HIGH', 10],
-    ['MapleStory R: Evolution', 9],
-    ['Super Sus', 9],
-    ['Metal Slug: Awakening', 8.5],
-    ['Bigo Live', 8],
-    ['FC Mobile (FIFA Mobile)', 7.8],
-    ['Teamfight Tactics Mobile', 7],
-    ['Legends of Runeterra', 7],
-    ['League of Legends: Wild Rift', 7],
-    ['Valorant', 7],
-    ['League of Legends', 7],
-    ['AFK Journey', 7],
-    ['Garena Undawn', 5.5],
-    ['Call Of Duty Mobile', 5.5],
-    ['Free Fire', 5.5],
-    ['RoV Mobile', 5.5],
-    ['Delta Force (Garena)', 5.5],
-  ];
+// Cache สำหรับ discount จาก API (cache ระหว่าง sync session)
+let discountCache = new Map<string, number>();
 
-  const map = new Map<string, number>();
-  for (const [name, percent] of entries) {
-    map.set(name.trim().toLowerCase(), percent);
-  }
-  return map;
-})();
+async function resolveAgentDiscountPercent(
+  providerCompanyId: string | undefined | null,
+  productType: 'gtopup' | 'mtopup' | 'cashcard' = 'gtopup'
+): Promise<number> {
+  // ดึง discount จาก cache หรือ wePAY API เท่านั้น
+  if (providerCompanyId) {
+    const cacheKey = `${productType}:${providerCompanyId}`;
+    
+    // ตรวจสอบ cache ก่อน
+    if (discountCache.has(cacheKey)) {
+      return discountCache.get(cacheKey) ?? 0;
+    }
 
-function resolveAgentDiscountPercent(providerCompanyId: string | undefined | null, gameName: string | undefined | null, overrides: Map<string, number>) {
-  const providerKey = providerCompanyId?.trim().toLowerCase();
-  if (providerKey && overrides.has(providerKey)) {
-    return overrides.get(providerKey) ?? 0;
+    // ถ้ายังไม่มีใน cache ให้ดึงจาก API
+    try {
+      const serviceInfo = await getWepayServiceInfo(productType, providerCompanyId);
+      if (serviceInfo.discount !== undefined && serviceInfo.discount !== null) {
+        const discount = Number(serviceInfo.discount);
+        // เก็บใน cache
+        discountCache.set(cacheKey, discount);
+        return discount;
+      }
+    } catch (err) {
+      // ถ้า API error ให้ใช้ 0
+      console.warn(`[PRODUCTS][SYNC] Failed to get service info for ${providerCompanyId}, using 0%:`, err instanceof WepayError ? err.message : 'Unknown error');
+      // เก็บ 0 ใน cache เพื่อไม่ให้เรียก API ซ้ำ
+      discountCache.set(cacheKey, 0);
+    }
   }
-  if (!gameName) return 0;
-  const normalized = gameName.trim().toLowerCase();
-  return defaultAgentDiscountMap.get(normalized) ?? 0;
+
+  return 0;
 }
 
 function computeAgentCost(basePrice: number, discountPercent: number) {
@@ -153,44 +129,99 @@ function buildUidRegex(raw?: string | null, hasServer?: boolean) {
 }
 
 export async function POST(req: Request) {
+  // Clear discount cache เมื่อเริ่ม sync ใหม่
+  discountCache.clear();
+  
   const auth = req.headers.get('authorization');
   if (!auth || auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  // เพิ่ม timeout 5 นาที (300,000 ms)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+
   try {
-    const upstream = await fetch(WEPAY_PRODUCTS_URL, { cache: 'no-store' });
+    const { searchParams } = new URL(req.url);
+    const productType = searchParams.get('product_type') as 'gtopup' | 'mtopup' | 'cashcard' | null;
+    
+    // อ่าน company_ids ที่เลือกจาก request body (ถ้ามี)
+    let selectedCompanyIds: string[] | null = null;
+    try {
+      const bodyText = await req.text();
+      if (bodyText && bodyText.trim()) {
+        const body = JSON.parse(bodyText);
+        if (body && Array.isArray(body.company_ids) && body.company_ids.length > 0) {
+          selectedCompanyIds = body.company_ids;
+        }
+      }
+    } catch {
+      // ถ้าไม่มี body หรือ parse ไม่ได้ ให้ใช้ null (sync ทั้งหมด)
+    }
+    
+    const upstream = await fetch(WEPAY_PRODUCTS_URL, { 
+      cache: 'no-store',
+      signal: controller.signal 
+    });
     if (!upstream.ok) {
+      clearTimeout(timeoutId);
       console.error('[wePAY sync] fetch failed', upstream.status, upstream.statusText);
       return NextResponse.json({ error: 'fetch_failed', detail: 'ไม่สามารถดึงข้อมูลจาก wePAY ได้' }, { status: upstream.status || 500 });
     }
     const payload = await upstream.json();
+    clearTimeout(timeoutId);
+    
     const gtopupProducts: WepayGame[] = Array.isArray(payload?.data?.gtopup) ? payload.data.gtopup : [];
-    if (!gtopupProducts.length) {
-      return NextResponse.json({ error: 'empty_gtopup', detail: 'ไม่พบข้อมูล gtopup จาก wePAY' }, { status: 502 });
+    const mtopupProducts: WepayMtopup[] = Array.isArray(payload?.data?.mtopup) ? payload.data.mtopup : [];
+    const cashcardProducts: WepayCashcard[] = Array.isArray(payload?.data?.cashcard) ? payload.data.cashcard : [];
+    
+    // ถ้ามี product_type parameter ให้ sync เฉพาะ type นั้น
+    let targetGtopup: WepayGame[] = [];
+    let targetMtopup: WepayMtopup[] = [];
+    let targetCashcard: WepayCashcard[] = [];
+    
+    if (productType === 'gtopup') {
+      targetGtopup = gtopupProducts;
+      // ถ้ามี company_ids ที่เลือก ให้ filter
+      if (selectedCompanyIds && selectedCompanyIds.length > 0) {
+        const selectedSet = new Set(selectedCompanyIds);
+        targetGtopup = targetGtopup.filter((g) => selectedSet.has(g.company_id));
+      }
+    } else if (productType === 'mtopup') {
+      targetMtopup = mtopupProducts;
+      // ถ้ามี company_ids ที่เลือก ให้ filter
+      if (selectedCompanyIds && selectedCompanyIds.length > 0) {
+        const selectedSet = new Set(selectedCompanyIds);
+        targetMtopup = targetMtopup.filter((g) => selectedSet.has(g.company_id));
+      }
+    } else if (productType === 'cashcard') {
+      targetCashcard = cashcardProducts;
+      // ถ้ามี company_ids ที่เลือก ให้ filter
+      if (selectedCompanyIds && selectedCompanyIds.length > 0) {
+        const selectedSet = new Set(selectedCompanyIds);
+        targetCashcard = targetCashcard.filter((g) => selectedSet.has(g.company_id));
+      }
+    } else {
+      // ถ้าไม่มี parameter ให้ sync ทั้งหมด
+      targetGtopup = gtopupProducts;
+      targetMtopup = mtopupProducts;
+      targetCashcard = cashcardProducts;
+    }
+    
+    if (!targetGtopup.length && !targetMtopup.length && !targetCashcard.length) {
+      return NextResponse.json({ error: 'empty_products', detail: 'ไม่พบข้อมูล products จาก wePAY' }, { status: 502 });
     }
 
+    const targetProductType = productType || 'all';
     const sb = createServiceClient();
-    const discountOverridesMap = new Map<string, number>();
-    try {
-      const { data: discountRows } = await sb
-        .from('product_agent_discounts')
-        .select('provider_company_id, discount_percent');
-      for (const row of discountRows || []) {
-        const key = String(row.provider_company_id || '').trim().toLowerCase();
-        if (!key) continue;
-        discountOverridesMap.set(key, Number(row.discount_percent ?? 0));
-      }
-    } catch (discountErr) {
-      console.warn('[PRODUCTS][SYNC] Failed to load agent discount overrides:', discountErr);
-    }
     let countProducts = 0;
     let countItems = 0;
     let countInputs = 0;
     let countOptions = 0;
     let countRepriced = 0;
 
-    // รีเซ็ต Global Markup เป็น 0
+    // รีเซ็ต Global Markup เป็น 0 (เฉพาะเมื่อ sync ทั้งหมด)
+    if (targetProductType === 'all') {
     await sb.from('settings').upsert(
       [
       { key: 'PRICING_MARKUP_PERCENT', value: '0' },
@@ -199,7 +230,7 @@ export async function POST(req: Request) {
       { onConflict: 'key' }
     );
 
-    // รีเซ็ต Item Markup ทั้งหมดเป็น 0
+      // รีเซ็ต Item Markup ทั้งหมดเป็น 0 (เฉพาะเมื่อ sync ทั้งหมด)
     await sb
       .from('product_items')
       .update({
@@ -207,10 +238,35 @@ export async function POST(req: Request) {
       markup_fixed: 0
       })
       .neq('id', 0);
+    } else {
+      // ถ้า sync เฉพาะ type ให้รีเซ็ต markup เฉพาะ product_type นั้น
+      const { data: targetProducts } = await sb
+        .from('products')
+        .select('id')
+        .eq('product_type', targetProductType);
+      
+      if (targetProducts && targetProducts.length > 0) {
+        const productIds = targetProducts.map(p => p.id);
+        await sb
+          .from('product_items')
+          .update({
+            markup_percent: 0,
+            markup_fixed: 0
+          })
+          .in('product_id', productIds);
+      }
+    }
 
-    const { data: existingItemRows, error: existingItemsError } = await sb
+    // ดึง existing items เฉพาะ product_type ที่ sync
+    let existingItemQuery = sb
       .from('product_items')
-      .select('id, product_id, sku, price');
+      .select('id, product_id, sku, price, products!inner(product_type)');
+    
+    if (targetProductType !== 'all') {
+      existingItemQuery = existingItemQuery.eq('products.product_type', targetProductType);
+    }
+    
+    const { data: existingItemRows, error: existingItemsError } = await existingItemQuery;
     if (existingItemsError) {
       return NextResponse.json({ error: 'db_error', detail: existingItemsError.message }, { status: 500 });
     }
@@ -227,7 +283,8 @@ export async function POST(req: Request) {
     const keepInputKeys = new Set<string>();
     const processedItemKeys = new Set<string>();
 
-    for (const product of gtopupProducts) {
+    // ประมวลผล gtopup products
+    for (const product of targetGtopup) {
       if (!product?.company_id) continue;
       const providerCompanyId = product.company_id.trim();
       const productKey = slugifyCompany(providerCompanyId, product.company_name || providerCompanyId);
@@ -240,7 +297,8 @@ export async function POST(req: Request) {
           {
             key: productKey,
             name: cleanedName,
-            provider_company_id: providerCompanyId
+            provider_company_id: providerCompanyId,
+            product_type: 'gtopup'
           },
           { onConflict: 'key' }
         )
@@ -265,7 +323,7 @@ export async function POST(req: Request) {
         const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
         const existingKey = `${upsertedProduct.id}::${sku}`;
         const existingItem = existingItemMap.get(existingKey);
-        const discountPercent = resolveAgentDiscountPercent(providerCompanyId, cleanedName, discountOverridesMap);
+        const discountPercent = await resolveAgentDiscountPercent(providerCompanyId, 'gtopup');
         const agentCost = computeAgentCost(priceValue, discountPercent);
 
         if (existingItem) {
@@ -276,7 +334,6 @@ export async function POST(req: Request) {
               sku,
               price: agentCost,
               original_price: priceValue,
-              public_price: priceValue,
               agent_discount_percent: discountPercent,
               agent_cost_price: agentCost,
               markup_percent: 0,
@@ -298,7 +355,6 @@ export async function POST(req: Request) {
             sku,
             price: agentCost,
             original_price: priceValue,
-            public_price: priceValue,
             agent_discount_percent: discountPercent,
             agent_cost_price: agentCost,
               markup_percent: 0,
@@ -376,10 +432,223 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: existingProducts } = await sb.from('products').select('id, key');
+    // ประมวลผล mtopup products
+    for (const product of targetMtopup) {
+      if (!product?.company_id) continue;
+      const providerCompanyId = product.company_id.trim();
+      const productKey = slugifyCompany(providerCompanyId, product.company_name || providerCompanyId);
+      keepProductKeys.add(productKey);
+      const cleanedName = product.company_name?.trim() || providerCompanyId;
+
+      const { data: upsertedProduct, error: productUpsertError } = await sb
+        .from('products')
+        .upsert(
+          {
+            key: productKey,
+            name: cleanedName,
+            provider_company_id: providerCompanyId,
+            product_type: 'mtopup'
+          },
+          { onConflict: 'key' }
+        )
+        .select('id, key')
+        .single();
+
+      if (productUpsertError) {
+        console.error('Product upsert error:', productUpsertError);
+        continue;
+      }
+      if (!upsertedProduct) continue;
+      countProducts++;
+
+      for (const denom of product.denomination || []) {
+        if (typeof denom?.price !== 'number') continue;
+        const providerItemKey = `${providerCompanyId}::${denom.price}`;
+        if (processedItemKeys.has(providerItemKey)) continue;
+        processedItemKeys.add(providerItemKey);
+
+        const priceValue = Number(denom.price);
+        const sku = priceToSku(providerCompanyId, priceValue);
+        const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
+        const existingKey = `${upsertedProduct.id}::${sku}`;
+        const existingItem = existingItemMap.get(existingKey);
+        const discountPercent = await resolveAgentDiscountPercent(providerCompanyId, 'mtopup');
+        const agentCost = computeAgentCost(priceValue, discountPercent);
+
+        if (existingItem) {
+          const { error: updateError } = await sb
+            .from('product_items')
+            .update({
+              name: itemName,
+              sku,
+              price: agentCost,
+              original_price: priceValue,
+              agent_discount_percent: discountPercent,
+              agent_cost_price: agentCost,
+              markup_percent: 0,
+              markup_fixed: 0
+            })
+            .eq('id', existingItem.id);
+          if (updateError) {
+            console.error('Product item update error', updateError);
+            continue;
+          }
+          if (existingItem.price !== priceValue) {
+            countRepriced++;
+          }
+          existingItemMap.delete(existingKey);
+        } else {
+          const { error: insertError } = await sb.from('product_items').insert({
+            product_id: upsertedProduct.id,
+            name: itemName,
+            sku,
+            price: agentCost,
+            original_price: priceValue,
+            agent_discount_percent: discountPercent,
+            agent_cost_price: agentCost,
+            markup_percent: 0,
+            markup_fixed: 0
+          });
+          if (insertError) {
+            console.error('Product item insert error', insertError);
+            continue;
+          }
+          countRepriced++;
+        }
+        countItems++;
+      }
+
+      // สร้าง product_input สำหรับ phone_number
+      const { data: phoneInput, error: phoneError } = await sb
+        .from('product_inputs')
+        .upsert(
+          {
+            product_id: upsertedProduct.id,
+            key: 'phone_number',
+            title: 'เบอร์โทรศัพท์',
+            regex: '^0[0-9]{9}$',
+            type: 'text',
+            placeholder: 'กรอกเบอร์โทรศัพท์ 10 หลัก'
+          },
+          { onConflict: 'product_id,key' }
+        )
+        .select('id, key')
+        .single();
+      if (phoneError) {
+        console.error('Phone input upsert error:', phoneError);
+      } else {
+        keepInputKeys.add(`${productKey}::phone_number`);
+        countInputs++;
+      }
+    }
+
+    // ประมวลผล cashcard products
+    for (const product of targetCashcard) {
+      if (!product?.company_id) continue;
+      const providerCompanyId = product.company_id.trim();
+      const productKey = slugifyCompany(providerCompanyId, product.company_name || providerCompanyId);
+      keepProductKeys.add(productKey);
+      const cleanedName = product.company_name?.trim() || providerCompanyId;
+
+      const { data: upsertedProduct, error: productUpsertError } = await sb
+        .from('products')
+        .upsert(
+          {
+            key: productKey,
+            name: cleanedName,
+            provider_company_id: providerCompanyId,
+            product_type: 'cashcard'
+          },
+          { onConflict: 'key' }
+        )
+        .select('id, key')
+        .single();
+
+      if (productUpsertError) {
+        console.error('Product upsert error:', productUpsertError);
+        continue;
+      }
+      if (!upsertedProduct) continue;
+      countProducts++;
+
+      for (const denom of product.denomination || []) {
+        if (typeof denom?.price !== 'number') continue;
+        const providerItemKey = `${providerCompanyId}::${denom.price}`;
+        if (processedItemKeys.has(providerItemKey)) continue;
+        processedItemKeys.add(providerItemKey);
+
+        const priceValue = Number(denom.price);
+        const sku = priceToSku(providerCompanyId, priceValue);
+        const itemName = stripHtml(denom.description) || `${priceValue} บาท`;
+        const existingKey = `${upsertedProduct.id}::${sku}`;
+        const existingItem = existingItemMap.get(existingKey);
+        const discountPercent = await resolveAgentDiscountPercent(providerCompanyId, 'cashcard');
+        const agentCost = computeAgentCost(priceValue, discountPercent);
+
+        if (existingItem) {
+          const { error: updateError } = await sb
+            .from('product_items')
+            .update({
+              name: itemName,
+              sku,
+              price: agentCost,
+              original_price: priceValue,
+              agent_discount_percent: discountPercent,
+              agent_cost_price: agentCost,
+              markup_percent: 0,
+              markup_fixed: 0
+            })
+            .eq('id', existingItem.id);
+          if (updateError) {
+            console.error('Product item update error', updateError);
+            continue;
+          }
+          if (existingItem.price !== priceValue) {
+            countRepriced++;
+          }
+          existingItemMap.delete(existingKey);
+        } else {
+          const { error: insertError } = await sb.from('product_items').insert({
+            product_id: upsertedProduct.id,
+            name: itemName,
+            sku,
+            price: agentCost,
+            original_price: priceValue,
+            agent_discount_percent: discountPercent,
+            agent_cost_price: agentCost,
+            markup_percent: 0,
+            markup_fixed: 0
+          });
+          if (insertError) {
+            console.error('Product item insert error', insertError);
+            continue;
+          }
+          countRepriced++;
+        }
+        countItems++;
+      }
+      // cashcard ไม่ต้องสร้าง product_input
+    }
+
+    // ลบ products ที่ไม่อยู่ใน keepProductKeys เฉพาะ product_type ที่ sync
+    const { data: existingProducts } = await sb
+      .from('products')
+      .select('id, key, product_type');
+    
     for (const ep of existingProducts || []) {
+      const epType = (ep as any).product_type as string;
+      // ถ้า sync เฉพาะ type หนึ่ง ให้ลบเฉพาะ type นั้น
+      // ถ้า sync ทั้งหมด ให้ลบทุก type ที่ไม่อยู่ใน keepProductKeys
+      if (targetProductType === 'all') {
+        // Sync ทั้งหมด - ลบทุก product ที่ไม่อยู่ใน keepProductKeys
       if (!keepProductKeys.has(ep.key)) {
         await sb.from('products').delete().eq('id', ep.id);
+        }
+      } else {
+        // Sync เฉพาะ type - ลบเฉพาะ type ที่ sync และไม่อยู่ใน keepProductKeys
+        if (epType === targetProductType && !keepProductKeys.has(ep.key)) {
+          await sb.from('products').delete().eq('id', ep.id);
+        }
       }
     }
 
@@ -408,7 +677,17 @@ export async function POST(req: Request) {
       }
     });
   } catch (e) {
+    if ((e as any)?.name === 'AbortError') {
+      console.error('wePAY sync timeout');
+      return NextResponse.json({ 
+        error: 'timeout', 
+        detail: 'การ Sync ใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง' 
+      }, { status: 504 });
+    }
     console.error('wePAY sync error:', e);
-    return NextResponse.json({ error: 'unexpected' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'unexpected', 
+      detail: e instanceof Error ? e.message : 'เกิดข้อผิดพลาด' 
+    }, { status: 500 });
   }
 }

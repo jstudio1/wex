@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gamepad2, Share2, Smartphone, Home, Mail, FileText, ChevronDown, MessageSquare, BookOpen, Wrench, Shield } from 'lucide-react';
+import { Gamepad2, Share2, Smartphone, Home, Mail, FileText, ChevronDown, MessageSquare, BookOpen, Wrench, Shield, Phone, CreditCard } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +14,12 @@ import {
 type NavbarMenus = {
   home: boolean;
   products: boolean;
+  mtopup: boolean;
+  cashcard: boolean;
   social: boolean;
   categories: boolean;
   games: boolean;
   premiumApp: boolean;
-  cashcard: boolean;
   contact: boolean;
   blog: boolean;
 };
@@ -45,17 +46,19 @@ export default function NavLinks({
   const allItemsMap: Record<string, { href: string; label: string; icon: typeof Home; key: keyof NavbarMenus; requireAuth?: boolean }> = {
     home: { href: '/', label: 'หน้าหลัก', icon: Home, key: 'home' },
     products: { href: '/products', label: navbarMenuLabels?.products || 'เติมเกม', icon: Gamepad2, key: 'products' },
+    mtopup: { href: '/mtopup', label: 'เติมเงินมือถือ', icon: Phone, key: 'mtopup' },
+    cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
     premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
     social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
     blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
   };
 
-  // Default order: หน้าหลัก > เติมเกม > แอพ > ปั้ม > Blog > เครื่องมือ > ติดต่อเรา
-  const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+  // Default order: หน้าหลัก > เติมเกม > เติมเงินมือถือ > บัตรเติมเงิน > แอพ > ปั้ม > Blog > เครื่องมือ > ติดต่อเรา
+  const defaultOrder = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
   const order = navbarMenuOrder || defaultOrder;
   
   // Ensure 'home' is always first if it exists in the order
-  const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+  const validKeys = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
   const orderedKeys = order.includes('home') 
     ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
     : ['home', ...validKeys.filter(key => key !== 'home')];
@@ -83,18 +86,18 @@ export default function NavLinks({
     }
   });
 
-  const baseClasses = 'group relative inline-flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 !text-white overflow-hidden focus:outline-none focus-visible:outline-none';
+  const baseClasses = 'group relative inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all duration-300 !text-white overflow-hidden focus:outline-none focus-visible:outline-none';
 
   return (
     <nav
-      className="flex items-center gap-1"
+      className="flex items-center gap-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       aria-label="เมนูหลัก"
     >
       {menuItems.map((menuItem) => {
         if (menuItem.type === 'contact') {
           return (
             <DropdownMenu key="contact" modal={false}>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild>
                 <button
                   className={`${baseClasses} ${
                     isContactActive
@@ -106,9 +109,9 @@ export default function NavLinks({
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                      <Mail className={`relative z-10 h-5 w-5 text-white transition-all duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                      <span className="relative z-10 leading-none text-white drop-shadow-sm">{navbarMenuLabels?.contact || 'ติดต่อเรา'}</span>
-                  <ChevronDown className={`relative z-10 h-4 w-4 text-white transition-transform duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                      <Mail className={`relative z-10 h-4 w-4 text-white transition-all duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                      <span className="relative z-10 leading-none text-white drop-shadow-sm hidden sm:inline">{navbarMenuLabels?.contact || 'ติดต่อเรา'}</span>
+                  <ChevronDown className={`relative z-10 h-3 w-3 text-white transition-transform duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
                   {isContactActive && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
                   )}
@@ -170,9 +173,9 @@ export default function NavLinks({
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                  <Wrench className={`relative z-10 h-5 w-5 text-white transition-all duration-300 ${isToolsActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                  <span className="relative z-10 leading-none text-white drop-shadow-sm">เครื่องมือ</span>
-                  <ChevronDown className={`relative z-10 h-4 w-4 text-white transition-transform duration-300 ${isToolsActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  <Wrench className={`relative z-10 h-4 w-4 text-white transition-all duration-300 ${isToolsActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  <span className="relative z-10 leading-none text-white drop-shadow-sm hidden sm:inline">เครื่องมือ</span>
+                  <ChevronDown className={`relative z-10 h-3 w-3 text-white transition-transform duration-300 ${isToolsActive ? 'scale-110' : 'group-hover:scale-110'}`} />
                   {isToolsActive && (
                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
                   )}
@@ -213,9 +216,9 @@ export default function NavLinks({
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
             <Icon
-              className={`relative z-10 h-5 w-5 text-white transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
+              className={`relative z-10 h-4 w-4 text-white transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
             />
-            <span className="relative z-10 leading-none text-white drop-shadow-sm">{it.label}</span>
+            <span className="relative z-10 leading-none text-white drop-shadow-sm hidden sm:inline">{it.label}</span>
             {active && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
             )}

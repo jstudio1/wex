@@ -8,7 +8,7 @@ export async function GET() {
   const sb = createServiceClient();
   const { data } = await sb.from('settings').select('key, value').in('key', [
     'HOME_TITLE','HOME_SUBTITLE','HOME_POSTERS','FLASHSALE_START','FLASHSALE_END',
-    'NAVBAR_MENU_PRODUCTS','NAVBAR_MENU_SOCIAL','NAVBAR_MENU_CATEGORIES','NAVBAR_MENU_GAMES','NAVBAR_MENU_PREMIUM_APP','NAVBAR_MENU_CASHCARD','NAVBAR_MENU_CONTACT','NAVBAR_MENU_ORDER',
+    'NAVBAR_MENU_PRODUCTS','NAVBAR_MENU_MTOPUP','NAVBAR_MENU_CASHCARD','NAVBAR_MENU_SOCIAL','NAVBAR_MENU_CATEGORIES','NAVBAR_MENU_GAMES','NAVBAR_MENU_PREMIUM_APP','NAVBAR_MENU_CONTACT','NAVBAR_MENU_ORDER',
     'NAVBAR_MENU_LABEL_PRODUCTS','NAVBAR_MENU_LABEL_PREMIUM_APP','NAVBAR_MENU_LABEL_SOCIAL','NAVBAR_MENU_LABEL_CONTACT',
     'PAYMENT_METHOD_CODE','PAYMENT_METHOD_QR','PAYMENT_METHOD_SLIP','PAYMENT_METHOD_TRUEWALLET',
     'DISCORD_WEBHOOK_URL',
@@ -34,7 +34,7 @@ export async function GET() {
   };
 
   // Get navbar menu order (default order)
-  const defaultOrder = ['products', 'social', 'categories', 'games', 'premiumApp', 'cashcard'];
+  const defaultOrder = ['products', 'mtopup', 'cashcard', 'social', 'categories', 'games', 'premiumApp'];
   let menuOrder: string[] = defaultOrder;
   try {
     const orderValue = map.NAVBAR_MENU_ORDER;
@@ -81,11 +81,12 @@ export async function GET() {
     flashEnd: map.FLASHSALE_END || null,
     navbarMenus: {
       products: getNavbarSetting('NAVBAR_MENU_PRODUCTS', 'true'),
+      mtopup: getNavbarSetting('NAVBAR_MENU_MTOPUP', 'true'),
+      cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', 'true'),
       social: getNavbarSetting('NAVBAR_MENU_SOCIAL', 'true'),
       categories: getNavbarSetting('NAVBAR_MENU_CATEGORIES', 'true'),
       games: getNavbarSetting('NAVBAR_MENU_GAMES', 'true'),
       premiumApp: getNavbarSetting('NAVBAR_MENU_PREMIUM_APP', 'true'),
-      cashcard: getNavbarSetting('NAVBAR_MENU_CASHCARD', 'true'),
       contact: getNavbarSetting('NAVBAR_MENU_CONTACT', 'true'),
     },
     navbarMenuOrder: menuOrder,
@@ -199,11 +200,14 @@ export async function POST(req: Request) {
   
   // Save navbar menu visibility settings
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_PRODUCTS', value: navbarMenus.products === false ? 'false' : 'true' }, { onConflict: 'key' });
+  if (navbarMenus.mtopup !== undefined) {
+    await sb.from('settings').upsert({ key: 'NAVBAR_MENU_MTOPUP', value: navbarMenus.mtopup === false ? 'false' : 'true' }, { onConflict: 'key' });
+  }
+  await sb.from('settings').upsert({ key: 'NAVBAR_MENU_CASHCARD', value: navbarMenus.cashcard === false ? 'false' : 'true' }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_SOCIAL', value: navbarMenus.social === false ? 'false' : 'true' }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_CATEGORIES', value: navbarMenus.categories === false ? 'false' : 'true' }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_GAMES', value: navbarMenus.games === false ? 'false' : 'true' }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_PREMIUM_APP', value: navbarMenus.premiumApp === false ? 'false' : 'true' }, { onConflict: 'key' });
-  await sb.from('settings').upsert({ key: 'NAVBAR_MENU_CASHCARD', value: navbarMenus.cashcard === false ? 'false' : 'true' }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_CONTACT', value: navbarMenus.contact === false ? 'false' : 'true' }, { onConflict: 'key' });
   
   // Save navbar menu order
