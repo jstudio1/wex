@@ -314,8 +314,8 @@ async function HomeServer() {
                       prefetch={index < 6}
                     >
                       <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
-                        {/* Product Image */}
-                        <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4">
+                        {/* Product Image - Fixed Height */}
+                        <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
                           {product.image_url || product.icon_url ? (
                             <Image 
                               src={product.image_url || product.icon_url} 
@@ -332,33 +332,35 @@ async function HomeServer() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         </div>
                         
-                        {/* Product Info */}
-                        <div className="flex flex-col gap-2 sm:gap-3 flex-1">
-                          {/* Product Name */}
+                        {/* Product Info - Flex container with fixed bottom */}
+                        <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
+                          {/* Product Name - Fixed height */}
                           <div
-                            className="text-xs sm:text-sm font-semibold text-white line-clamp-2 min-h-[2.5rem] sm:min-h-[2.8rem] text-center leading-snug sm:leading-tight"
+                            className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center"
                             dangerouslySetInnerHTML={{ __html: product.display_name || product.name || '' }}
                             suppressHydrationWarning
                           />
                           
-                          {/* Product Details */}
-                          <div className="flex-1 rounded-lg sm:rounded-xl border border-emerald-900/40 bg-emerald-900/5 px-2.5 sm:px-3 py-2 sm:py-3 space-y-1.5 sm:space-y-2 shadow-inner">
-                            {/* Summary - แสดงแค่ 1-2 บรรทัด */}
-                            {product.summary && product.summary.length > 0 ? (
-                              <ul className="text-[10px] sm:text-xs text-gray-300 space-y-1">
-                                {product.summary.slice(0, 2).map((line: string, idx: number) => (
-                                  <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-1.5">
-                                    <span className="text-emerald-500 leading-4 flex-shrink-0 mt-0.5 text-[10px]">•</span>
-                                    <span className="flex-1 leading-4 line-clamp-2">{line.replace(/^•\s*/, '')}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-[10px] sm:text-xs text-gray-500 text-center py-0.5">ยังไม่มีรายละเอียด</p>
-                            )}
+                          {/* Product Details - Flexible middle section */}
+                          <div className="flex-1 min-h-0 flex flex-col rounded-lg sm:rounded-xl border border-emerald-900/40 bg-emerald-900/5 px-2.5 sm:px-3 py-2 sm:py-3 shadow-inner">
+                            {/* Summary - Flexible content area */}
+                            <div className="flex-1 min-h-[3rem] sm:min-h-[3.5rem] flex flex-col justify-start">
+                              {product.summary && product.summary.length > 0 ? (
+                                <ul className="text-[10px] sm:text-xs text-gray-300 space-y-1">
+                                  {product.summary.slice(0, 2).map((line: string, idx: number) => (
+                                    <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-1.5">
+                                      <span className="text-emerald-500 leading-4 flex-shrink-0 mt-0.5 text-[10px]">•</span>
+                                      <span className="flex-1 leading-4 line-clamp-2">{line.replace(/^•\s*/, '')}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-[10px] sm:text-xs text-gray-500 text-center py-0.5">ยังไม่มีรายละเอียด</p>
+                              )}
+                            </div>
                             
-                            {/* Price and Stock */}
-                            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 border-t border-emerald-900/20">
+                            {/* Price and Stock - Fixed at bottom */}
+                            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 mt-auto border-t border-emerald-900/20 flex-shrink-0">
                               <div className="rounded-md sm:rounded-lg bg-black/30 px-2 sm:px-2.5 py-1.5 sm:py-2 border border-white/5">
                                 <div className="text-[9px] sm:text-[10px] uppercase tracking-wide text-gray-500 mb-0.5 sm:mb-1">ราคา</div>
                                 <div className="text-sm sm:text-base font-bold text-emerald-400 leading-none">{product.finalPrice.toFixed(0)} ฿</div>
