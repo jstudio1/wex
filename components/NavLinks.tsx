@@ -50,7 +50,7 @@ export default function NavLinks({
     cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
     premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
     social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
-    blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
+    blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog', requireAuth: true },
   };
 
   // Default order: หน้าหลัก > เติมเกม > เติมเงินมือถือ > บัตรเติมเงิน > แอพ > ปั้ม > Blog > เครื่องมือ > ติดต่อเรา
@@ -71,11 +71,13 @@ export default function NavLinks({
   
   orderedKeys.forEach((key, idx) => {
     if (key === 'contact') {
-      if (navbarMenus.contact !== false) {
+      if (isLoggedIn && navbarMenus.contact !== false) {
         menuItems.push({ type: 'contact', index: idx });
       }
     } else if (key === 'tools') {
-      menuItems.push({ type: 'tools', index: idx });
+      if (isLoggedIn) {
+        menuItems.push({ type: 'tools', index: idx });
+      }
     } else {
       const item = allItemsMap[key];
       if (item && navbarMenus[item.key] !== false) {

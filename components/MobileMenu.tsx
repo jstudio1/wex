@@ -199,7 +199,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
                   premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
                   social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
-                  blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
+                  blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog', requireAuth: true },
                 };
 
                 // ใช้ logic เดียวกับ NavLinks.tsx
@@ -240,7 +240,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                 });
 
                 // Add tools menu if in order
-                if (orderedKeys.includes('tools')) {
+                if (isLoggedIn && orderedKeys.includes('tools')) {
                   menuItems.push(
                     <div key="tools-menu" className="space-y-1">
                       <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เครื่องมือ</div>
@@ -257,7 +257,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                 }
 
                 // Add contact menu if enabled and in order
-                if (orderedKeys.includes('contact') && navbarMenus.contact !== false) {
+                if (isLoggedIn && orderedKeys.includes('contact') && navbarMenus.contact !== false) {
                   menuItems.push(
                     <div key="contact-menu" className="space-y-1">
                       <Link 
