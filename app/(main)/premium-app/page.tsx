@@ -1,11 +1,25 @@
 import { Suspense } from 'react';
+import dynamicImport from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
 import type { PremiumAppDisplayMode } from '@/lib/premium-app';
-import AppPremiumProductsList from '@/components/AppPremiumProductsList';
+
+const AppPremiumProductsList = dynamicImport(() => import('@/components/AppPremiumProductsList'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="h-12 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+  ssr: true,
+});
 import {
   Empty,
   EmptyContent,

@@ -1,11 +1,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
 import { ChevronRight, Users, PackageCheck, AppWindow } from 'lucide-react';
 import { cache } from 'react';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
-import { PremiumAppCategoryCard } from '@/components/PremiumAppCategoryCard';
+
+const PremiumAppCategoryCard = dynamicImport(() => import('@/components/PremiumAppCategoryCard').then(mod => ({ default: mod.PremiumAppCategoryCard })), {
+  loading: () => <div className="h-32 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
+  ssr: true,
+});
 
 const getSite = cache(async () => {
   const base = getBaseUrl();

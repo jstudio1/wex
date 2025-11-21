@@ -1,8 +1,13 @@
+import dynamicImport from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { unstable_noStore as noStore } from 'next/cache';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import AccountClient from './AccountClient';
+
+const AccountClient = dynamicImport(() => import('./AccountClient'), {
+  loading: () => <div className="h-96 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: true,
+});
 
 export const dynamic = 'force-dynamic';
 

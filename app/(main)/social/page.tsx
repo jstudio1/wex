@@ -1,5 +1,19 @@
-import SocialServicesBrowser from '@/components/SocialServicesBrowser';
+import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
+
+const SocialServicesBrowser = dynamicImport(() => import('@/components/SocialServicesBrowser'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="h-12 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-48 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+  ssr: true,
+});
 import {
   Empty,
   EmptyContent,

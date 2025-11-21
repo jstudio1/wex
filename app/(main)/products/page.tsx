@@ -1,7 +1,28 @@
+import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
-import PublicProductsSearch from '@/components/PublicProductsSearch';
-import ProductsHeroBanner from '@/components/ProductsHeroBanner';
-import ProductsBreadcrumb from '@/components/ProductsBreadcrumb';
+
+const PublicProductsSearch = dynamicImport(() => import('@/components/PublicProductsSearch'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="h-12 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-48 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+  ssr: true,
+});
+
+const ProductsHeroBanner = dynamicImport(() => import('@/components/ProductsHeroBanner'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
+  ssr: true,
+});
+
+const ProductsBreadcrumb = dynamicImport(() => import('@/components/ProductsBreadcrumb'), {
+  ssr: true,
+});
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { Gamepad2 } from 'lucide-react';

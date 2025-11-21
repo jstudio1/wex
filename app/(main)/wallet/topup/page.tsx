@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamicImport from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,10 +9,26 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { Coins, Gift, QrCode, Building2, CreditCard, Wallet, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import CodeRedeem from '@/components/topup/CodeRedeem';
-import QrPayment from '@/components/topup/QrPayment';
-import SlipTransfer from '@/components/topup/SlipTransfer';
-import TruewalletVoucher from '@/components/topup/TruewalletVoucher';
+
+const CodeRedeem = dynamicImport(() => import('@/components/topup/CodeRedeem'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const QrPayment = dynamicImport(() => import('@/components/topup/QrPayment'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const SlipTransfer = dynamicImport(() => import('@/components/topup/SlipTransfer'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const TruewalletVoucher = dynamicImport(() => import('@/components/topup/TruewalletVoucher'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
 
 type PaymentMethod = 'code' | 'qr' | 'slip' | 'truewallet';
 type BankAccount = {

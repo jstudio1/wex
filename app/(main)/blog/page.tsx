@@ -1,8 +1,22 @@
 import { Suspense } from 'react';
+import dynamicImport from 'next/dynamic';
 import { createServiceClient } from '@/lib/supabase';
 import { cache } from 'react';
-import BlogListClient from './blog-list-client';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const BlogListClient = dynamicImport(() => import('./blog-list-client'), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="h-12 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+  ssr: true,
+});
 
 const fetchCategories = cache(async () => {
   const sb = createServiceClient();

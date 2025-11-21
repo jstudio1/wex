@@ -3,11 +3,12 @@ import { signJwt, verifyJwt, type JwtPayload } from '../jwt';
 
 describe('signJwt', () => {
   beforeEach(() => {
-    process.env.JWT_SECRET = 'test-secret-key-for-jwt-signing';
+    // ใช้ secret key ที่มีความยาวเพียงพอ (อย่างน้อย 32 bytes สำหรับ HS256)
+    process.env.JWT_SECRET = 'test-secret-key-for-jwt-signing-minimum-32-bytes-long';
   });
 
   afterEach(() => {
-    delete process.env.JWT_SECRET;
+    // ไม่ลบ JWT_SECRET เพราะอาจจะใช้ใน tests อื่น
   });
 
   it('ควรสร้าง JWT token ได้', async () => {

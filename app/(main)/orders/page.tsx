@@ -1,13 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamicImport from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import RegularOrdersList from '@/components/RegularOrdersList';
-import AppPremiumOrdersList from '@/components/AppPremiumOrdersList';
-import SocialOrdersList from '@/components/SocialOrdersList';
-import CashcardOrdersList from '@/components/CashcardOrdersList';
-import MtopupOrdersList from '@/components/MtopupOrdersList';
+
+const RegularOrdersList = dynamicImport(() => import('@/components/RegularOrdersList'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const AppPremiumOrdersList = dynamicImport(() => import('@/components/AppPremiumOrdersList'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const SocialOrdersList = dynamicImport(() => import('@/components/SocialOrdersList'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const CashcardOrdersList = dynamicImport(() => import('@/components/CashcardOrdersList'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+
+const MtopupOrdersList = dynamicImport(() => import('@/components/MtopupOrdersList'), {
+  loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-lg animate-pulse" />,
+  ssr: false,
+});
 import { ShoppingBag, Smartphone, Users, Phone, CreditCard } from 'lucide-react';
 
 export default function OrdersPage() {
