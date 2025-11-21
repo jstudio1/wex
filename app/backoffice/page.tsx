@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -76,41 +76,22 @@ type MenuSection = {
 const menuSections: MenuSection[] = [
   {
     label: 'ภาพรวม',
-    items: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ]
+    items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }],
   },
   {
-    label: 'บริการเติมเกม',
+    label: 'คำสั่งซื้อ',
     items: [
-      { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
-      { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
-    ]
+      { id: 'orders', label: 'คำสั่งซื้อ', icon: ShoppingCart },
+      { id: 'topup-history', label: 'ประวัติเติมเงิน', icon: Coins },
+    ],
   },
   {
-    label: 'เติมเงินมือถือ',
-    items: [
-      { id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone },
-    ]
-  },
-  {
-    label: 'บัตรเติมเงิน',
-    items: [
-      { id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard },
-    ]
-  },
-  {
-    label: 'สินค้าอื่นๆ',
-    items: [
-      { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
-      { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
-    ]
+    label: 'ซัพพอร์ต',
+    items: [{ id: 'tickets', label: 'จัดการ Ticket', icon: MessageSquare }],
   },
   {
     label: 'แอพพรีเมี่ยม',
-    items: [
-      { id: 'app-premium', label: 'จัดการแอพพรีเมี่ยม', icon: Package },
-    ]
+    items: [{ id: 'app-premium', label: 'จัดการแอพพรีเมี่ยม', icon: Package }],
   },
   {
     label: 'ปั๊มโซเชียล',
@@ -122,36 +103,41 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'social-providers', label: 'จัดการ Providers' },
           { id: 'social-services', label: 'จัดการบริการ' },
-        ]
+        ],
       },
-    ]
+    ],
   },
   {
-    label: 'เกม',
+    label: 'เติมเงินเกม',
     items: [
+      { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
+      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
+      { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
+    ],
+  },
+  {
+    label: 'เติมเงินมือถือ',
+    items: [{ id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone }],
+  },
+  {
+    label: 'บัตรเติมเงิน',
+    items: [{ id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard }],
+  },
+  {
+    label: 'สินค้าอื่นๆ',
+    items: [
+      { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
+      { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
       { 
         id: 'games', 
-        label: 'เกม', 
+        label: 'มินิเกมและรางวัล',
         icon: Trophy,
         subItems: [
           { id: 'games', label: 'จัดการเกม' },
           { id: 'game-prizes', label: 'จัดการรางวัล' },
-        ]
+        ],
       },
-    ]
-  },
-  {
-    label: 'คำสั่งซื้อ',
-    items: [
-      { id: 'orders', label: 'คำสั่งซื้อ', icon: ShoppingCart },
-      { id: 'topup-history', label: 'ประวัติเติมเงิน', icon: Coins },
-    ]
-  },
-  {
-    label: 'ซัพพอร์ต',
-    items: [
-      { id: 'tickets', label: 'จัดการ Ticket', icon: MessageSquare },
-    ]
+    ],
   },
   {
     label: 'บทความ',
@@ -163,15 +149,13 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'blog-posts', label: 'จัดการบทความ' },
           { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
-        ]
+        ],
       },
-    ]
+    ],
   },
   {
     label: 'ผู้ใช้',
-    items: [
-      { id: 'users', label: 'ผู้ใช้', icon: Users },
-    ]
+    items: [{ id: 'users', label: 'ผู้ใช้', icon: Users }],
   },
   {
     label: 'การตลาด',
@@ -183,18 +167,24 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'coupons', label: 'คูปองส่วนลด' },
           { id: 'redeem-codes', label: 'โค้ดเติมพอยต์' },
-          { id: 'popup', label: 'Popup Notification' },
-        ]
+        ],
       },
-    ]
+    ],
   },
   {
-    label: 'ตั้งค่า',
+    label: 'ตั้งค่าเว็บไซต์',
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
+      { id: 'popup', label: 'Popup Notification', icon: Bell },
+    ],
+  },
+  {
+    label: 'ตั้งค่าบัญชีการเงิน',
+    items: [
+      { id: 'payment-settings', label: 'การชำระเงิน', icon: DollarSign },
       { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: Receipt },
-    ]
+    ],
   },
 ];
 
@@ -538,6 +528,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <OrdersContentWrapper />;
     case 'topup-history':
       return <TopupHistoryContent />;
+    case 'pricing':
+      return <PricingContentWrapper />;
     case 'users':
       return <UsersContentWrapper />;
     case 'coupons':
@@ -552,6 +544,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <SocialServicesContentWrapper />;
     case 'site':
       return <SiteContentWrapper />;
+    case 'payment-settings':
+      return <PaymentSettingsContentWrapper />;
     case 'api-keys':
       return <ApiKeysContent />;
     case 'slip-settings':
@@ -882,6 +876,10 @@ function PopupContentWrapper() {
   return <PopupContent />;
 }
 
+function PricingContentWrapper() {
+  return <PricingContent />;
+}
+
 function SocialProvidersContentWrapper() {
   return <SocialProvidersContent />;
 }
@@ -892,6 +890,10 @@ function SocialServicesContentWrapper() {
 
 function SiteContentWrapper() {
   return <AdminSiteForm />;
+}
+
+function PaymentSettingsContentWrapper() {
+  return <AdminSiteForm initialTab="payment" />;
 }
 
 function ProductsContentWrapper({ productType }: { productType?: string }) {

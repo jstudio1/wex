@@ -21,6 +21,9 @@ import {
   CreditCard,
   BookOpen,
   Phone,
+  MessageSquare,
+  Bell,
+  Receipt,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -58,31 +61,15 @@ const menuSections: MenuSection[] = [
     items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }],
   },
   {
-    label: 'บริการเติมเกม',
+    label: 'คำสั่งซื้อ',
     items: [
-      { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
-      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
-      { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
+      { id: 'orders', label: 'คำสั่งซื้อ', icon: ShoppingCart },
+      { id: 'topup-history', label: 'ประวัติเติมเงิน', icon: Coins },
     ],
   },
   {
-    label: 'เติมเงินมือถือ',
-    items: [
-      { id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone },
-    ],
-  },
-  {
-    label: 'บัตรเติมเงิน',
-    items: [
-      { id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard },
-    ],
-  },
-  {
-    label: 'สินค้าอื่นๆ',
-    items: [
-      { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
-      { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
-    ],
+    label: 'ซัพพอร์ต',
+    items: [{ id: 'tickets', label: 'จัดการ Ticket', icon: MessageSquare }],
   },
   {
     label: 'แอพพรีเมี่ยม',
@@ -103,11 +90,29 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    label: 'เกม',
+    label: 'เติมเงินเกม',
     items: [
+      { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
+      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
+      { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
+    ],
+  },
+  {
+    label: 'เติมเงินมือถือ',
+    items: [{ id: 'mtopup', label: 'จัดการเติมเงินมือถือ', icon: Phone }],
+  },
+  {
+    label: 'บัตรเติมเงิน',
+    items: [{ id: 'cashcard-wepay', label: 'บัตรเติมเงิน', icon: CreditCard }],
+  },
+  {
+    label: 'สินค้าอื่นๆ',
+    items: [
+      { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
+      { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
       { 
         id: 'games', 
-        label: 'เกม', 
+        label: 'มินิเกมและรางวัล',
         icon: Trophy,
         subItems: [
           { id: 'games', label: 'จัดการเกม' },
@@ -117,10 +122,17 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    label: 'คำสั่งซื้อ',
+    label: 'บทความ',
     items: [
-      { id: 'orders', label: 'คำสั่งซื้อ', icon: ShoppingCart },
-      { id: 'topup-history', label: 'ประวัติเติมเงิน', icon: Coins },
+      {
+        id: 'blog',
+        label: 'บทความ',
+        icon: BookOpen,
+        subItems: [
+          { id: 'blog-posts', label: 'จัดการบทความ' },
+          { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
+        ],
+      },
     ],
   },
   {
@@ -137,31 +149,23 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'coupons', label: 'คูปองส่วนลด' },
           { id: 'redeem-codes', label: 'โค้ดเติมพอยต์' },
-          { id: 'popup', label: 'Popup Notification' },
         ],
       },
     ],
   },
   {
-    label: 'เนื้อหา',
-    items: [
-      { 
-        id: 'blog', 
-        label: 'Blog How To', 
-        icon: BookOpen,
-        subItems: [
-          { id: 'blog-posts', label: 'จัดการบทความ' },
-          { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'ตั้งค่า',
+    label: 'ตั้งค่าเว็บไซต์',
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
-      { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: CreditCard },
+      { id: 'popup', label: 'Popup Notification', icon: Bell },
+    ],
+  },
+  {
+    label: 'ตั้งค่าบัญชีการเงิน',
+    items: [
+      { id: 'payment-settings', label: 'การชำระเงิน', icon: DollarSign },
+      { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: Receipt },
     ],
   },
 ];
@@ -173,7 +177,7 @@ export default function AppSidebar({
   selectedMenu: string;
   setSelectedMenu: (id: string) => void;
 }) {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social']));
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social', 'blog']));
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {

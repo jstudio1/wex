@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { UserCircle, ShoppingBag, Wallet, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { UserCircle, ShoppingBag, Wallet, LogOut, Settings, LayoutDashboard, ChevronDown, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -219,6 +219,15 @@ export default function UserProfileMenu({ username, isAdmin = false, avatarUrl }
             <Link href="/account" className="flex w-full items-center gap-3 px-3 py-2 text-sm cursor-pointer">
               <Settings className="h-4 w-4 text-emerald-500" />
               <span>ตั้งค่า</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            asChild
+            className="rounded-md text-white transition-colors hover:bg-gray-800 focus:bg-gray-800 cursor-pointer"
+          >
+            <Link href="/tools/2fa" className="flex w-full items-center gap-3 px-3 py-2 text-sm cursor-pointer">
+              <Shield className="h-4 w-4 text-emerald-500" />
+              <span>เครื่องมือ</span>
             </Link>
           </DropdownMenuItem>
           {isAdmin && (

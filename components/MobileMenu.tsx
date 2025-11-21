@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText, MessageSquare, Wrench, Shield, BookOpen, Phone } from 'lucide-react';
+import { LogOutIcon, MenuIcon, UserCircle, ShoppingBag, Wallet, Settings, Receipt, Share2, Package, Trophy, Gamepad2, Smartphone, CreditCard, Home, LogIn, UserPlus, Mail, FileText, MessageSquare, Shield, BookOpen, Phone, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { useToast } from '@/components/ui/use-toast';
 import ReCaptcha from '@/components/ReCaptcha';
+import { normalizeNavbarOrder } from '@/lib/navbar';
 
 type NavbarMenus = {
   home: boolean;
@@ -186,6 +187,14 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                     <Receipt className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
                     ประวัติ
                   </Link>
+                  <Link
+                    onClick={() => setOpen(false)}
+                    className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none"
+                    href="/tools/2fa"
+                  >
+                    <Shield className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
+                    เครื่องมือ
+                  </Link>
                   <div className="my-4 h-px bg-gray-800" />
                 </>
               )}
@@ -199,28 +208,19 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
                   premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
                   social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
-                  blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog', requireAuth: true },
+                  categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Grid3x3, key: 'categories' },
+                  blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
                 };
 
-                // ใช้ logic เดียวกับ NavLinks.tsx
-                const defaultOrder = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
-                const order = navbarMenuOrder || defaultOrder;
-
-                // Ensure 'home' is always first if it exists in the order (same as NavLinks.tsx)
-                const validKeys = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
-                const orderedKeys = order.includes('home') 
-                  ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
-                  : ['home', ...validKeys.filter(key => key !== 'home')];
+                const orderedKeys = normalizeNavbarOrder(navbarMenuOrder);
 
                 const items = orderedKeys
-                  .filter(key => key !== 'contact' && key !== 'tools')
+                  .filter(key => key !== 'contact')
                   .map(key => allItemsMap[key])
                   .filter(item => {
                     if (!item) return false;
                     // Filter by navbar menu setting
                     if (navbarMenus[item.key] === false) return false;
-                    // Filter by auth requirement
-                    if (item.requireAuth && !isLoggedIn) return false;
                     return true;
                   });
 
@@ -238,23 +238,6 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
               </Link>
                   );
                 });
-
-                // Add tools menu if in order
-                if (isLoggedIn && orderedKeys.includes('tools')) {
-                  menuItems.push(
-                    <div key="tools-menu" className="space-y-1">
-                      <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">เครื่องมือ</div>
-                      <Link 
-                        onClick={() => setOpen(false)} 
-                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white focus:outline-none focus-visible:outline-none" 
-                        href="/tools/2fa"
-                      >
-                        <Shield className="h-5 w-5 text-emerald-500 transition-colors duration-200 group-hover:text-white" />
-                        2FA
-                      </Link>
-                    </div>
-                  );
-                }
 
                 // Add contact menu if enabled and in order
                 if (isLoggedIn && orderedKeys.includes('contact') && navbarMenus.contact !== false) {

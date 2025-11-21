@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getAuthUser } from '@/lib/auth';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
+import { NAVBAR_STORAGE_KEYS, extractStorageNavbarOrder } from '@/lib/navbar';
 import dynamic from 'next/dynamic';
 
 const NavLinks = dynamic(() => import('@/components/NavLinks'), { ssr: false });
@@ -23,8 +24,6 @@ const NAVBAR_MENU_KEYS = [
   'NAVBAR_MENU_ORDER',
 ];
 
-const DEFAULT_MENU_ORDER = ['home', 'products', 'mtopup', 'cashcard', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
-
 async function getNavbarMenus() {
   try {
     const sb = createServiceClient();
@@ -44,26 +43,15 @@ async function getNavbarMenus() {
     };
 
     // Get navbar menu order
-    let menuOrder: string[] = [...DEFAULT_MENU_ORDER];
+    let menuOrder: string[] = [...NAVBAR_STORAGE_KEYS];
     try {
       const orderValue = map.NAVBAR_MENU_ORDER;
       if (orderValue) {
         const parsed = JSON.parse(orderValue);
-        if (Array.isArray(parsed)) {
-          const filtered = parsed.filter((item): item is string => typeof item === 'string' && (DEFAULT_MENU_ORDER as readonly string[]).includes(item));
-          const unique = Array.from(new Set(filtered));
-          for (const key of DEFAULT_MENU_ORDER) {
-            if (!unique.includes(key)) unique.push(key);
-          }
-          menuOrder = unique;
-        } else {
-          menuOrder = [...DEFAULT_MENU_ORDER];
-        }
-      } else {
-        menuOrder = [...DEFAULT_MENU_ORDER];
+        menuOrder = extractStorageNavbarOrder(Array.isArray(parsed) ? parsed : undefined);
       }
     } catch {
-      menuOrder = [...DEFAULT_MENU_ORDER];
+      menuOrder = [...NAVBAR_STORAGE_KEYS];
     }
 
     return {
@@ -97,7 +85,7 @@ async function getNavbarMenus() {
       premiumApp: true,
       contact: true,
       blog: true,
-      menuOrder: [...DEFAULT_MENU_ORDER],
+      menuOrder: [...NAVBAR_STORAGE_KEYS],
       menuLabels: {
         products: 'เติมเกม',
         premiumApp: 'แอพ',

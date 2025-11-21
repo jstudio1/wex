@@ -17,6 +17,22 @@ import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook
 import { useToast } from '@/components/ui/use-toast';
 import PolicyContent from '@/components/backoffice/PolicyContent';
 import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
+import { NAVBAR_ORDER_WITH_HOME, NAVBAR_STORAGE_KEYS, normalizeNavbarOrder, extractStorageNavbarOrder } from '@/lib/navbar';
+
+type AdminSiteTab =
+  | 'homepage'
+  | 'navigation'
+  | 'payment'
+  | 'notifications'
+  | 'integrations'
+  | 'contact'
+  | 'site-settings'
+  | 'policy'
+  | 'footer';
+
+type AdminSiteFormProps = {
+  initialTab?: AdminSiteTab;
+};
 
 type SiteData = { 
   title: string; 
@@ -28,6 +44,7 @@ type SiteData = {
   navbarMenus?: {
     home: boolean;
     products: boolean;
+    mtopup: boolean;
     social: boolean;
     categories: boolean;
     games: boolean;
@@ -35,7 +52,6 @@ type SiteData = {
     cashcard: boolean;
     contact: boolean;
     blog: boolean;
-    tools: boolean;
   };
   navbarMenuOrder?: string[];
   navbarMenuLabels?: {
@@ -44,7 +60,6 @@ type SiteData = {
     social?: string;
     contact?: string;
     blog?: string;
-    tools?: string;
   };
   paymentMethods?: {
     code: boolean;
@@ -99,7 +114,7 @@ type SiteData = {
 };
 type AnnouncementData = { text: string; enabled: boolean };
 
-export default function AdminSiteForm() {
+export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteFormProps = {}) {
   const [form, setForm] = useState<SiteData>({ 
     title: '', 
     subtitle: '', 
@@ -110,6 +125,7 @@ export default function AdminSiteForm() {
     navbarMenus: {
       home: true,
       products: true,
+      mtopup: true,
       social: true,
       categories: true,
       games: true,
@@ -117,9 +133,8 @@ export default function AdminSiteForm() {
       cashcard: true,
       contact: true,
       blog: true,
-      tools: true,
     },
-    navbarMenuOrder: ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'],
+    navbarMenuOrder: ['premiumApp', 'social', 'products', 'mtopup', 'cashcard', 'categories', 'blog', 'contact'],
     navbarMenuLabels: {
       products: 'เติมเกม',
       premiumApp: 'แอพ',
@@ -184,13 +199,30 @@ export default function AdminSiteForm() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [openStartPicker, setOpenStartPicker] = useState(false);
   const [openEndPicker, setOpenEndPicker] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminSiteTab>(initialTab);
   const toast = useToast();
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/site', { cache: 'no-store' });
         const json = await res.json();
+        const defaultNavbarMenus = {
+          home: true,
+          products: true,
+          mtopup: true,
+          social: true,
+          categories: true,
+          games: true,
+          premiumApp: true,
+          cashcard: true,
+          contact: true,
+          blog: true,
+        };
         setForm({ 
           title: json.title || '', 
           subtitle: json.subtitle || '', 
@@ -198,19 +230,11 @@ export default function AdminSiteForm() {
           flashStart: json.flashStart || '', 
           flashEnd: json.flashEnd || '',
           premiumAppDisplayMode: normalizePremiumAppDisplayMode(json.premiumAppDisplayMode),
-          navbarMenus: json.navbarMenus || {
-            home: true,
-            products: true,
-            social: true,
-            categories: true,
-            games: true,
-            premiumApp: true,
-            cashcard: true,
-            contact: true,
-            blog: true,
-            tools: true,
+          navbarMenus: {
+            ...defaultNavbarMenus,
+            ...(json.navbarMenus || {})
           },
-          navbarMenuOrder: json.navbarMenuOrder || ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'],
+          navbarMenuOrder: json.navbarMenuOrder || ['premiumApp', 'social', 'products', 'mtopup', 'cashcard', 'categories', 'blog', 'contact'],
           navbarMenuLabels: json.navbarMenuLabels || {
             products: 'เติมเกม',
             premiumApp: 'แอพ',
@@ -344,7 +368,7 @@ export default function AdminSiteForm() {
           ...form,
           posters: sanitizedPosters,
           // ไม่ต้องเก็บ 'home' ใน order เพราะหน้าเว็บจะใส่ 'home' ไว้แรกเสมอ
-          navbarMenuOrder: (form.navbarMenuOrder || []).filter(key => key !== 'home'),
+          navbarMenuOrder: extractStorageNavbarOrder(form.navbarMenuOrder),
           navbarMenuLabels: form.navbarMenuLabels,
           premiumAppDisplayMode: normalizePremiumAppDisplayMode(form.premiumAppDisplayMode),
           bankAccounts: sanitizedBankAccounts,
@@ -437,7 +461,7 @@ export default function AdminSiteForm() {
       </Alert>
     )}
 
-    <Tabs defaultValue="homepage" className="w-full">
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as AdminSiteTab)} className="w-full">
       <TabsList className="w-full mb-6 grid grid-cols-2 sm:grid-cols-6 gap-2 h-auto">
         <TabsTrigger value="homepage" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
           <Home className="size-4 shrink-0" />
@@ -637,15 +661,15 @@ export default function AdminSiteForm() {
         {(() => {
           const menuInfo: Record<string, { label: string; key: string }> = {
             home: { label: 'หน้าหลัก', key: 'home' },
+            premiumApp: { label: 'แอพพรีเมี่ยม', key: 'premiumApp' },
+            social: { label: 'ปั้มโซเชียล', key: 'social' },
             products: { label: 'เติมเกม', key: 'products' },
-            premiumApp: { label: 'แอพ', key: 'premiumApp' },
-            social: { label: 'ปั้ม', key: 'social' },
-            blog: { label: 'How To', key: 'blog' },
-            tools: { label: 'เครื่องมือ', key: 'tools' },
-            contact: { label: 'ติดต่อเรา', key: 'contact' },
+            mtopup: { label: 'เติมเงินมือถือ', key: 'mtopup' },
+            cashcard: { label: 'บัตรเติมเงิน', key: 'cashcard' },
             categories: { label: 'สินค้าอื่นๆ', key: 'categories' },
-            games: { label: 'สุ่มรางวัล', key: 'games' },
-            cashcard: { label: 'บัตรเติมเงิน', key: 'cashcard' }
+            blog: { label: 'How To', key: 'blog' },
+            contact: { label: 'ติดต่อเรา', key: 'contact' },
+            games: { label: 'สุ่มรางวัล', key: 'games' }
           };
           
           const handleDragEnd = (e: React.DragEvent) => {
@@ -660,40 +684,10 @@ export default function AdminSiteForm() {
             setDragOverIndex(null);
           };
           
-          // Show all menus from menuInfo - ใช้ลำดับเดียวกับที่หน้าเว็บใช้ (NavLinks.tsx logic)
           const allMenuKeys = Object.keys(menuInfo);
-          const currentOrder = form.navbarMenuOrder || [];
-          
-          // ใช้ logic เดียวกับ NavBar.tsx และ NavLinks.tsx
-          // NavBar.tsx จะ filter order ให้เฉพาะที่อยู่ใน DEFAULT_MENU_ORDER และเพิ่มเมนูที่ขาดหายไป
-          const DEFAULT_MENU_ORDER = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'] as const;
-          const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
-          
-          // Process order เหมือน NavBar.tsx (filter และเพิ่มเมนูที่ขาดหายไป)
-          let processedOrder: string[] = [...DEFAULT_MENU_ORDER];
-          if (currentOrder.length > 0) {
-            // Filter order ให้เฉพาะที่อยู่ใน DEFAULT_MENU_ORDER (เหมือน NavBar.tsx)
-            const filtered = currentOrder.filter((item): item is string => 
-              typeof item === 'string' && (DEFAULT_MENU_ORDER as readonly string[]).includes(item as any)
-            );
-            const unique = Array.from(new Set(filtered));
-            // เพิ่มเมนูที่ขาดหายไปจาก DEFAULT_MENU_ORDER (เหมือน NavBar.tsx)
-            for (const key of DEFAULT_MENU_ORDER) {
-              if (!unique.includes(key)) unique.push(key);
-            }
-            processedOrder = unique;
-          }
-          
-          // ใช้ logic เดียวกับ NavLinks.tsx: order = navbarMenuOrder || defaultOrder
-          const order = processedOrder;
-          
-          // Ensure 'home' is always first (same as NavLinks.tsx)
-          const orderedKeys = order.includes('home') 
-            ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key) && allMenuKeys.includes(key))]
-            : ['home', ...validKeys.filter(key => key !== 'home' && allMenuKeys.includes(key))];
-          
-          // เพิ่มเมนูที่ไม่อยู่ใน DEFAULT_MENU_ORDER (เช่น categories, games, cashcard)
-          const otherMenus = allMenuKeys.filter(key => !DEFAULT_MENU_ORDER.includes(key as any));
+          const orderedKeys = normalizeNavbarOrder(form.navbarMenuOrder);
+          const baseOrder = orderedKeys.filter((key) => key !== 'home' && NAVBAR_STORAGE_KEYS.includes(key as any));
+          const otherMenus = allMenuKeys.filter((key) => !(NAVBAR_ORDER_WITH_HOME as readonly string[]).includes(key as any));
           const allMenus = [...orderedKeys, ...otherMenus];
           
           const handleDragStartForAll = (e: React.DragEvent, menuKey: string, index: number) => {
@@ -720,36 +714,27 @@ export default function AdminSiteForm() {
             const draggedMenuKey = allMenus[draggedIndex];
             if (!draggedMenuKey) return;
             
-            // ใช้ orderedKeys เป็นฐาน (ไม่รวม home เพราะ home จะอยู่แรกเสมอ)
-            const baseOrder = orderedKeys.filter(key => key !== 'home');
-            
-            // หา index ของ dragged และ drop ใน baseOrder
-            const draggedIndexInBase = baseOrder.indexOf(draggedMenuKey);
-            const dropIndexInBase = baseOrder.indexOf(dropMenuKey);
+            const draggedIndexInBase = baseOrder.indexOf(draggedMenuKey as any);
+            const dropIndexInBase = baseOrder.indexOf(dropMenuKey as any);
             
             let newOrder: string[] = [];
             
             if (draggedIndexInBase !== -1 && dropIndexInBase !== -1) {
-              // ทั้งสองอยู่ใน order แล้ว - reorder
               newOrder = [...baseOrder];
               newOrder.splice(draggedIndexInBase, 1);
-              const newDropIndex = newOrder.indexOf(dropMenuKey);
-              newOrder.splice(newDropIndex, 0, draggedMenuKey);
+              const newDropIndex = newOrder.indexOf(dropMenuKey as any);
+              newOrder.splice(newDropIndex, 0, draggedMenuKey as any);
             } else if (draggedIndexInBase === -1 && dropIndexInBase !== -1) {
-              // dragged ไม่อยู่ใน order, drop อยู่ใน order - ใส่ dragged ก่อน drop
               newOrder = [...baseOrder];
-              newOrder.splice(dropIndexInBase, 0, draggedMenuKey);
+              newOrder.splice(dropIndexInBase, 0, draggedMenuKey as any);
             } else if (draggedIndexInBase !== -1 && dropIndexInBase === -1) {
-              // dragged อยู่ใน order, drop ไม่อยู่ - ใส่ drop หลัง dragged
               newOrder = [...baseOrder];
-              newOrder.splice(draggedIndexInBase + 1, 0, dropMenuKey);
+              newOrder.splice(draggedIndexInBase + 1, 0, dropMenuKey as any);
             } else {
-              // ทั้งสองไม่อยู่ใน order - เพิ่มทั้งสอง
-              newOrder = [...baseOrder, draggedMenuKey, dropMenuKey];
+              newOrder = [...baseOrder, draggedMenuKey as any, dropMenuKey as any];
             }
             
-            // home จะอยู่แรกเสมอ ไม่ต้องเก็บใน order (เหมือน NavLinks.tsx)
-            setForm({ ...form, navbarMenuOrder: newOrder });
+            setForm({ ...form, navbarMenuOrder: extractStorageNavbarOrder(newOrder) });
             setDraggedIndex(null);
             setDragOverIndex(null);
           };
@@ -766,8 +751,8 @@ export default function AdminSiteForm() {
             const isDragging = draggedIndex === index;
             const isDragOver = dragOverIndex === index;
             // ใช้ orderedKeys แทน currentOrder เพื่อให้ตรงกับหน้าเว็บ
-            const isInOrder = orderedKeys.includes(menuKey);
-            const orderIndex = isInOrder ? orderedKeys.indexOf(menuKey) : -1;
+            const isInOrder = orderedKeys.includes(menuKey as any);
+            const orderIndex = isInOrder ? orderedKeys.indexOf(menuKey as any) : -1;
             
             return (
               <div
@@ -835,10 +820,10 @@ export default function AdminSiteForm() {
                         } as typeof form.navbarMenus
                       });
                         // Auto-add to order when enabled
-                        if (checked && !currentOrder.includes(menuKey)) {
+                        if (checked) {
                           setForm(prev => ({
                             ...prev,
-                            navbarMenuOrder: [...(prev.navbarMenuOrder || []), menuKey]
+                            navbarMenuOrder: extractStorageNavbarOrder([...(prev.navbarMenuOrder || []), menuKey])
                           }));
                         }
                     }}

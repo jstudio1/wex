@@ -466,9 +466,13 @@ export default function AppPremiumOrdersList() {
             <DialogContent className="max-w-3xl max-h-[80vh] bg-black/90 backdrop-blur-sm border-purple-500/20">
               <DialogHeader>
                 <DialogTitle className="text-xl text-white">ข้อมูลสินค้า</DialogTitle>
-                <DialogDescription className="text-white/60">
-                  {viewingProductDataName || viewingProductName}
-                </DialogDescription>
+                <div 
+                  className="text-sm text-white/60"
+                  dangerouslySetInnerHTML={{ 
+                    __html: viewingProductDataName || viewingProductName || ''
+                  }}
+                  suppressHydrationWarning
+                />
               </DialogHeader>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                 {/* Product Info */}
@@ -478,36 +482,19 @@ export default function AppPremiumOrdersList() {
                     <span className="font-medium text-white">{viewingProductDataAmount} ชิ้น</span>
                   </div>
                 )}
-                {viewingProductDataPrice && (
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-white/60">ราคา (จาก API):</span>
-                    <span className="font-medium text-white">{Number(viewingProductDataPrice).toFixed(2)} บาท</span>
-                  </div>
-                )}
                 <div className="flex justify-between py-2 border-b border-white/10">
                   <span className="text-white/60">ราคาที่ชำระ:</span>
                   <span className="font-medium text-white">{Number(viewingOrder.price).toFixed(2)} พอยต์</span>
                 </div>
-                {viewingProductDataTotalCredit && (
-                  <div className="flex justify-between py-2 border-b border-white/10">
-                    <span className="text-white/60">เครดิตคงเหลือ:</span>
-                    <span className="font-medium text-white">{viewingProductDataTotalCredit}</span>
-                  </div>
-                )}
                 
                 {/* Text ID (with HTML support) */}
                 {viewingProductDataTextid && (
                   <div className="space-y-2">
                     <p className="text-sm font-semibold text-white">รายละเอียดสินค้า:</p>
                     <div 
-                      className="p-4 rounded-lg bg-black/40 border border-white/10 text-sm text-white/90 overflow-x-auto break-words leading-relaxed"
-                      style={{
-                        whiteSpace: 'pre-line'
-                      }}
+                      className="p-4 rounded-lg bg-black/40 border border-white/10 text-sm text-white/90 overflow-x-auto break-words leading-relaxed prose prose-invert max-w-none"
                       dangerouslySetInnerHTML={{ 
                         __html: viewingProductDataTextid
-                          .replace(/<br\s*\/?>/gi, '\n')
-                          .replace(/<hr[^>]*>/gi, '\n---\n')
                       }}
                       suppressHydrationWarning
                     />
@@ -543,14 +530,9 @@ export default function AppPremiumOrdersList() {
                     </div>
                     {textFileContent[viewingOrder.id] && (
                       <div 
-                        className="p-4 rounded-lg bg-black/40 border border-white/10 text-sm text-white/90 overflow-x-auto break-words leading-relaxed"
-                        style={{
-                          whiteSpace: 'pre-line'
-                        }}
+                        className="p-4 rounded-lg bg-black/40 border border-white/10 text-sm text-white/90 overflow-x-auto break-words leading-relaxed prose prose-invert max-w-none"
                         dangerouslySetInnerHTML={{ 
                           __html: textFileContent[viewingOrder.id]
-                            .replace(/<br\s*\/?>/gi, '\n')
-                            .replace(/<hr[^>]*>/gi, '\n---\n')
                         }}
                         suppressHydrationWarning
                       />

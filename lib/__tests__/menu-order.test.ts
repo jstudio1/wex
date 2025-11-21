@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Menu Order Logic', () => {
-  const defaultOrder = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
-  const validKeys = ['home', 'products', 'premiumApp', 'social', 'blog', 'tools', 'contact'];
+  const defaultOrder = ['home', 'premiumApp', 'social', 'products', 'mtopup', 'cashcard', 'categories', 'blog', 'contact'];
+  const validKeys = [...defaultOrder];
 
   it('should ensure home is always first', () => {
-    const order = ['products', 'home', 'blog', 'tools', 'contact'];
+    const order = ['products', 'home', 'blog', 'contact'];
     const orderedKeys = order.includes('home') 
       ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
       : ['home', ...validKeys.filter(key => key !== 'home')];
@@ -25,7 +25,7 @@ describe('Menu Order Logic', () => {
   });
 
   it('should filter out invalid keys', () => {
-    const order = ['home', 'products', 'invalid', 'blog', 'tools'];
+    const order = ['home', 'products', 'invalid', 'blog', 'contact'];
     const orderedKeys = order.includes('home') 
       ? ['home', ...order.filter(key => key !== 'home' && validKeys.includes(key))]
       : ['home', ...validKeys.filter(key => key !== 'home')];
@@ -42,14 +42,13 @@ describe('Menu Order Logic', () => {
   });
 
   it('should handle custom order from database', () => {
-    const customOrder = ['blog', 'tools', 'products', 'home'];
+    const customOrder = ['blog', 'products', 'home'];
     const orderedKeys = customOrder.includes('home') 
       ? ['home', ...customOrder.filter(key => key !== 'home' && validKeys.includes(key))]
       : ['home', ...validKeys.filter(key => key !== 'home')];
     
     expect(orderedKeys[0]).toBe('home');
     expect(orderedKeys).toContain('blog');
-    expect(orderedKeys).toContain('tools');
     expect(orderedKeys).toContain('products');
   });
 });
