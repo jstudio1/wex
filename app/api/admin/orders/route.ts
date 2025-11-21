@@ -9,23 +9,40 @@ export async function GET() {
   const sb = createServiceClient();
 
   try {
-    // ดึง orders ทั้ง 3 ประเภท
-    const [productOrders, gameAccountOrders, socialOrders] = await Promise.all([
-      // 1. Product orders (เติมเกม)
+    // ดึง orders ทั้งหมด 5 ประเภท (ไม่รวม game_account)
+    const [gtopupOrders, mtopupOrders, cashcardOrders, appPremiumOrders, socialOrders] = await Promise.all([
+      // 1. Gtopup orders (เติมเกม)
       sb
         .from('orders')
-        .select('transaction_id, product_id, created_at, state, price, user_id')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .eq('product_type', 'gtopup')
         .order('created_at', { ascending: false })
         .limit(1000),
       
-      // 2. Game account orders
+      // 2. Mtopup orders (เติมเงินมือถือ)
       sb
-        .from('game_account_orders')
-        .select('id, transaction_id, game_account_id, created_at, state, price, user_id, username')
+        .from('orders')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .eq('product_type', 'mtopup')
         .order('created_at', { ascending: false })
         .limit(1000),
       
-      // 3. Social orders
+      // 3. Cashcard orders (บัตรเติมเงิน)
+      sb
+        .from('orders')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .eq('product_type', 'cashcard')
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      
+      // 4. App Premium orders
+      sb
+        .from('app_premium_orders')
+        .select('id, reference, external_reference, product_id, created_at, status, price, user_id')
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      
+      // 5. Social orders
       sb
         .from('social_orders')
         .select('id, external_order_id, social_service_id, created_at, status, price, user_id, link, quantity')
@@ -34,23 +51,31 @@ export async function GET() {
     ]);
 
     // Get related data
-    const productIds = [...new Set((productOrders.data || []).map((o: any) => o.product_id).filter(Boolean))];
-    const gameAccountIds = [...new Set((gameAccountOrders.data || []).map((o: any) => o.game_account_id).filter(Boolean))];
+    const allProductIds = [
+      ...new Set([
+        ...(gtopupOrders.data || []).map((o: any) => o.product_id).filter(Boolean),
+        ...(mtopupOrders.data || []).map((o: any) => o.product_id).filter(Boolean),
+        ...(cashcardOrders.data || []).map((o: any) => o.product_id).filter(Boolean),
+      ])
+    ];
+    const appPremiumProductIds = [...new Set((appPremiumOrders.data || []).map((o: any) => o.product_id).filter(Boolean))];
     const socialServiceIds = [...new Set((socialOrders.data || []).map((o: any) => o.social_service_id).filter(Boolean))];
     const userIds = [
       ...new Set([
-        ...(productOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
-        ...(gameAccountOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
+        ...(gtopupOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
+        ...(mtopupOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
+        ...(cashcardOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
+        ...(appPremiumOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
         ...(socialOrders.data || []).map((o: any) => o.user_id).filter(Boolean),
       ])
     ];
 
-    const [products, gameAccounts, socialServices, users] = await Promise.all([
-      productIds.length > 0
-        ? sb.from('products').select('id, name, image_url, key').in('id', productIds)
+    const [products, appPremiumProducts, socialServices, users] = await Promise.all([
+      allProductIds.length > 0
+        ? sb.from('products').select('id, name, image_url, key').in('id', allProductIds)
         : Promise.resolve({ data: [] }),
-      gameAccountIds.length > 0
-        ? sb.from('game_accounts').select('id, game_name, title, cover_image_url').in('id', gameAccountIds)
+      appPremiumProductIds.length > 0
+        ? sb.from('app_premium_products').select('id, display_name, name, image_url, icon_url').in('id', appPremiumProductIds)
         : Promise.resolve({ data: [] }),
       socialServiceIds.length > 0
         ? sb.from('social_services').select('id, display_name, name').in('id', socialServiceIds)
@@ -62,14 +87,14 @@ export async function GET() {
 
     // Create maps
     const productsMap = new Map((products.data || []).map((p: any) => [p.id, p]));
-    const gameAccountsMap = new Map((gameAccounts.data || []).map((ga: any) => [ga.id, ga]));
+    const appPremiumProductsMap = new Map((appPremiumProducts.data || []).map((p: any) => [p.id, p]));
     const socialServicesMap = new Map((socialServices.data || []).map((ss: any) => [ss.id, ss]));
     const usersMap = new Map((users.data || []).map((u: any) => [u.id, u]));
 
-    // Format product orders
-    const formattedProductOrders = (productOrders.data || []).map((order: any) => ({
-      type: 'product' as const,
-      id: order.transaction_id,
+    // Format gtopup orders (เติมเกม)
+    const formattedGtopupOrders = (gtopupOrders.data || []).map((order: any) => ({
+      type: 'gtopup' as const,
+      id: order.transaction_id || `gt-${order.id}`,
       transaction_id: order.transaction_id,
       product_id: order.product_id,
       user_id: order.user_id,
@@ -80,18 +105,45 @@ export async function GET() {
       user: usersMap.get(order.user_id) || null,
     }));
 
-    // Format game account orders
-    const formattedGameAccountOrders = (gameAccountOrders.data || []).map((order: any) => ({
-      type: 'game_account' as const,
-      id: order.transaction_id || `ga-${order.id}`,
+    // Format mtopup orders (เติมเงินมือถือ)
+    const formattedMtopupOrders = (mtopupOrders.data || []).map((order: any) => ({
+      type: 'mtopup' as const,
+      id: order.transaction_id || `mt-${order.id}`,
       transaction_id: order.transaction_id,
-      game_account_id: order.game_account_id,
+      product_id: order.product_id,
       user_id: order.user_id,
       created_at: order.created_at,
       state: order.state,
       price: order.price,
-      username: order.username,
-      game_account: gameAccountsMap.get(order.game_account_id) || null,
+      product: productsMap.get(order.product_id) || null,
+      user: usersMap.get(order.user_id) || null,
+    }));
+
+    // Format cashcard orders (บัตรเติมเงิน)
+    const formattedCashcardOrders = (cashcardOrders.data || []).map((order: any) => ({
+      type: 'cashcard' as const,
+      id: order.transaction_id || `cc-${order.id}`,
+      transaction_id: order.transaction_id,
+      product_id: order.product_id,
+      user_id: order.user_id,
+      created_at: order.created_at,
+      state: order.state,
+      price: order.price,
+      product: productsMap.get(order.product_id) || null,
+      user: usersMap.get(order.user_id) || null,
+    }));
+
+    // Format app premium orders
+    const formattedAppPremiumOrders = (appPremiumOrders.data || []).map((order: any) => ({
+      type: 'app_premium' as const,
+      id: order.reference || order.external_reference || `ap-${order.id}`,
+      transaction_id: order.reference || order.external_reference,
+      product_id: order.product_id,
+      user_id: order.user_id,
+      created_at: order.created_at,
+      state: order.status,
+      price: order.price,
+      product: appPremiumProductsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
 
@@ -113,12 +165,16 @@ export async function GET() {
 
     return NextResponse.json({
       data: {
-        product: formattedProductOrders,
-        game_account: formattedGameAccountOrders,
+        gtopup: formattedGtopupOrders,
+        mtopup: formattedMtopupOrders,
+        cashcard: formattedCashcardOrders,
+        app_premium: formattedAppPremiumOrders,
         social: formattedSocialOrders,
         all: [
-          ...formattedProductOrders,
-          ...formattedGameAccountOrders,
+          ...formattedGtopupOrders,
+          ...formattedMtopupOrders,
+          ...formattedCashcardOrders,
+          ...formattedAppPremiumOrders,
           ...formattedSocialOrders,
         ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
       },

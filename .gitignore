@@ -38,3 +38,6 @@ next-env.d.ts
 *.sql
 *.dump
 
+# Zip files
+*.zip
+

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,6 +46,7 @@ export default function MtopupProductsLayout({ products, isLoading }: MtopupProd
   const [resultOpen, setResultOpen] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const toast = useToast();
+  const { openLoginDialog } = useAuthDialog();
   const isMobile = useIsMobile();
 
   // Auto-select first product on load
@@ -94,6 +96,16 @@ export default function MtopupProductsLayout({ products, isLoading }: MtopupProd
           }
         })
       });
+
+      // Check if unauthorized
+      if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        if (json.error === 'unauthorized') {
+          // Open login dialog
+          openLoginDialog();
+          return;
+        }
+      }
 
       const json = await res.json();
       if (!res.ok) {

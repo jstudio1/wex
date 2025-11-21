@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import { Search, ShoppingCart, Info, Package, RefreshCcw, Sparkles, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import {
   Empty,
   EmptyContent,
@@ -40,6 +41,16 @@ type Props = {
   products: AppPremiumProduct[];
   displayMode?: 'list' | 'cards';
 };
+
+// Helper function to strip HTML tags and replace <br> with space for dropdown display
+function sanitizeForDropdown(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, ' ') // Replace <br> with space
+    .replace(/<\/?(p|div|span|strong|em|b|i|u)[^>]*>/gi, '') // Remove common HTML tags but keep content
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim();
+}
 
 // Product Card Component with scroll animation
 function ProductCard({ 
@@ -1265,7 +1276,12 @@ function AppPremiumLayout({
                                   <Package className="size-3 text-emerald-400" />
                                 )}
                               </div>
-                              <span className="text-sm" dangerouslySetInnerHTML={{ __html: product.display_name || '' }} />
+                              <span 
+                                className="text-sm whitespace-nowrap overflow-hidden text-ellipsis" 
+                                dangerouslySetInnerHTML={{ 
+                                  __html: sanitizeForDropdown(product.display_name || '')
+                                }} 
+                              />
                             </div>
                             <span className="text-xs text-emerald-300">
                               {currencyFormatter.format(product.price)}
@@ -1308,6 +1324,7 @@ function QuickBuyDialog({
   onClose: () => void;
 }) {
   const { show } = useToast();
+  const { openLoginDialog } = useAuthDialog();
   const [loading, setLoading] = useState(false);
   const currencyFormatter = useMemo(
     () =>
@@ -1342,6 +1359,17 @@ function QuickBuyDialog({
           reference,
         }),
                         });
+                        
+                        // Check if unauthorized
+                        if (res.status === 401) {
+                          const json = await res.json().catch(() => ({}));
+                          if (json.error === 'unauthorized') {
+                            // Open login dialog
+                            openLoginDialog();
+                            return;
+                          }
+                        }
+                        
                         const json = await res.json();
                         if (json.ok) {
         show({

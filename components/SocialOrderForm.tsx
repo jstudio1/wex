@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import { Spinner } from '@/components/ui/spinner';
 import { InfoIcon, AlertTriangle, FileText, Sparkles, Search, Check, ChevronsUpDown } from 'lucide-react';
 // Removed: import { Facebook, Youtube, Instagram } from 'lucide-react';
@@ -108,6 +109,7 @@ function getCategoryIcon(slug: string) {
 
 export default function SocialOrderForm({ services, categories, globalMarkup, initialServiceId }: Props) {
   const toast = useToast();
+  const { openLoginDialog } = useAuthDialog();
   const [socialFilter, setSocialFilter] = useState<'all' | 'facebook' | 'tiktok' | 'youtube' | 'instagram'>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'all'>('all');
   const [selectedServiceId, setSelectedServiceId] = useState<number | ''>(initialServiceId || '');
@@ -250,6 +252,16 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
           quantity
         })
       });
+      // Check if unauthorized
+      if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        if (json.error === 'unauthorized') {
+          // Open login dialog
+          openLoginDialog();
+          return;
+        }
+      }
+
       const json = await res.json();
       if (!res.ok) {
         toast.show({

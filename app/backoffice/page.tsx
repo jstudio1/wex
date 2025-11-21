@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,10 +10,8 @@ import { cn } from '@/lib/utils';
 import ProductsContent from '@/components/backoffice/ProductsContent';
 import NewTopupServicesManager from '@/components/backoffice/game-services/NewTopupServicesManager';
 import CategoriesContent from '@/components/backoffice/CategoriesContent';
-import PricingContent from '@/components/backoffice/PricingContent';
 import CouponsContent from '@/components/backoffice/CouponsContent';
 import RedeemCodesContent from '@/components/backoffice/RedeemCodesContent';
-import PopupContent from '@/components/backoffice/PopupContent';
 import OrdersContent from '@/components/backoffice/OrdersContent';
 import UsersContent from '@/components/backoffice/UsersContent';
 import SocialServicesContent from '@/components/backoffice/SocialServicesContent';
@@ -32,6 +30,7 @@ import TicketsContent from '@/components/backoffice/TicketsContent';
 import BlogPostsContent from '@/components/backoffice/BlogPostsContent';
 import BlogCategoriesContent from '@/components/backoffice/BlogCategoriesContent';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   Empty,
   EmptyContent,
@@ -111,7 +110,6 @@ const menuSections: MenuSection[] = [
     label: 'เติมเงินเกม',
     items: [
       { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
-      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
       { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
     ],
   },
@@ -176,7 +174,6 @@ const menuSections: MenuSection[] = [
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
-      { id: 'popup', label: 'Popup Notification', icon: Bell },
     ],
   },
   {
@@ -528,16 +525,12 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <OrdersContentWrapper />;
     case 'topup-history':
       return <TopupHistoryContent />;
-    case 'pricing':
-      return <PricingContentWrapper />;
     case 'users':
       return <UsersContentWrapper />;
     case 'coupons':
       return <CouponsContentWrapper />;
     case 'redeem-codes':
       return <RedeemCodesContentWrapper />;
-    case 'popup':
-      return <PopupContentWrapper />;
     case 'social-providers':
       return <SocialProvidersContentWrapper />;
     case 'social-services':
@@ -590,19 +583,34 @@ function BackofficeContent({ menuId }: { menuId: string }) {
 function DashboardContent() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStats = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
+    try {
+      const res = await fetch('/api/admin/stats', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Stats error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then((res) => res.json())
-      .then((data) => {
-        setStats(data);
-      })
-      .catch((err) => {
-        console.error('Stats error:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    fetchStats();
   }, []);
 
   if (loading) {
@@ -631,10 +639,10 @@ function DashboardContent() {
     );
   }
 
-  return <EnhancedDashboard stats={stats} />;
+  return <EnhancedDashboard stats={stats} onRefresh={() => fetchStats(true)} refreshing={refreshing} />;
 }
 
-function EnhancedDashboard({ stats }: { stats: any }) {
+function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRefresh?: () => void; refreshing?: boolean }) {
   const revenueGrowth = stats?.revenueLastMonth 
     ? ((stats.revenueThisMonth - stats.revenueLastMonth) / stats.revenueLastMonth * 100).toFixed(1)
     : '0';
@@ -651,120 +659,190 @@ function EnhancedDashboard({ stats }: { stats: any }) {
     return date.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
   };
 
+  const productTypes = [
+    { 
+      key: 'gtopup', 
+      label: 'เติมเกม', 
+      icon: Gamepad2, 
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/30'
+    },
+    { 
+      key: 'mtopup', 
+      label: 'เติมเงินมือถือ', 
+      icon: Phone, 
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30'
+    },
+    { 
+      key: 'cashcard', 
+      label: 'บัตรเติมเงิน', 
+      icon: CreditCard, 
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/30'
+    },
+    { 
+      key: 'app_premium', 
+      label: 'แอพพรีเมี่ยม', 
+      icon: Package, 
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-500/10',
+      borderColor: 'border-yellow-500/30'
+    },
+    { 
+      key: 'social', 
+      label: 'ปั้มโซเชียล', 
+      icon: Share2, 
+      color: 'text-pink-400',
+      bgColor: 'bg-pink-500/10',
+      borderColor: 'border-pink-500/30'
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-2 text-white">Dashboard</h2>
-        <p className="text-gray-400">ภาพรวมระบบและสถิติการขาย</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold mb-2 text-white">Dashboard</h2>
+          <p className="text-gray-400">ภาพรวมระบบและสถิติการขาย</p>
+        </div>
+        {onRefresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            รีเฟรช
+          </Button>
+        )}
       </div>
 
-      {/* Revenue Overview Cards */}
+      {/* Main Revenue & Topup Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-[#0a0a0a] border-gray-800">
+        <Card className="bg-gradient-to-br from-emerald-950/50 to-emerald-900/30 border-emerald-700/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">ยอดขายรวมทั้งหมด</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-400" />
+            <CardTitle className="text-sm font-medium text-gray-300">ยอดขายรวมทั้งหมด</CardTitle>
+            <DollarSign className="h-5 w-5 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.totalRevenue || 0)}</div>
-            <p className="text-xs text-gray-500 mt-1">พอยต์</p>
+            <div className="text-3xl font-bold text-white mb-1">{formatCurrency(stats?.totalRevenue || 0)}</div>
+            <p className="text-xs text-gray-400">รวมทุกประเภทออเดอร์</p>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="text-gray-400">7 วัน:</span>
+              <span className="text-emerald-400 font-semibold">{formatCurrency(stats?.revenueLast7Days || 0)}</span>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0a0a0a] border-gray-800">
+        <Card className="bg-gradient-to-br from-yellow-950/50 to-yellow-900/30 border-yellow-700/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">ยอดขาย 7 วันที่ผ่านมา</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-sm font-medium text-gray-300">ยอดเติมเงินรวม</CardTitle>
+            <Coins className="h-5 w-5 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.revenueLast7Days || 0)}</div>
-            <p className="text-xs text-gray-500 mt-1">{stats?.ordersLast7Days || 0} ออเดอร์</p>
+            <div className="text-3xl font-bold text-white mb-1">{formatCurrency(stats?.totalTopupRevenue || 0)}</div>
+            <p className="text-xs text-gray-400">โอนเงิน, TrueWallet, โค้ด</p>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="text-gray-400">เดือนนี้:</span>
+              <span className="text-yellow-400 font-semibold">{formatCurrency(stats?.topupRevenueThisMonth || 0)}</span>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0a0a0a] border-gray-800">
+        <Card className="bg-gradient-to-br from-blue-950/50 to-blue-900/30 border-blue-700/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">ยอดขายเดือนนี้</CardTitle>
-            <CreditCard className="h-4 w-4 text-purple-400" />
+            <CardTitle className="text-sm font-medium text-gray-300">ยอดขายเดือนนี้</CardTitle>
+            <TrendingUp className="h-5 w-5 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.revenueThisMonth || 0)}</div>
+            <div className="text-3xl font-bold text-white mb-1">{formatCurrency(stats?.revenueThisMonth || 0)}</div>
             <p className={`text-xs mt-1 ${parseFloat(revenueGrowth) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {parseFloat(revenueGrowth) >= 0 ? '↑' : '↓'} {Math.abs(parseFloat(revenueGrowth))}% จากเดือนที่แล้ว
             </p>
+            <div className="mt-2 text-xs text-gray-400">
+              {stats?.ordersThisMonth || 0} ออเดอร์
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0a0a0a] border-gray-800">
+        <Card className="bg-gradient-to-br from-purple-950/50 to-purple-900/30 border-purple-700/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">ยอดขาย 30 วันที่ผ่านมา</CardTitle>
-            <TrendingUp className="h-4 w-4 text-yellow-400" />
+            <CardTitle className="text-sm font-medium text-gray-300">คำสั่งซื้อทั้งหมด</CardTitle>
+            <ShoppingCart className="h-5 w-5 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.revenueLast30Days || 0)}</div>
-            <p className="text-xs text-gray-500 mt-1">{stats?.ordersLast30Days || 0} ออเดอร์</p>
+            <div className="text-3xl font-bold text-white mb-1">{stats?.orders || 0}</div>
+            <p className="text-xs text-gray-400">รวมทุกประเภท</p>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="text-gray-400">30 วัน:</span>
+              <span className="text-purple-400 font-semibold">{stats?.ordersLast30Days || 0}</span>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">บริการ</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.products || 0}</div>
-            <p className="text-xs text-gray-500 mt-1">เผยแพร่: {stats?.publishedProducts || 0}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">คำสั่งซื้อ</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.orders || 0}</div>
-            <p className="text-xs text-gray-500 mt-1">เดือนนี้: {stats?.ordersThisMonth || 0}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">ผู้ใช้</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.users || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">สินค้าอื่นๆ</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.gameAccounts || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">คูปอง</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.coupons || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0a] border-gray-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">โค้ดเติม</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.redeemCodes || 0}</div>
-          </CardContent>
-        </Card>
+      {/* Revenue by Product Type - Detailed Cards */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4">ยอดขายแยกตามประเภทสินค้า</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {productTypes.map((type) => {
+            const Icon = type.icon;
+            const revenue = stats?.revenueByType?.[type.key] || {};
+            const orders = stats?.ordersByType?.[type.key] || {};
+            
+            return (
+              <Card key={type.key} className={`bg-gradient-to-br from-[#0a0a0a] to-[#050505] border ${type.borderColor} hover:border-opacity-80 hover:shadow-lg transition-all group`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2.5 rounded-xl ${type.bgColor} group-hover:scale-110 transition-transform`}>
+                        <Icon className={`h-5 w-5 ${type.color}`} />
+                      </div>
+                      <CardTitle className="text-sm font-semibold text-white">{type.label}</CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <div className="text-2xl font-bold text-white mb-0.5">{formatCurrency(revenue.total || 0)}</div>
+                    <p className="text-xs text-gray-500">ยอดรวมทั้งหมด</p>
+                  </div>
+                  <div className="pt-3 border-t border-gray-800/50 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-400">เดือนนี้:</span>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-white">{formatCurrency(revenue.thisMonth || 0)}</div>
+                        <div className="text-xs text-gray-500">{orders.thisMonth || 0} ออเดอร์</div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-gray-800/30">
+                      <span className="text-xs text-gray-400">7 วัน:</span>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-gray-300">{formatCurrency(revenue.last7Days || 0)}</div>
+                        <div className="text-xs text-gray-500">{orders.last7Days || 0} ออเดอร์</div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-gray-800/30">
+                      <span className="text-xs text-gray-400">30 วัน:</span>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-gray-300">{formatCurrency(revenue.last30Days || 0)}</div>
+                        <div className="text-xs text-gray-500">{orders.last30Days || 0} ออเดอร์</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
+
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -872,13 +950,7 @@ function RedeemCodesContentWrapper() {
   return <RedeemCodesContent />;
 }
 
-function PopupContentWrapper() {
-  return <PopupContent />;
-}
 
-function PricingContentWrapper() {
-  return <PricingContent />;
-}
 
 function SocialProvidersContentWrapper() {
   return <SocialProvidersContent />;

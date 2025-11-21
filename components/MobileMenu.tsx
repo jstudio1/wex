@@ -207,7 +207,7 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                   mtopup: { href: '/mtopup', label: 'เติมเงินมือถือ', icon: Phone, key: 'mtopup' },
                   cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
                   premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
-                  social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
+                  social: { href: '/social/order/add', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
                   categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Grid3x3, key: 'categories' },
                   blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
                 };

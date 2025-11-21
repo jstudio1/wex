@@ -50,7 +50,7 @@ export default function NavLinks({
     mtopup: { href: '/mtopup', label: 'เติมเงินมือถือ', icon: Phone, key: 'mtopup' },
     cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
     premiumApp: { href: '/premium-app', label: navbarMenuLabels?.premiumApp || 'แอพ', icon: Smartphone, key: 'premiumApp' },
-    social: { href: '/social', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
+    social: { href: '/social/order/add', label: navbarMenuLabels?.social || 'ปั้ม', icon: Share2, key: 'social' },
     categories: { href: '/categories', label: 'สินค้าอื่นๆ', icon: Grid3x3, key: 'categories' },
     blog: { href: '/blog', label: 'How To', icon: BookOpen, key: 'blog' },
   };
@@ -149,7 +149,13 @@ export default function NavLinks({
         }
 
         const it = menuItem.data;
-        const active = pathname === it.href || (it.href !== '/' && pathname.startsWith(it.href));
+        // Special handling for social menu to be active on both /social and /social/order/add
+        let active: boolean;
+        if (it.href === '/social/order/add') {
+          active = pathname === '/social' || pathname === '/social/order/add' || pathname.startsWith('/social/');
+        } else {
+          active = pathname === it.href || (it.href !== '/' && pathname.startsWith(it.href));
+        }
         const Icon = it.icon;
         const stateClasses = active
           ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-600/30 shadow-lg shadow-emerald-500/20 border border-emerald-400/30'

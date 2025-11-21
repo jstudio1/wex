@@ -93,7 +93,6 @@ const menuSections: MenuSection[] = [
     label: 'เติมเงินเกม',
     items: [
       { id: 'products', label: 'จัดการบริการเติมเกม', icon: Package },
-      { id: 'pricing', label: 'ตั้งค่าราคาเติมเกม', icon: DollarSign },
       { id: 'categories', label: 'จัดการหมวดหมู่เติมเกม', icon: Grid3x3 },
     ],
   },
@@ -158,7 +157,6 @@ const menuSections: MenuSection[] = [
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
-      { id: 'popup', label: 'Popup Notification', icon: Bell },
     ],
   },
   {

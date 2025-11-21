@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     const sb = createServiceClient();
     const { data: orders, error } = await sb
       .from('orders')
-      .select('transaction_id, product_id, item_id, created_at, updated_at, finished_at, state, result_code, price, input_json')
+      .select('id, transaction_id, product_id, item_id, created_at, updated_at, finished_at, state, result_code, price, input_json')
       .eq('user_id', user.id)
       .eq('product_type', productType)
       .order('created_at', { ascending: false });
@@ -90,9 +90,14 @@ export async function GET(req: Request) {
         };
       })
       .sort((a: any, b: any) => {
-        const aDate = new Date(a.updated_at || a.finished_at || a.created_at || 0).getTime();
-        const bDate = new Date(b.updated_at || b.finished_at || b.created_at || 0).getTime();
-        return bDate - aDate;
+        // Primary sort: ใช้ created_at (ใหม่สุดก่อน) เพื่อให้ลำดับคงที่
+        const aCreated = new Date(a.created_at || 0).getTime();
+        const bCreated = new Date(b.created_at || 0).getTime();
+        if (bCreated !== aCreated) {
+          return bCreated - aCreated;
+        }
+        // Secondary sort: ใช้ id เพื่อให้ลำดับคงที่เมื่อวันที่เหมือนกัน (id ใหม่กว่า = มากกว่า)
+        return (b.id || 0) - (a.id || 0);
       });
 
     return NextResponse.json({ ok: true, data: ordersWithProducts });

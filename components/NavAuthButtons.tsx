@@ -11,10 +11,12 @@ import { Spinner } from '@/components/ui/spinner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import ReCaptcha from '@/components/ReCaptcha';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 
 export default function NavAuthButtons() {
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
+  const { isLoginOpen, isRegisterOpen, setLoginOpen, setRegisterOpen } = useAuthDialog();
+  const loginOpen = isLoginOpen;
+  const registerOpen = isRegisterOpen;
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repassword, setRepassword] = useState('');

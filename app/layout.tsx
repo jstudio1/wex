@@ -3,6 +3,7 @@ import '../styles/globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import dynamic from 'next/dynamic';
 import { createServiceClient } from '@/lib/supabase';
+import { AuthDialogProvider } from '@/contexts/AuthDialogContext';
 const BackgroundParticles = dynamic(() => import('@/components/BackgroundParticles'), { ssr: false });
 const ContactAdminButton = dynamic(() => import('@/components/ContactAdminButton'), { ssr: false });
 const PopupNotification = dynamic(() => import('@/components/PopupNotification'), { ssr: false });
@@ -93,12 +94,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="th">
       <body className="antialiased">
-        {/* background particles */}
-        <BackgroundParticles />
-        {children}
-        <PopupNotification />
-        <Toaster />
-        <ContactAdminButton />
+        <AuthDialogProvider>
+          {/* background particles */}
+          <BackgroundParticles />
+          {children}
+          <PopupNotification />
+          <Toaster />
+          <ContactAdminButton />
+        </AuthDialogProvider>
       </body>
     </html>
   );

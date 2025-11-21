@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -156,6 +156,19 @@ export default function RegularOrdersList() {
     }
   };
 
+  // Sort orders by created_at descending (newest first), then by transaction_id for stability
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      const aCreated = new Date(a.created_at || 0).getTime();
+      const bCreated = new Date(b.created_at || 0).getTime();
+      if (bCreated !== aCreated) {
+        return bCreated - aCreated;
+      }
+      // Use transaction_id as secondary sort for stability
+      return (b.transaction_id || '').localeCompare(a.transaction_id || '');
+    });
+  }, [orders]);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -226,7 +239,7 @@ export default function RegularOrdersList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => {
+            {sortedOrders.map((order) => {
               const prod = order.product;
               const inputs = order.input_json || {};
               const entries = Object.entries(inputs).filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '');

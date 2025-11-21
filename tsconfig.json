@@ -21,7 +21,8 @@
       "@/lib/*": ["lib/*"],
       "@/types/*": ["types/*"],
       "@/components/*": ["components/*"],
-      "@/hooks/*": ["hooks/*"]
+      "@/hooks/*": ["hooks/*"],
+      "@/contexts/*": ["contexts/*"]
     }
   },
   "include": [

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -42,6 +43,7 @@ export default function CashcardProductsLayout({ products, isLoading }: Cashcard
   const [resultOpen, setResultOpen] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const toast = useToast();
+  const { openLoginDialog } = useAuthDialog();
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => p.items && p.items.length > 0);
@@ -75,6 +77,16 @@ export default function CashcardProductsLayout({ products, isLoading }: Cashcard
           item_sku: selectedItem.sku
         })
       });
+
+      // Check if unauthorized
+      if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        if (json.error === 'unauthorized') {
+          // Open login dialog
+          openLoginDialog();
+          return;
+        }
+      }
 
       const json = await res.json();
       if (!res.ok) {

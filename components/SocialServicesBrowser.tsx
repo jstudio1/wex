@@ -442,13 +442,13 @@ function SocialServicesBrowser({ services, categories, globalMarkup, isLoading }
               <table className="w-full">
                 <thead className="bg-white/5 border-b border-white/10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ชื่อบริการ</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ราคา (ต่อ 1000)</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">จำนวนขั้นต่ำ</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">จำนวนสูงสุด</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">Refill</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">Cancel</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">ดำเนินการ</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90 min-w-[200px] max-w-[400px]">ชื่อบริการ</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">ราคา (ต่อ 1000)</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">จำนวนขั้นต่ำ</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">จำนวนสูงสุด</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">Refill</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">Cancel</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">ดำเนินการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -489,16 +489,16 @@ function SocialServicesBrowser({ services, categories, globalMarkup, isLoading }
           <>
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full table-fixed">
                   <thead className="bg-white/5 border-b border-white/10">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ชื่อบริการ</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-[color:var(--text)]/90">ราคา (ต่อ 1000)</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">จำนวนขั้นต่ำ</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">จำนวนสูงสุด</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">Refill</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">Cancel</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-[color:var(--text)]/90">ดำเนินการ</th>
+                      <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 min-w-[200px] sm:min-w-[250px] max-w-[400px] sm:max-w-[450px]">ชื่อบริการ</th>
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">ราคา (ต่อ 1000)</th>
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">จำนวนขั้นต่ำ</th>
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">จำนวนสูงสุด</th>
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">Refill</th>
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">Cancel</th>
+                      <th className="px-2 sm:px-4 py-3 text-center text-xs sm:text-sm font-semibold text-[color:var(--text)]/90 whitespace-nowrap">ดำเนินการ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
