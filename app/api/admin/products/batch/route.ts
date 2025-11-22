@@ -8,15 +8,17 @@ import { z } from 'zod';
 const batchUpdateSchema = z.object({
   products: z.array(z.object({
     id: z.number(),
-    name: z.string().min(1),
+    name: z.string().min(1).optional(),
     image_url: z.string().nullable().optional(),
     banner_url: z.string().nullable().optional(),
     icon_url: z.string().nullable().optional(),
-    is_published: z.boolean(),
-    badge_enabled: z.boolean(),
+    is_published: z.boolean().optional(),
+    badge_enabled: z.boolean().optional(),
     badge_percent: z.number().nullable().optional(),
     badge_text: z.string().nullable().optional(),
-    badge_apply_price: z.boolean(),
+    badge_apply_price: z.boolean().optional(),
+    is_flashsale: z.boolean().optional(),
+    flashsale_price: z.number().nullable().optional(),
     categories: z.array(z.number()).optional(),
   })),
 });
@@ -33,15 +35,35 @@ export async function PUT(req: Request) {
 
     for (const product of parsed.products) {
       // อัปเดตข้อมูลบริการ
-      const updateData: any = {
-        name: product.name.trim(),
-        image_url: product.image_url?.trim() || null,
-        is_published: product.is_published,
-        badge_enabled: product.badge_enabled,
-        badge_percent: product.badge_percent,
-        badge_text: product.badge_text?.trim() || null,
-        badge_apply_price: product.badge_apply_price,
-      };
+      const updateData: any = {};
+      
+      if (product.name !== undefined) {
+        updateData.name = product.name.trim();
+      }
+      if (product.image_url !== undefined) {
+        updateData.image_url = product.image_url?.trim() || null;
+      }
+      if (product.is_published !== undefined) {
+        updateData.is_published = product.is_published;
+      }
+      if (product.badge_enabled !== undefined) {
+        updateData.badge_enabled = product.badge_enabled;
+      }
+      if (product.badge_percent !== undefined) {
+        updateData.badge_percent = product.badge_percent;
+      }
+      if (product.badge_text !== undefined) {
+        updateData.badge_text = product.badge_text?.trim() || null;
+      }
+      if (product.badge_apply_price !== undefined) {
+        updateData.badge_apply_price = product.badge_apply_price;
+      }
+      if (product.is_flashsale !== undefined) {
+        updateData.is_flashsale = product.is_flashsale;
+      }
+      if (product.flashsale_price !== undefined) {
+        updateData.flashsale_price = product.flashsale_price;
+      }
       
       // เพิ่ม icon_url เฉพาะเมื่อมีค่า (ไม่ส่ง null เพื่อหลีกเลี่ยง schema cache error)
       if (product.icon_url !== undefined && product.icon_url !== null && product.icon_url.trim().length > 0) {
@@ -51,16 +73,18 @@ export async function PUT(req: Request) {
       console.log(`[API] Updating product ${product.id} with:`, updateData);
       
       // Update base fields first (without icon_url to avoid schema cache issues)
-      const baseUpdateData = {
-        name: updateData.name,
-        image_url: updateData.image_url,
-        banner_url: product.banner_url?.trim() || null,
-        is_published: updateData.is_published,
-        badge_enabled: updateData.badge_enabled,
-        badge_percent: updateData.badge_percent,
-        badge_text: updateData.badge_text,
-        badge_apply_price: updateData.badge_apply_price,
-      };
+      const baseUpdateData: any = {};
+      
+      if (updateData.name !== undefined) baseUpdateData.name = updateData.name;
+      if (updateData.image_url !== undefined) baseUpdateData.image_url = updateData.image_url;
+      if (product.banner_url !== undefined) baseUpdateData.banner_url = product.banner_url?.trim() || null;
+      if (updateData.is_published !== undefined) baseUpdateData.is_published = updateData.is_published;
+      if (updateData.badge_enabled !== undefined) baseUpdateData.badge_enabled = updateData.badge_enabled;
+      if (updateData.badge_percent !== undefined) baseUpdateData.badge_percent = updateData.badge_percent;
+      if (updateData.badge_text !== undefined) baseUpdateData.badge_text = updateData.badge_text;
+      if (updateData.badge_apply_price !== undefined) baseUpdateData.badge_apply_price = updateData.badge_apply_price;
+      if (updateData.is_flashsale !== undefined) baseUpdateData.is_flashsale = updateData.is_flashsale;
+      if (updateData.flashsale_price !== undefined) baseUpdateData.flashsale_price = updateData.flashsale_price;
       
       const { error: baseError } = await sb
         .from('products')

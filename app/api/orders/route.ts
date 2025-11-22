@@ -140,7 +140,7 @@ export async function POST(req: Request) {
     // ดึง item จาก database
     const { data: item, error: itemError } = await sb
       .from('product_items')
-      .select('id, name, sku, price')
+      .select('id, name, sku, price, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
       .eq('product_id', product.id)
       .eq('sku', item_sku)
       .maybeSingle();
@@ -148,7 +148,47 @@ export async function POST(req: Request) {
     if (itemError) return NextResponse.json({ error: 'db_error', detail: itemError.message }, { status: 500 });
     if (!item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 });
 
-    const itemPrice = Number(item.price || 0);
+    // ตรวจสอบ flash sale limits
+    if (item.is_flashsale) {
+      const now = new Date();
+      
+      // ตรวจสอบระยะเวลาขาย
+      if (item.flashsale_start_date && item.flashsale_duration_days) {
+        const startDate = new Date(item.flashsale_start_date);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + Number(item.flashsale_duration_days));
+        
+        if (now > endDate) {
+          return NextResponse.json({ 
+            error: 'flashsale_expired', 
+            detail: 'Flash Sale หมดอายุแล้ว' 
+          }, { status: 400 });
+        }
+      }
+      
+      // ตรวจสอบจำนวนที่เหลือ
+      if (item.flashsale_max_quantity) {
+        const { data: soldOrders } = await sb
+          .from('orders')
+          .select('id')
+          .eq('item_id', item.id)
+          .in('state', ['completed', 'processing', 'pending']);
+        
+        const quantitySold = (soldOrders || []).length;
+        
+        if (quantitySold >= Number(item.flashsale_max_quantity)) {
+          return NextResponse.json({ 
+            error: 'flashsale_sold_out', 
+            detail: 'Flash Sale หมดแล้ว' 
+          }, { status: 400 });
+        }
+      }
+    }
+
+    // ใช้ flashsale_price ถ้ามี, ไม่งั้นใช้ราคาปกติ
+    const itemPrice = item.is_flashsale && item.flashsale_price 
+      ? Number(item.flashsale_price) 
+      : Number(item.price || 0);
 
     // ตรวจสอบและคำนวณ coupon ถ้ามี
     let finalPrice = itemPrice;

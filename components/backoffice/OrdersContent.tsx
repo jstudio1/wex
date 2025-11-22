@@ -551,7 +551,7 @@ export default function OrdersContent() {
                 )}
               </TableBody>
             </Table>
-          </div>
+                </div>
         </TabsContent>
 
         <TabsContent value="mtopup" active={activeTab === 'mtopup'} className="mt-4">
@@ -601,7 +601,7 @@ export default function OrdersContent() {
                 )}
               </TableBody>
             </Table>
-          </div>
+              </div>
         </TabsContent>
 
         <TabsContent value="cashcard" active={activeTab === 'cashcard'} className="mt-4">
@@ -651,7 +651,7 @@ export default function OrdersContent() {
                 )}
               </TableBody>
             </Table>
-          </div>
+            </div>
         </TabsContent>
 
       </Tabs>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Settings2, SearchIcon } from 'lucide-react';
+import { Settings2, SearchIcon, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import PricingDialog from '@/components/backoffice/PricingDialog';
+import FlashSaleSettingsDialog from '@/components/backoffice/FlashSaleSettingsDialog';
 import { Spinner } from '@/components/ui/spinner';
 import {
   Item,
@@ -43,6 +44,8 @@ type Product = {
 	badge_percent: number | null;
 	badge_text: string | null;
 	badge_apply_price: boolean;
+	is_flashsale: boolean;
+	flashsale_price: number | null;
 };
 
 type Category = {
@@ -99,6 +102,8 @@ export default function NewTopupServicesManager() {
   const [editSaving, setEditSaving] = useState(false);
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [pricingProductId, setPricingProductId] = useState<number | null>(null);
+  const [flashSaleDialogOpen, setFlashSaleDialogOpen] = useState(false);
+  const [selectedFlashSaleProduct, setSelectedFlashSaleProduct] = useState<Product | null>(null);
   
   // State สำหรับ dialog เลือกเกม
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
@@ -548,8 +553,13 @@ export default function NewTopupServicesManager() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-white line-clamp-2">{p.name}</h3>
+                      {p.is_flashsale && (
+                        <Badge variant="secondary" className="ml-auto bg-blue-500/20 text-blue-300 border-blue-500/30">
+                          flash sale
+                        </Badge>
+                      )}
                       {p.badge_enabled && (
-                        <Badge variant="secondary" className="ml-auto">
+                        <Badge variant="secondary" className={p.is_flashsale ? '' : 'ml-auto'}>
                           {p.badge_text || `${p.badge_percent ?? 0}% OFF`}
                         </Badge>
                       )}
@@ -604,6 +614,21 @@ export default function NewTopupServicesManager() {
                   }}
                 >
                   ตั้งค่าราคา
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-center gap-2 ${
+                    p.is_flashsale
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                      : 'border-white/20 text-white hover:bg-white/5'
+                  }`}
+                  onClick={() => {
+                    setSelectedFlashSaleProduct(p);
+                    setFlashSaleDialogOpen(true);
+                  }}
+                >
+                  <Zap className="size-4" />
+                  Flash Sale
                 </Button>
 									</div>
 								</div>
@@ -750,6 +775,18 @@ export default function NewTopupServicesManager() {
             fetchAll();
           }
         }}
+      />
+
+      <FlashSaleSettingsDialog
+        open={flashSaleDialogOpen}
+        onOpenChange={setFlashSaleDialogOpen}
+        product={selectedFlashSaleProduct ? {
+          id: selectedFlashSaleProduct.id,
+          name: selectedFlashSaleProduct.name,
+          is_flashsale: selectedFlashSaleProduct.is_flashsale,
+          flashsale_price: selectedFlashSaleProduct.flashsale_price,
+        } : null}
+        onSuccess={fetchAll}
       />
 
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>

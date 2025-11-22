@@ -29,6 +29,7 @@ import AdminLoginForm from '@/components/backoffice/AdminLoginForm';
 import TicketsContent from '@/components/backoffice/TicketsContent';
 import BlogPostsContent from '@/components/backoffice/BlogPostsContent';
 import BlogCategoriesContent from '@/components/backoffice/BlogCategoriesContent';
+import NewsContent from '@/components/backoffice/NewsContent';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -147,6 +148,7 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'blog-posts', label: 'จัดการบทความ' },
           { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
+          { id: 'news', label: 'ตั้งค่าข่าวสาร' },
         ],
       },
     ],
@@ -563,6 +565,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <BlogPostsContent />;
     case 'blog-categories':
       return <BlogCategoriesContent />;
+    case 'news':
+      return <NewsContent />;
     default:
       return (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
@@ -600,11 +604,11 @@ function DashboardContent() {
         },
       });
       const data = await res.json();
-      setStats(data);
+        setStats(data);
     } catch (err) {
-      console.error('Stats error:', err);
+        console.error('Stats error:', err);
     } finally {
-      setLoading(false);
+        setLoading(false);
       setRefreshing(false);
     }
   };
@@ -705,9 +709,9 @@ function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRef
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold mb-2 text-white">Dashboard</h2>
-          <p className="text-gray-400">ภาพรวมระบบและสถิติการขาย</p>
+      <div>
+        <h2 className="text-3xl font-bold mb-2 text-white">Dashboard</h2>
+        <p className="text-gray-400">ภาพรวมระบบและสถิติการขาย</p>
         </div>
         {onRefresh && (
           <Button
@@ -807,7 +811,7 @@ function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRef
                       <CardTitle className="text-sm font-semibold text-white">{type.label}</CardTitle>
                     </div>
                   </div>
-                </CardHeader>
+          </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
                     <div className="text-2xl font-bold text-white mb-0.5">{formatCurrency(revenue.total || 0)}</div>
@@ -836,8 +840,8 @@ function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRef
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+          </CardContent>
+        </Card>
             );
           })}
         </div>

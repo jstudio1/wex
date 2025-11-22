@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
-import { getAuthUser } from '@/lib/auth';
 import { slugify } from '@/lib/blog';
 
 export async function GET(req: NextRequest) {
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
       `,
         { count: 'exact' },
       )
-      .eq('post_type', 'blog')
+      .eq('post_type', 'news')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -48,8 +47,8 @@ export async function GET(req: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[admin][blog][posts] fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
+      console.error('[admin][news][posts] fetch error:', error);
+      return NextResponse.json({ error: 'Failed to fetch news' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -57,7 +56,7 @@ export async function GET(req: NextRequest) {
       total: count || 0,
     });
   } catch (error: any) {
-    console.error('[admin][blog][posts] error:', error);
+    console.error('[admin][news][posts] error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -70,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, content, cover_image_url, category_id, status } = body;
+    const { title, description, content, cover_image_url, category_id, status, published_at } = body;
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 });
@@ -85,7 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 400 });
     }
 
-    const publishedAt = status === 'published' ? new Date().toISOString() : null;
+    const publishedAt = published_at || (status === 'published' ? new Date().toISOString() : null);
 
     const { data: post, error } = await sb
       .from('blog_posts')
@@ -99,19 +98,19 @@ export async function POST(req: NextRequest) {
         status: status || 'draft',
         author_id: admin.id,
         published_at: publishedAt,
-        post_type: 'blog',
+        post_type: 'news',
       })
       .select()
       .single();
 
     if (error) {
-      console.error('[admin][blog][posts] create error:', error);
-      return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
+      console.error('[admin][news][posts] create error:', error);
+      return NextResponse.json({ error: 'Failed to create news' }, { status: 500 });
     }
 
     return NextResponse.json({ post }, { status: 201 });
   } catch (error: any) {
-    console.error('[admin][blog][posts] error:', error);
+    console.error('[admin][news][posts] error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

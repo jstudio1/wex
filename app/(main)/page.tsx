@@ -2,14 +2,28 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
-import { ChevronRight, Users, PackageCheck, AppWindow } from 'lucide-react';
+import { ChevronRight, Users, PackageCheck, AppWindow, Gamepad2, CreditCard, User } from 'lucide-react';
 import { cache } from 'react';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
+const NewsSection = dynamicImport(() => import('@/components/NewsSection'), {
+  loading: () => (
+    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+      <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
+    </section>
+  ),
+  ssr: false,
+});
+
 const PremiumAppCategoryCard = dynamicImport(() => import('@/components/PremiumAppCategoryCard').then(mod => ({ default: mod.PremiumAppCategoryCard })), {
   loading: () => <div className="h-32 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
   ssr: true,
+});
+
+const FlashSaleSection = dynamicImport(() => import('@/components/FlashSaleSection'), {
+  loading: () => <div className="h-96 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
+  ssr: false,
 });
 
 const getSite = cache(async () => {
@@ -93,6 +107,134 @@ function extractDescriptionSummary(html?: string | null, limit = 2): string[] {
     .slice(0, limit);
 }
 
+const getGameAccounts = cache(async (limit: number = 12) => {
+  try {
+    const sb = createServiceClient();
+    
+    // Fetch game accounts
+    const { data: accounts, error: accountsError } = await sb
+      .from('game_accounts')
+      .select('id, game_name, title, cover_image_url, price, original_price, is_published')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (accountsError || !accounts) {
+      console.error('Error fetching game accounts:', accountsError);
+      return [];
+    }
+    
+    if (accounts.length === 0) {
+      return [];
+    }
+    
+    return accounts.map((account: any) => ({
+      id: account.id,
+      name: account.title || account.game_name,
+      image_url: account.cover_image_url,
+      price: Number(account.price || 0),
+      originalPrice: Number(account.original_price || account.price || 0),
+    })).filter((a: any) => a.price > 0);
+  } catch (error) {
+    console.error('Error fetching game accounts:', error);
+    return [];
+  }
+});
+
+const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit: number = 12) => {
+  try {
+    const sb = createServiceClient();
+    const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
+    
+    // Fetch products
+    const { data: products, error: productsError } = await sb
+      .from('products')
+      .select('id, name, key, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price')
+      .eq('is_published', true)
+      .eq('product_type', productType)
+      .order('id', { ascending: false })
+      .limit(limit);
+    
+    if (productsError || !products) {
+      console.error(`Error fetching ${productType} products:`, productsError);
+      return [];
+    }
+    
+    if (products.length === 0) {
+      return [];
+    }
+    
+    const productIds = products.map((p: any) => p.id);
+    
+    // Fetch product items
+    const { data: items, error: itemsError } = await sb
+      .from('product_items')
+      .select('id, product_id, name, sku, price, original_price, public_price, agent_discount_percent, agent_cost_price, markup_percent, markup_fixed, is_recommended, icon_url')
+      .in('product_id', productIds);
+    
+    if (itemsError) {
+      console.error(`Error fetching ${productType} items:`, itemsError);
+      return [];
+    }
+    
+    // Calculate prices and group items by product
+    const itemsByProduct = new Map<number, any[]>();
+    for (const it of items || []) {
+      const arr = itemsByProduct.get(it.product_id as number) || [];
+      const agentCost = Number((it as any).agent_cost_price ?? it.price ?? 0);
+      const publicPrice = Number((it as any).public_price ?? it.original_price ?? agentCost);
+      const pct = Number((it as any).markup_percent ?? 0);
+      const fix = Number((it as any).markup_fixed ?? 0);
+      const computed = computePrice(agentCost, pct, fix, globalPct, globalFix);
+      
+      arr.push({
+        id: it.id,
+        name: it.name,
+        sku: it.sku,
+        price: computed.toFixed(2),
+        originalPrice: publicPrice.toFixed(2),
+        is_recommended: Boolean((it as any).is_recommended),
+        icon_url: (it as any).icon_url || null
+      });
+      itemsByProduct.set(it.product_id as number, arr);
+    }
+    
+    // Get orders count
+    const { data: orderRows } = await sb
+      .from('orders')
+      .select('product_id')
+      .in('product_id', productIds);
+    
+    const countByProduct = new Map<number, number>();
+    for (const r of orderRows || []) {
+      const pid = (r as any).product_id as number;
+      countByProduct.set(pid, (countByProduct.get(pid) || 0) + 1);
+    }
+    
+    // Build result
+    return products.map((p: any) => {
+      const productItems = itemsByProduct.get(p.id) || [];
+      const recommendedItem = productItems.find((item: any) => item.is_recommended) || productItems[0];
+      
+      return {
+        id: p.id,
+        name: p.name,
+        key: p.key,
+        image_url: p.image_url,
+        badge_enabled: p.badge_enabled,
+        badge_percent: p.badge_percent,
+        badge_text: p.badge_text,
+        badge_apply_price: p.badge_apply_price,
+        item: recommendedItem || null,
+        totalSold: countByProduct.get(p.id) || 0,
+      };
+    }).filter((p: any) => p.item !== null);
+  } catch (error) {
+    console.error(`Error fetching ${productType} products:`, error);
+    return [];
+  }
+});
+
 const getPremiumAppProductsByCategory = cache(async () => {
   try {
     const sb = createServiceClient();
@@ -167,6 +309,11 @@ async function HomeServer() {
   const premiumAppProductsByCategory = await getPremiumAppProductsByCategory();
   const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
   
+  // Fetch products by type in order: gtopup, cashcard, game_accounts
+  const gtopupProducts = await getProductsByType('gtopup', 12);
+  const cashcardProducts = await getProductsByType('cashcard', 12);
+  const gameAccountProducts = await getGameAccounts(12);
+  
   // Calculate prices for products in each category
   const categoriesWithProductsAndPrices = premiumAppProductsByCategory.map((catData: any) => {
     const productsWithPrice = catData.products.map((product: any) => {
@@ -229,6 +376,9 @@ async function HomeServer() {
       </div>
 
       <main className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 space-y-12 relative">
+        {/* Flash Sale Section */}
+        <FlashSaleSection />
+
         {/* Summary Stats Section */}
         <section className="grid grid-cols-2 gap-3 max-[380px]:grid-cols-1 md:grid-cols-3">
           {[
@@ -270,43 +420,41 @@ async function HomeServer() {
           })}
         </section>
 
-        {/* Premium App Products by Category Section */}
-        {categoriesWithProductsAndPrices && categoriesWithProductsAndPrices.length > 0 && (
-          <div className="space-y-12">
-            {categoriesWithProductsAndPrices.map((catData: any) => (
-              <section key={catData.category.id} className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    {catData.category.icon_url ? (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          src={catData.category.icon_url} 
-                          alt={catData.category.display_name}
-                          className="w-full h-full object-contain p-1.5"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                        <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
-                      </div>
-                    )}
-                    <div>
-                      <h2 className="text-xl font-bold text-white">{catData.category.display_name}</h2>
-                      <p className="text-sm text-gray-400">Premium Applications</p>
-                    </div>
+        {/* Products Sections - Ordered by: Premium App, Gtopup, Cashcard, Game Accounts */}
+        
+        {/* 1. Premium App Products Section (Combined) */}
+        {(() => {
+          // Combine all products from all categories into one array
+          const allPremiumProducts = categoriesWithProductsAndPrices.flatMap((catData: any) => 
+            catData.products.map((product: any) => ({
+              ...product,
+              categoryName: catData.category.display_name,
+            }))
+          );
+          
+          return allPremiumProducts.length > 0 ? (
+            <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
+                    <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
                   </div>
-                  <Link 
-                    href={`/premium-app?category=${catData.category.category}`} 
-                    className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-                  >
-                    ดูทั้งหมด
-                    <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">แอพพรีเมี่ยม</h2>
+                    <p className="text-sm text-gray-400">Premium Applications</p>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                  {catData.products.map((product: any, index: number) => (
+                <Link 
+                  href="/premium-app" 
+                  className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+                >
+                  ดูทั้งหมด
+                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                {allPremiumProducts.map((product: any, index: number) => (
                     <Link 
                       key={product.id} 
                       href={`/premium-app/${product.id}`} 
@@ -381,25 +529,25 @@ async function HomeServer() {
                   ))}
                 </div>
               </section>
-            ))}
-          </div>
-        )}
+          ) : null;
+        })()}
 
-        {/* Premium Apps Categories Section */}
-        {premiumAppCategories && premiumAppCategories.length > 0 && (
+
+        {/* 2. Gtopup (เติมเกม) Section */}
+        {gtopupProducts.length > 0 && (
           <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                  <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
+                  <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">แอพพรีเมี่ยม</h2>
-                  <p className="text-sm text-gray-400">Premium Applications</p>
+                  <h2 className="text-xl font-bold text-white">เติมเกม</h2>
+                  <p className="text-sm text-gray-400">Game Top-up</p>
                 </div>
               </div>
               <Link 
-                href="/premium-app" 
+                href="/products" 
                 className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
               >
                 ดูทั้งหมด
@@ -407,13 +555,194 @@ async function HomeServer() {
               </Link>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 md:max-w-5xl md:mx-auto">
-              {premiumAppCategories.map((category: any, index: number) => (
-                <PremiumAppCategoryCard key={category.id} category={category} index={index} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+              {gtopupProducts.map((product: any, index: number) => (
+                <Link 
+                  key={product.id} 
+                  href={`/products/${product.key}`} 
+                  className="group block h-full"
+                  prefetch={index < 6}
+                >
+                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
+                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
+                      {product.image_url ? (
+                        <Image 
+                          src={product.image_url} 
+                          alt={product.name} 
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
+                          loading={index < 6 ? 'eager' : 'lazy'}
+                          priority={index < 3}
+                        />
+                      ) : (
+                        <Gamepad2 className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
+                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
+                        {product.name}
+                      </p>
+                      {product.item && (
+                        <div className="mt-auto text-center">
+                          <p className="text-lg sm:text-xl font-bold text-emerald-400">
+                            {Number(product.item.price).toFixed(0)} ฿
+                          </p>
+                          {Number(product.item.originalPrice) > Number(product.item.price) && (
+                            <p className="text-xs text-gray-500 line-through">
+                              {Number(product.item.originalPrice).toFixed(0)} ฿
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </section>
         )}
+
+        {/* 3. Cashcard (บัตรเติมเงิน) Section */}
+        {cashcardProducts.length > 0 && (
+          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 shadow-md">
+                  <CreditCard className="h-6 w-6 text-white" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">บัตรเติมเงิน</h2>
+                  <p className="text-sm text-gray-400">Cash Card</p>
+                </div>
+              </div>
+              <Link 
+                href="/cashcard" 
+                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+              >
+                ดูทั้งหมด
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+              {cashcardProducts.map((product: any, index: number) => (
+                <Link 
+                  key={product.id} 
+                  href={`/cashcard/${product.key}`} 
+                  className="group block h-full"
+                  prefetch={index < 6}
+                >
+                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
+                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
+                      {product.image_url ? (
+                        <Image 
+                          src={product.image_url} 
+                          alt={product.name} 
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
+                          loading={index < 6 ? 'eager' : 'lazy'}
+                          priority={index < 3}
+                        />
+                      ) : (
+                        <CreditCard className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
+                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
+                        {product.name}
+                      </p>
+                      {product.item && (
+                        <div className="mt-auto text-center">
+                          <p className="text-lg sm:text-xl font-bold text-emerald-400">
+                            {Number(product.item.price).toFixed(0)} ฿
+                          </p>
+                          {Number(product.item.originalPrice) > Number(product.item.price) && (
+                            <p className="text-xs text-gray-500 line-through">
+                              {Number(product.item.originalPrice).toFixed(0)} ฿
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 4. Game Accounts (ไอดีเกมส์) Section */}
+        {gameAccountProducts.length > 0 && (
+          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-amber-600 to-amber-700 shadow-md">
+                  <User className="h-6 w-6 text-white" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">ไอดีเกมส์</h2>
+                  <p className="text-sm text-gray-400">Game Accounts</p>
+                </div>
+              </div>
+              <Link 
+                href="/games" 
+                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+              >
+                ดูทั้งหมด
+                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+              {gameAccountProducts.map((account: any, index: number) => (
+                <Link 
+                  key={account.id} 
+                  href={`/games/${account.id}`} 
+                  className="group block h-full"
+                  prefetch={index < 6}
+                >
+                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
+                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
+                      {account.image_url ? (
+                        <Image 
+                          src={account.image_url} 
+                          alt={account.name} 
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
+                          loading={index < 6 ? 'eager' : 'lazy'}
+                          priority={index < 3}
+                        />
+                      ) : (
+                        <User className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
+                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
+                        {account.name}
+                      </p>
+                      <div className="mt-auto text-center">
+                        <p className="text-lg sm:text-xl font-bold text-emerald-400">
+                          {Number(account.price).toFixed(0)} ฿
+                        </p>
+                        {Number(account.originalPrice) > Number(account.price) && (
+                          <p className="text-xs text-gray-500 line-through">
+                            {Number(account.originalPrice).toFixed(0)} ฿
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 5. News Section (ข่าวสาร) */}
+        <NewsSection />
       </main>
     </div>
   );

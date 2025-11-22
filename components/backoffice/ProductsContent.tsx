@@ -10,9 +10,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { SearchIcon, ChevronDown, Package, Settings2 } from 'lucide-react';
+import { SearchIcon, ChevronDown, Package, Settings2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import PricingDialog from './PricingDialog';
+import FlashSaleSettingsDialog from './FlashSaleSettingsDialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -46,6 +47,8 @@ interface Product {
   badge_percent: number | null;
   badge_text: string | null;
   badge_apply_price: boolean;
+  is_flashsale: boolean;
+  flashsale_price: number | null;
 }
 
 interface Category {
@@ -64,6 +67,7 @@ type ProductFormState = {
   badge_percent: string;
   badge_text: string;
   badge_apply_price: boolean;
+  is_flashsale: boolean;
   categories: number[];
 };
 
@@ -77,6 +81,7 @@ const defaultEditForm: ProductFormState = {
   badge_percent: '',
   badge_text: '',
   badge_apply_price: false,
+  is_flashsale: false,
   categories: [],
 };
 
@@ -98,6 +103,8 @@ export default function ProductsContent({ productType }: { productType?: string 
   const [searchQuery, setSearchQuery] = useState('');
   const [pricingDialogOpen, setPricingDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [flashSaleDialogOpen, setFlashSaleDialogOpen] = useState(false);
+  const [selectedFlashSaleProduct, setSelectedFlashSaleProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState<ProductFormState>(defaultEditForm);
@@ -407,6 +414,7 @@ export default function ProductsContent({ productType }: { productType?: string 
       badge_percent: product.badge_percent != null ? String(product.badge_percent) : '',
       badge_text: product.badge_text || '',
       badge_apply_price: product.badge_apply_price,
+      is_flashsale: product.is_flashsale || false,
       categories: cats,
     });
     setEditDialogOpen(true);
@@ -448,6 +456,7 @@ export default function ProductsContent({ productType }: { productType?: string 
           : null,
         badge_text: editForm.badge_text.trim() || null,
         badge_apply_price: editForm.badge_apply_price,
+        is_flashsale: editForm.is_flashsale,
         categories: editForm.categories,
       };
 
@@ -649,8 +658,13 @@ export default function ProductsContent({ productType }: { productType?: string 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-white line-clamp-2">{p.name}</h3>
+                    {p.is_flashsale && (
+                      <Badge variant="secondary" className="ml-auto bg-blue-500/20 text-blue-300 border-blue-500/30">
+                        flash sale
+                      </Badge>
+                    )}
                     {p.badge_enabled && (
-                      <Badge variant="secondary" className="ml-auto">
+                      <Badge variant="secondary" className={p.is_flashsale ? '' : 'ml-auto'}>
                         {p.badge_text || `${p.badge_percent ?? 0}% OFF`}
                       </Badge>
                     )}
@@ -705,6 +719,21 @@ export default function ProductsContent({ productType }: { productType?: string 
                   }}
                 >
                   กำหนดราคา
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-center gap-2 ${
+                    p.is_flashsale
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                      : 'border-white/20 text-white hover:bg-white/5'
+                  }`}
+                  onClick={() => {
+                    setSelectedFlashSaleProduct(p);
+                    setFlashSaleDialogOpen(true);
+                  }}
+                >
+                  <Zap className="size-4" />
+                  Flash Sale
                 </Button>
               </div>
             </div>
@@ -869,6 +898,19 @@ export default function ProductsContent({ productType }: { productType?: string 
                   ถ้าไม่ใส่ข้อความ ระบบจะแสดงตามเปอร์เซ็นต์ เช่น {editForm.badge_percent || '10'}% OFF
                 </p>
               </div>
+
+              <div className="rounded-2xl border border-white/10 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-white">แสดงใน Flash Sale</p>
+                    <p className="text-xs text-gray-400">แสดงสินค้านี้ในหน้าแรกส่วน Flash Sale</p>
+                  </div>
+                  <Switch
+                    checked={editForm.is_flashsale}
+                    onCheckedChange={(checked) => updateEditForm('is_flashsale', checked)}
+                  />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="py-8 text-center text-sm text-gray-500">ไม่พบบริการ</div>
@@ -895,6 +937,18 @@ export default function ProductsContent({ productType }: { productType?: string 
         open={pricingDialogOpen}
         onOpenChange={setPricingDialogOpen}
         productId={selectedProductId}
+      />
+
+      <FlashSaleSettingsDialog
+        open={flashSaleDialogOpen}
+        onOpenChange={setFlashSaleDialogOpen}
+        product={selectedFlashSaleProduct ? {
+          id: selectedFlashSaleProduct.id,
+          name: selectedFlashSaleProduct.name,
+          is_flashsale: selectedFlashSaleProduct.is_flashsale,
+          flashsale_price: selectedFlashSaleProduct.flashsale_price,
+        } : null}
+        onSuccess={fetchData}
       />
 
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>

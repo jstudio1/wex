@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter as DialogFooterUI } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ key: string }>();
   const isMobile = useIsMobile();
   const toast = useToast();
+  const { openLoginDialog } = useAuthDialog();
   const [data, setData] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -319,6 +321,17 @@ export default function ProductDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, ref1 })
       });
+      
+      // Check if unauthorized
+      if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        if (json.error === 'unauthorized' || res.status === 401) {
+          setSubmitting(false);
+          openLoginDialog();
+          return;
+        }
+      }
+      
       const json = await res.json();
       if (!res.ok || json.status !== 1) throw new Error(json?.message || 'สร้าง QR ไม่สำเร็จ');
       setQrData({ base64: json.qr_image_base64, amount: Number(json.amount), idPay: json.id_pay, timeout: Number(json.time_out) });
@@ -377,6 +390,17 @@ export default function ProductDetailPage() {
           coupon_code: couponData?.code || undefined
         })
       });
+      
+      // Check if unauthorized
+      if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        if (json.error === 'unauthorized' || res.status === 401) {
+          setSubmitting(false);
+          openLoginDialog();
+          return;
+        }
+      }
+      
       const json = await res.json();
       if (!res.ok) {
         if (json?.error === 'provider_error' || res.status === 502) {

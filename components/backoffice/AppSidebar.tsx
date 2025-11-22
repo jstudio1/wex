@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Bell,
   Receipt,
+  Newspaper,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -130,6 +131,7 @@ const menuSections: MenuSection[] = [
         subItems: [
           { id: 'blog-posts', label: 'จัดการบทความ' },
           { id: 'blog-categories', label: 'จัดการหมวดหมู่' },
+          { id: 'news', label: 'ตั้งค่าข่าวสาร' },
         ],
       },
     ],

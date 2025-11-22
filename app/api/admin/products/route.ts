@@ -47,6 +47,8 @@ export async function GET(req: Request) {
     badge_percent: p.badge_percent,
     badge_text: p.badge_text,
     badge_apply_price: p.badge_apply_price || false,
+    is_flashsale: p.is_flashsale || false,
+    flashsale_price: p.flashsale_price || null,
   }));
 
   return NextResponse.json({ data });

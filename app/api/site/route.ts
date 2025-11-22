@@ -7,7 +7,7 @@ import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
 export async function GET() {
   const sb = createServiceClient();
   const { data } = await sb.from('settings').select('key, value').in('key', [
-    'HOME_TITLE','HOME_SUBTITLE','HOME_POSTERS','FLASHSALE_START','FLASHSALE_END',
+    'HOME_TITLE','HOME_SUBTITLE','HOME_POSTERS',
     'NAVBAR_MENU_PRODUCTS','NAVBAR_MENU_MTOPUP','NAVBAR_MENU_CASHCARD','NAVBAR_MENU_SOCIAL','NAVBAR_MENU_CATEGORIES','NAVBAR_MENU_GAMES','NAVBAR_MENU_PREMIUM_APP','NAVBAR_MENU_CONTACT','NAVBAR_MENU_ORDER',
     'NAVBAR_MENU_LABEL_PRODUCTS','NAVBAR_MENU_LABEL_PREMIUM_APP','NAVBAR_MENU_LABEL_SOCIAL','NAVBAR_MENU_LABEL_CONTACT',
     'PAYMENT_METHOD_CODE','PAYMENT_METHOD_QR','PAYMENT_METHOD_SLIP','PAYMENT_METHOD_TRUEWALLET',
@@ -77,8 +77,6 @@ export async function GET() {
     title: map.HOME_TITLE || 'เติมเกม ง่าย รวดเร็ว',
     subtitle: map.HOME_SUBTITLE || 'เลือกเกมยอดนิยมและเริ่มสั่งซื้อได้ทันที',
     posters: (() => { try { return JSON.parse(map.HOME_POSTERS || '[]'); } catch { return []; } })(),
-    flashStart: map.FLASHSALE_START || null,
-    flashEnd: map.FLASHSALE_END || null,
     navbarMenus: {
       products: getNavbarSetting('NAVBAR_MENU_PRODUCTS', 'true'),
       mtopup: getNavbarSetting('NAVBAR_MENU_MTOPUP', 'true'),
@@ -158,8 +156,6 @@ export async function POST(req: Request) {
   const title = String(body?.title || '');
   const subtitle = String(body?.subtitle || '');
   const posters = Array.isArray(body?.posters) ? body.posters : [];
-  const flashStart = body?.flashStart ? String(body.flashStart) : '';
-  const flashEnd = body?.flashEnd ? String(body.flashEnd) : '';
   const navbarMenus = body?.navbarMenus || {};
   const paymentMethods = body?.paymentMethods || {};
   const truewalletPhone = String(body?.truewalletPhone || '').trim();
@@ -195,8 +191,6 @@ export async function POST(req: Request) {
   await sb.from('settings').upsert({ key: 'HOME_TITLE', value: title }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'HOME_SUBTITLE', value: subtitle }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'HOME_POSTERS', value: JSON.stringify(posters) }, { onConflict: 'key' });
-  await sb.from('settings').upsert({ key: 'FLASHSALE_START', value: flashStart }, { onConflict: 'key' });
-  await sb.from('settings').upsert({ key: 'FLASHSALE_END', value: flashEnd }, { onConflict: 'key' });
   
   // Save navbar menu visibility settings
   await sb.from('settings').upsert({ key: 'NAVBAR_MENU_PRODUCTS', value: navbarMenus.products === false ? 'false' : 'true' }, { onConflict: 'key' });

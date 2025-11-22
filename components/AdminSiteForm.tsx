@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Spinner, SpinnerCustom } from '@/components/ui/spinner';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
@@ -38,8 +36,6 @@ type SiteData = {
   title: string; 
   subtitle: string; 
   posters: string[]; 
-  flashStart?: string | null; 
-  flashEnd?: string | null;
   premiumAppDisplayMode?: 'list' | 'cards';
   navbarMenus?: {
     home: boolean;
@@ -119,8 +115,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     title: '', 
     subtitle: '', 
     posters: [], 
-    flashStart: null, 
-    flashEnd: null,
     premiumAppDisplayMode: 'list',
     navbarMenus: {
       home: true,
@@ -197,8 +191,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [openStartPicker, setOpenStartPicker] = useState(false);
-  const [openEndPicker, setOpenEndPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminSiteTab>(initialTab);
   const toast = useToast();
 
@@ -227,8 +219,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
           title: json.title || '', 
           subtitle: json.subtitle || '', 
           posters: json.posters || [], 
-          flashStart: json.flashStart || '', 
-          flashEnd: json.flashEnd || '',
           premiumAppDisplayMode: normalizePremiumAppDisplayMode(json.premiumAppDisplayMode),
           navbarMenus: {
             ...defaultNavbarMenus,
@@ -583,63 +573,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
               }}
             />
             <p className="text-xs text-[color:var(--text)]/50 mt-1">ใส่ URL ของรูปภาพแต่ละบรรทัด (สำหรับ Hero Slider)</p>
-          </div>
-          <div>
-            <Label>กำหนดเวลา Flash Sale</Label>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              <div className="relative">
-                <Label className="text-xs text-[color:var(--text)]/70">เริ่ม</Label>
-                <Popover open={openStartPicker} onOpenChange={setOpenStartPicker}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Input
-                        readOnly
-                        value={form.flashStart ? new Date(form.flashStart).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
-                        placeholder="เลือกวันที่เริ่ม"
-                      />
-                      <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">📅</div>
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={form.flashStart ? new Date(form.flashStart) : undefined}
-                      onSelect={(d) => {
-                        const from = d ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0) : undefined;
-                        setForm((prev) => ({ ...prev, flashStart: from ? from.toISOString() : '' }));
-                        setOpenStartPicker(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="relative">
-                <Label className="text-xs text-[color:var(--text)]/70">สิ้นสุด</Label>
-                <Popover open={openEndPicker} onOpenChange={setOpenEndPicker}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Input
-                        readOnly
-                        value={form.flashEnd ? new Date(form.flashEnd).toLocaleDateString('th-TH', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
-                        placeholder="เลือกวันที่สิ้นสุด"
-                      />
-                      <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">📅</div>
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={form.flashEnd ? new Date(form.flashEnd) : undefined}
-                      onSelect={(d) => {
-                        const to = d ? new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59) : undefined;
-                        setForm((prev) => ({ ...prev, flashEnd: to ? to.toISOString() : '' }));
-                        setOpenEndPicker(false);
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
           </div>
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
