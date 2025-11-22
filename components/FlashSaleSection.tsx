@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Zap, ShoppingCart, Flame, Clock, Package, TrendingDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuthDialog } from '@/contexts/AuthDialogContext';
+import ElectricBorder from '@/components/ElectricBorder';
+import { cn } from '@/lib/utils';
 
 interface FlashSaleProduct {
   id: number;
@@ -106,9 +108,17 @@ export default function FlashSaleSection() {
   }
 
   return (
-    <section className="flash-sale-section relative rounded-xl p-5 bg-[#0a0a0a] border border-orange-500/20 overflow-hidden">
-      {/* Particle Effects */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+    <ElectricBorder
+      color="#f97316"
+      speed={0.9}
+      chaos={0.3}
+      thickness={3}
+      style={{ borderRadius: 16 }}
+      className="overflow-visible"
+    >
+      <section className="flash-sale-section relative rounded-xl p-5 bg-[#0a0a0a] overflow-visible" style={{ border: 'none' }}>
+        {/* Particle Effects */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
         {/* Animated particles around border */}
         {Array.from({ length: 30 }).map((_, i) => {
           const isOnBorder = Math.random() > 0.5;
@@ -155,14 +165,11 @@ export default function FlashSaleSection() {
             />
           );
         })}
-        {/* Glowing border effect */}
-        <div className="absolute inset-0 rounded-xl border-2 border-orange-500/30 animate-pulse-glow" />
-        <div className="absolute inset-0 rounded-xl border border-orange-400/20 animate-shimmer-border" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10">
-      {/* Header */}
+        {/* Content */}
+        <div className="relative z-10">
+          {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 flex items-center justify-center">
@@ -201,13 +208,26 @@ export default function FlashSaleSection() {
             : null;
 
           return (
-            <div
-              key={`${product.id}-${product.itemId}`}
-              className="group relative rounded-lg border border-gray-800 bg-[#0f0f0f] p-3 hover:border-orange-500/50 transition-all duration-200"
-            >
-              {/* Top Badge - Days Remaining */}
-              {daysRemaining > 0 && (
-                <div className="absolute top-2 right-2 z-10">
+            <div key={`${product.id}-${product.itemId}`} className="group relative">
+              {/* Electric Border on Hover - Wraps entire card */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 rounded-lg overflow-visible">
+                <ElectricBorder
+                  color="#facc15"
+                  speed={0.9}
+                  chaos={0.3}
+                  thickness={2}
+                  style={{ borderRadius: 12 }}
+                  className="absolute inset-0 w-full h-full overflow-visible"
+                >
+                  <div className="w-full h-full" />
+                </ElectricBorder>
+              </div>
+              
+              {/* Product Card Content */}
+              <div className="relative rounded-lg border border-gray-800 bg-[#0f0f0f] p-3 transition-all duration-200 z-0">
+                  {/* Top Badge - Days Remaining */}
+                  {daysRemaining > 0 && (
+                    <div className="absolute top-2 right-2 z-10">
                   <div className="flex items-center gap-1 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                     <Clock className="h-3 w-3" />
                     <span>{daysRemaining}D</span>
@@ -215,9 +235,9 @@ export default function FlashSaleSection() {
                 </div>
               )}
 
-              {/* Savings Badge */}
-              {Number(product.savings) > 0 && (
-                <div className="absolute top-2 left-2 z-10">
+                  {/* Savings Badge */}
+                  {Number(product.savings) > 0 && (
+                    <div className="absolute top-2 left-2 z-10">
                   <div className="flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                     <TrendingDown className="h-3 w-3" />
                     <span>ประหยัด {Number(product.savings).toFixed(0)}฿</span>
@@ -225,8 +245,8 @@ export default function FlashSaleSection() {
                 </div>
               )}
 
-              {/* Product Image */}
-              <div className="relative w-full aspect-square rounded-md overflow-hidden bg-gray-900 mb-2.5">
+                  {/* Product Image */}
+                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-gray-900 mb-2.5">
                 {product.image_url ? (
                   <Image
                     src={product.image_url}
@@ -242,13 +262,13 @@ export default function FlashSaleSection() {
                 )}
               </div>
 
-              {/* Item Name */}
-              <p className="text-white font-semibold text-sm mb-2 line-clamp-2 min-h-[2.5rem]">
-                {product.item.name}
-              </p>
+                  {/* Item Name */}
+                  <p className="text-white font-semibold text-sm mb-2 line-clamp-2 min-h-[2.5rem]">
+                    {product.item.name}
+                  </p>
 
-              {/* Price Section */}
-              <div className="mb-2.5 space-y-1">
+                  {/* Price Section */}
+                  <div className="mb-2.5 space-y-1">
                 <div className="flex items-baseline gap-1">
                   <p className="text-xl font-bold text-orange-400">
                     {Number(product.item.price).toFixed(0)}
@@ -265,9 +285,9 @@ export default function FlashSaleSection() {
                 )}
               </div>
 
-              {/* Quantity Progress Bar */}
-              {product.quantityRemaining !== null && product.maxQuantity && (
-                <div className="mb-2">
+                  {/* Quantity Progress Bar */}
+                  {product.quantityRemaining !== null && product.maxQuantity && (
+                    <div className="mb-2">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1 text-[10px] text-gray-400">
                       <Package className="h-3 w-3" />
@@ -284,16 +304,16 @@ export default function FlashSaleSection() {
                 </div>
               )}
 
-              {/* Days Remaining */}
-              {product.daysRemaining !== null && (
-                <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-400">
-                  <Clock className="h-3 w-3" />
-                  <span>เหลือเวลา {product.daysRemaining} วัน</span>
-                </div>
-              )}
+                  {/* Days Remaining */}
+                  {product.daysRemaining !== null && (
+                    <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-400">
+                      <Clock className="h-3 w-3" />
+                      <span>เหลือเวลา {product.daysRemaining} วัน</span>
+                    </div>
+                  )}
 
-              {/* Buy Button */}
-              <Button
+                  {/* Buy Button */}
+                  <Button
                 onClick={() => handleBuy(product.key)}
                 size="sm"
                 disabled={product.quantityRemaining !== null && product.quantityRemaining <= 0}
@@ -303,21 +323,23 @@ export default function FlashSaleSection() {
                 {product.quantityRemaining !== null && product.quantityRemaining <= 0 ? 'หมดแล้ว' : 'ซื้อเลย'}
               </Button>
 
-              {/* Stats Footer */}
-              <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
-                {product.totalSold > 0 && (
-                  <span>{product.totalSold} คนซื้อ</span>
-                )}
-                {product.todaySold > 0 && (
-                  <span className="text-orange-400">{product.todaySold} คนวันนี้</span>
-                )}
-              </div>
+                  {/* Stats Footer */}
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
+                    {product.totalSold > 0 && (
+                      <span>{product.totalSold} คนซื้อ</span>
+                    )}
+                    {product.todaySold > 0 && (
+                      <span className="text-orange-400">{product.todaySold} คนวันนี้</span>
+                    )}
+                  </div>
+                </div>
             </div>
           );
         })}
-      </div>
-      </div>
-    </section>
+        </div>
+        </div>
+      </section>
+    </ElectricBorder>
   );
 }
 
