@@ -106,7 +106,62 @@ export default function FlashSaleSection() {
   }
 
   return (
-    <section className="rounded-xl p-5 bg-[#0a0a0a] border border-orange-500/20">
+    <section className="flash-sale-section relative rounded-xl p-5 bg-[#0a0a0a] border border-orange-500/20 overflow-hidden">
+      {/* Particle Effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+        {/* Animated particles around border */}
+        {Array.from({ length: 30 }).map((_, i) => {
+          const isOnBorder = Math.random() > 0.5;
+          const position = Math.random() * 100;
+          const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+          const randomX = (Math.random() - 0.5) * 100;
+          const randomY = (Math.random() - 0.5) * 100;
+          
+          let style: React.CSSProperties = {
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${3 + Math.random() * 2}s`,
+          };
+
+          if (isOnBorder) {
+            // Place particles on the border
+            switch (side) {
+              case 0: // top
+                style = { ...style, left: `${position}%`, top: '0%' };
+                break;
+              case 1: // right
+                style = { ...style, right: '0%', top: `${position}%` };
+                break;
+              case 2: // bottom
+                style = { ...style, left: `${position}%`, bottom: '0%' };
+                break;
+              case 3: // left
+                style = { ...style, left: '0%', top: `${position}%` };
+                break;
+            }
+          } else {
+            // Random position inside
+            style = {
+              ...style,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            };
+          }
+
+          return (
+            <div
+              key={i}
+              className="particle absolute"
+              style={style}
+            />
+          );
+        })}
+        {/* Glowing border effect */}
+        <div className="absolute inset-0 rounded-xl border-2 border-orange-500/30 animate-pulse-glow" />
+        <div className="absolute inset-0 rounded-xl border border-orange-400/20 animate-shimmer-border" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
@@ -260,6 +315,7 @@ export default function FlashSaleSection() {
             </div>
           );
         })}
+      </div>
       </div>
     </section>
   );
