@@ -45,6 +45,7 @@ type GameAccount = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
+  banner_image_url: string | null;
   additional_images: string[];
   username: string;
   password: string;
@@ -82,6 +83,7 @@ export default function GameAccountsContent() {
     title: '',
     description: '',
     cover_image_url: '',
+    banner_image_url: '',
     additional_images: '',
     accounts_text: '', // Text format: user1:pass1\nuser2:pass2
     price: '',
@@ -141,6 +143,7 @@ export default function GameAccountsContent() {
       title: '',
       description: '',
       cover_image_url: '',
+      banner_image_url: '',
       additional_images: '',
       accounts_text: '',
       price: '',
@@ -161,6 +164,7 @@ export default function GameAccountsContent() {
       title: account.title.split(' #')[0], // Remove # suffix
       description: account.description || '',
       cover_image_url: account.cover_image_url || '',
+      banner_image_url: account.banner_image_url || '',
       additional_images: (account.additional_images || []).join('\n'),
       accounts_text: `${account.username}:${account.password}`,
       price: account.price.toString(),
@@ -408,6 +412,7 @@ export default function GameAccountsContent() {
               title: formData.title + (accountIds.length > 1 ? ` #${accountIds.indexOf(accId) + 1}` : ''),
               description: formData.description || null,
               cover_image_url: formData.cover_image_url || null,
+              banner_image_url: formData.banner_image_url || null,
               additional_images: additionalImagesArray,
               username: firstAccount.username,
               password: firstAccount.password,
@@ -444,6 +449,7 @@ export default function GameAccountsContent() {
             title: formData.title,
             description: formData.description || null,
             cover_image_url: formData.cover_image_url || null,
+            banner_image_url: formData.banner_image_url || null,
             additional_images: additionalImagesArray,
             accounts: validAccounts,
             price: priceNum,
@@ -716,6 +722,20 @@ export default function GameAccountsContent() {
                     />
                   </div>
                   <div className="grid gap-2">
+                    <Label htmlFor="banner_image_url" className="text-sm font-medium text-gray-300 mb-1">
+                      รูปภาพ Banner สำหรับหน้าแรก (1280x720) (URL)
+                    </Label>
+                    <Textarea
+                      id="banner_image_url"
+                      value={formData.banner_image_url}
+                      onChange={(e) => setFormData(prev => ({ ...prev, banner_image_url: e.target.value }))}
+                      placeholder="https://example.com/banner.jpg"
+                      rows={3}
+                      className="border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-500 resize-none"
+                    />
+                  </div>
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="additional_images" className="text-sm font-medium text-gray-300 mb-1">
                       รูปภาพเพิ่มเติม (URL ต่อบรรทัด)
                     </Label>
@@ -725,8 +745,8 @@ export default function GameAccountsContent() {
                       onChange={(e) => setFormData(prev => ({ ...prev, additional_images: e.target.value }))}
                       placeholder="https://example.com/img1.jpg&#10;https://example.com/img2.jpg"
                       rows={3}
+                    className="border-gray-700 bg-[#1a1a1a] text-white placeholder:text-gray-400"
                     />
-                  </div>
                 </div>
                 <div className="grid gap-4">
                   <div className="grid gap-3">

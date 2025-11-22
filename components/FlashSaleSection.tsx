@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Zap, ShoppingCart, Flame, Clock, Package, TrendingDown } from 'lucide-react';
+import { Zap, ShoppingCart, Flame, Clock, Package, TrendingDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import ElectricBorder from '@/components/ElectricBorder';
@@ -40,6 +40,17 @@ interface FlashSaleProduct {
 export default function FlashSaleSection() {
   const [products, setProducts] = useState<FlashSaleProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [velocity, setVelocity] = useState(0);
+  const [lastX, setLastX] = useState(0);
+  const [lastTime, setLastTime] = useState(0);
+  const [currentX, setCurrentX] = useState(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const { openLoginDialog } = useAuthDialog();
 
@@ -69,6 +80,260 @@ export default function FlashSaleSection() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check scroll position and update navigation buttons
+  const checkScrollPosition = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+    );
+  };
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    checkScrollPosition();
+    container.addEventListener('scroll', checkScrollPosition);
+    window.addEventListener('resize', checkScrollPosition);
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollPosition);
+      window.removeEventListener('resize', checkScrollPosition);
+    };
+  }, [products]);
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (products.length <= 3) return; // Don't auto-scroll if 3 or fewer items
+    
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const autoScroll = setInterval(() => {
+    // Card width is w-[400px] = 400px, gap is gap-6 = 24px
+    const cardWidth = 400;
+    const gap = 24;
+    const scrollAmount = (cardWidth + gap) * 3; // Scroll 3 cards at a time
+      
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      const nextScroll = container.scrollLeft + scrollAmount;
+      
+      if (nextScroll >= maxScroll - 10) {
+        // Reset to beginning
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+      
+      // Update scroll buttons after scroll animation
+      setTimeout(checkScrollPosition, 500);
+    }, 4000); // Auto-scroll every 4 seconds
+
+    return () => clearInterval(autoScroll);
+  }, [products]);
+
+  const scrollTo = (direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // Card width is w-[400px] = 400px, gap is gap-6 = 24px
+    const cardWidth = 400;
+    const gap = 24;
+    const scrollAmount = (cardWidth + gap) * 3; // Scroll 3 cards at a time
+
+    if (direction === 'left') {
+      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+    
+    setTimeout(checkScrollPosition, 500);
+  };
+
+  // Momentum scrolling with smooth animation
+  useEffect(() => {
+    if (!isDragging && Math.abs(velocity) > 0.1) {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const animate = () => {
+        if (!container) return;
+        
+        container.scrollLeft -= velocity;
+        setVelocity(velocity * 0.95); // Friction coefficient
+        
+        if (Math.abs(velocity) > 0.1) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          setVelocity(0);
+          checkScrollPosition();
+        }
+      };
+      
+      animationFrameRef.current = requestAnimationFrame(animate);
+      
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+      };
+    }
+  }, [isDragging, velocity]);
+
+  // Continuous smooth scrolling during drag
+  useEffect(() => {
+    if (isDragging) {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const animate = () => {
+        if (!isDragging || !container) return;
+        const rect = container.getBoundingClientRect();
+        const x = currentX - rect.left;
+        const walk = (x - startX) * 1.2;
+        container.scrollLeft = scrollLeft - walk;
+        animationFrameRef.current = requestAnimationFrame(animate);
+      };
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+      };
+    }
+  }, [isDragging, currentX, startX, scrollLeft]);
+
+  // Drag to scroll functionality with smooth momentum
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    // Cancel any ongoing momentum scroll
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    setIsDragging(true);
+    setVelocity(0);
+    const rect = container.getBoundingClientRect();
+    setStartX(e.pageX - rect.left);
+    setCurrentX(e.pageX);
+    setLastX(e.pageX);
+    setLastTime(Date.now());
+    setScrollLeft(container.scrollLeft);
+    container.style.cursor = 'grabbing';
+    container.style.userSelect = 'none';
+    container.style.scrollBehavior = 'auto';
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.style.cursor = 'grab';
+        container.style.userSelect = 'auto';
+        container.style.scrollBehavior = 'smooth';
+      }
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.style.cursor = 'grab';
+        container.style.userSelect = 'auto';
+        container.style.scrollBehavior = 'smooth';
+        // Update scroll position after drag ends
+        setTimeout(() => {
+          checkScrollPosition();
+        }, 100);
+      }
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastTime;
+    
+    // Calculate velocity for momentum
+    if (timeDelta > 0) {
+      const currentVelocity = ((e.pageX - lastX) / timeDelta) * 16; // Normalize to 60fps
+      setVelocity(currentVelocity);
+    }
+    
+    // Update current position for smooth scrolling
+    setCurrentX(e.pageX);
+    setLastX(e.pageX);
+    setLastTime(currentTime);
+  };
+
+  // Touch events for mobile with smooth momentum
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    // Cancel any ongoing momentum scroll
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    setIsDragging(true);
+    setVelocity(0);
+    const rect = container.getBoundingClientRect();
+    setStartX(e.touches[0].pageX - rect.left);
+    setCurrentX(e.touches[0].pageX);
+    setLastX(e.touches[0].pageX);
+    setLastTime(Date.now());
+    setScrollLeft(container.scrollLeft);
+    container.style.scrollBehavior = 'auto';
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastTime;
+    
+    // Calculate velocity for momentum
+    if (timeDelta > 0) {
+      const currentVelocity = ((e.touches[0].pageX - lastX) / timeDelta) * 16;
+      setVelocity(currentVelocity);
+    }
+    
+    // Update current position for smooth scrolling
+    setCurrentX(e.touches[0].pageX);
+    setLastX(e.touches[0].pageX);
+    setLastTime(currentTime);
+  };
+
+  const handleTouchEnd = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.style.scrollBehavior = 'smooth';
+        // Update scroll position after drag ends
+        setTimeout(() => {
+          checkScrollPosition();
+        }, 100);
+      }
+    }
+  };
+
   const handleBuy = async (productKey: string) => {
     try {
       const res = await fetch(`/api/products/${productKey}`);
@@ -94,9 +359,9 @@ export default function FlashSaleSection() {
           <Skeleton className="h-7 w-32" />
           <Skeleton className="h-8 w-20" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-72 rounded-lg" />
+        <div className="flex gap-4 overflow-hidden">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-96 w-80 flex-shrink-0 rounded-lg" />
           ))}
         </div>
       </section>
@@ -116,7 +381,7 @@ export default function FlashSaleSection() {
       style={{ borderRadius: 16 }}
       className="overflow-visible"
     >
-      <section className="flash-sale-section relative rounded-xl p-5 bg-[#0a0a0a] overflow-visible" style={{ border: 'none' }}>
+      <section className="flash-sale-section relative rounded-xl bg-[#0a0a0a] overflow-visible" style={{ border: 'none' }}>
         {/* Particle Effects */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
         {/* Animated particles around border */}
@@ -168,7 +433,7 @@ export default function FlashSaleSection() {
       </div>
 
         {/* Content */}
-        <div className="relative z-10">
+        <div className="relative z-10 p-5">
           {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
@@ -197,9 +462,49 @@ export default function FlashSaleSection() {
         </Link>
       </div>
 
-      {/* Products Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-        {products.map((product) => {
+      {/* Products Carousel */}
+      <div className="relative">
+        {/* Navigation Buttons */}
+        {products.length > 3 && (
+          <>
+            <button
+              onClick={() => scrollTo('left')}
+              disabled={!canScrollLeft}
+              className={cn(
+                "absolute left-0 top-1/2 -translate-y-1/2 z-30 h-10 w-10 rounded-full bg-orange-500/90 hover:bg-orange-500 text-white shadow-lg transition-all duration-200 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed",
+                !canScrollLeft && "hidden"
+              )}
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => scrollTo('right')}
+              disabled={!canScrollRight}
+              className={cn(
+                "absolute right-0 top-1/2 -translate-y-1/2 z-30 h-10 w-10 rounded-full bg-orange-500/90 hover:bg-orange-500 text-white shadow-lg transition-all duration-200 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed",
+                !canScrollRight && "hidden"
+              )}
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
+
+        {/* Scrollable Container */}
+        <div
+          ref={scrollContainerRef}
+          className={`flex gap-6 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth px-4 py-4 cursor-grab active:cursor-grabbing select-none min-h-[280px] ${!isDragging ? 'snap-x snap-mandatory' : ''}`}
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {products.map((product, index) => {
           if (!product.item) return null;
 
           const daysRemaining = product.daysRemaining || 0;
@@ -208,9 +513,12 @@ export default function FlashSaleSection() {
             : null;
 
           return (
-            <div key={`${product.id}-${product.itemId}`} className="group relative">
+              <div 
+                key={`${product.id}-${product.itemId}`} 
+                className="flash-sale-card group relative flex-shrink-0 w-[400px] snap-start my-2"
+              >
               {/* Electric Border on Hover - Wraps entire card */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 rounded-lg overflow-visible">
+              <div className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 rounded-lg overflow-visible">
                 <ElectricBorder
                   color="#facc15"
                   speed={0.9}
@@ -223,119 +531,124 @@ export default function FlashSaleSection() {
                 </ElectricBorder>
               </div>
               
-              {/* Product Card Content */}
-              <div className="relative rounded-lg border border-gray-800 bg-[#0f0f0f] p-3 transition-all duration-200 z-0">
-                  {/* Top Badge - Days Remaining */}
-                  {daysRemaining > 0 && (
-                    <div className="absolute top-2 right-2 z-10">
-                  <div className="flex items-center gap-1 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                    <Clock className="h-3 w-3" />
-                    <span>{daysRemaining}D</span>
-                  </div>
-                </div>
-              )}
-
-                  {/* Savings Badge */}
-                  {Number(product.savings) > 0 && (
-                    <div className="absolute top-2 left-2 z-10">
-                  <div className="flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                    <TrendingDown className="h-3 w-3" />
-                    <span>ประหยัด {Number(product.savings).toFixed(0)}฿</span>
-                  </div>
-                </div>
-              )}
-
-                  {/* Product Image */}
-                  <div className="relative w-full aspect-square rounded-md overflow-hidden bg-gray-900 mb-2.5">
+                {/* Product Card Content - Grid Layout */}
+                <div className="relative rounded-lg border border-gray-800 bg-[#0f0f0f] transition-all duration-200 z-0 flex flex-col overflow-visible shadow-lg">
+                    {/* Top Row - Image and Details */}
+                    <div className="flex flex-row items-stretch">
+                      {/* Left Section - Product Image (50%) - Square */}
+                      <div className="relative flex-1 w-1/2 aspect-square flex-shrink-0 overflow-hidden bg-gray-900 flex items-center justify-center">
                 {product.image_url ? (
                   <Image
                     src={product.image_url}
                     alt={product.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
+                            sizes="50vw"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500">
-                    <ShoppingCart className="h-8 w-8" />
-                  </div>
+                          <ShoppingCart className="h-12 w-12 text-gray-600" />
                 )}
               </div>
 
-                  {/* Item Name */}
-                  <p className="text-white font-semibold text-sm mb-2 line-clamp-2 min-h-[2.5rem]">
+                      {/* Right Section - Product Details (50%) */}
+                      <div className="flex-1 w-1/2 flex flex-col p-3 min-h-40">
+                        {/* Product Name - Scrollable */}
+                        <div className="mb-2 overflow-hidden relative h-5">
+                          <div className="absolute inset-0 flex items-center w-full">
+                            <p 
+                              className="text-sm font-semibold text-white whitespace-nowrap animate-scroll-text"
+                              style={{
+                                animation: product.item.name.length > 20 
+                                  ? 'scroll-text 8s ease-in-out infinite' 
+                                  : 'none'
+                              }}
+                            >
                     {product.item.name}
                   </p>
+                          </div>
+                        </div>
 
-                  {/* Price Section */}
-                  <div className="mb-2.5 space-y-1">
-                <div className="flex items-baseline gap-1">
-                  <p className="text-xl font-bold text-orange-400">
-                    {Number(product.item.price).toFixed(0)}
+                        {/* Original Price */}
+                        {Number(product.item.originalPrice) > Number(product.item.price) && (
+                          <p className="text-xs text-gray-400 line-through mb-1">
+                            ฿{Number(product.item.originalPrice).toFixed(0)}
                   </p>
-                  <span className="text-xl font-bold text-orange-400">฿</span>
+                        )}
+
+                        {/* Savings Badge */}
+                        {Number(product.savings) > 0 && (
+                          <div className="mb-1">
+                            <div className="inline-flex items-center gap-1 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded">
+                              <TrendingDown className="h-3 w-3" />
+                              <span>SAVE ฿{Number(product.savings).toFixed(2)}</span>
                 </div>
-                {Number(product.item.originalPrice) > Number(product.item.price) && (
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-gray-500 line-through">{Number(product.item.originalPrice).toFixed(0)} ฿</p>
-                    <span className="text-[10px] text-red-400 font-semibold">
-                      -{Math.round((1 - Number(product.item.price) / Number(product.item.originalPrice)) * 100)}%
-                    </span>
                   </div>
                 )}
+
+                        {/* Flash Sale Price */}
+                        <div className="mb-1">
+                          <p className="text-2xl font-bold text-white">
+                            ฿{Number(product.item.price).toFixed(2)}
+                          </p>
               </div>
 
-                  {/* Quantity Progress Bar */}
-                  {product.quantityRemaining !== null && product.maxQuantity && (
-                    <div className="mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                      <Package className="h-3 w-3" />
-                      <span>เหลือ {product.quantityRemaining} ชิ้น</span>
+                        {/* Sales Progress Section - Always show */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Flame className="h-3 w-3 text-red-500 flex-shrink-0" />
+                            <span className="text-white text-xs font-semibold">ใกล้แล้ว</span>
+                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                              {product.maxQuantity 
+                                ? `${product.quantitySold || 0}/${product.maxQuantity} sold`
+                                : `${product.totalSold || 0} sold`
+                              }
+                            </span>
                     </div>
-                    <span className="text-[10px] text-gray-500">{Math.round(quantityPercent || 0)}%</span>
-                  </div>
-                  <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-orange-500 rounded-full transition-all duration-300"
-                      style={{ width: `${quantityPercent}%` }}
+                              className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full transition-all duration-300"
+                              style={{ width: `${quantityPercent !== null ? quantityPercent : 0}%` }}
                     />
                   </div>
                 </div>
-              )}
-
-                  {/* Days Remaining */}
-                  {product.daysRemaining !== null && (
-                    <div className="mb-2 flex items-center gap-1 text-[10px] text-gray-400">
-                      <Clock className="h-3 w-3" />
-                      <span>เหลือเวลา {product.daysRemaining} วัน</span>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Buy Button */}
+                    {/* Middle Section - Time Remaining (Full Width) */}
+                    <div className="bg-orange-600/30 p-2 border-t border-gray-800 border-b border-gray-800 flex flex-col items-center justify-center text-center">
+                      <p className="text-white text-[10px] mb-0.5">เหลือเวลาอีก</p>
+                      <p className="text-lg font-bold text-green-400">
+                        {product.daysRemaining !== null && product.daysRemaining > 0 
+                          ? `${product.daysRemaining} วัน`
+                          : '0 วัน'
+                        }
+                      </p>
+                    </div>
+
+                    {/* Bottom Section - Buy Button */}
+                    <div className="flex flex-col">
+                      {/* Buy Button Section */}
+                      <div className="flex flex-col justify-center p-2">
                   <Button
                 onClick={() => handleBuy(product.key)}
                 size="sm"
                 disabled={product.quantityRemaining !== null && product.quantityRemaining <= 0}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm py-2 h-9 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-xs py-2 h-8 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
               >
-                <ShoppingCart className="mr-1.5 h-4 w-4" />
-                {product.quantityRemaining !== null && product.quantityRemaining <= 0 ? 'หมดแล้ว' : 'ซื้อเลย'}
+                          <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />
+                          {product.quantityRemaining !== null && product.quantityRemaining <= 0 ? 'หมดแล้ว' : 'ซื้อเลย!'}
               </Button>
-
-                  {/* Stats Footer */}
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
-                    {product.totalSold > 0 && (
-                      <span>{product.totalSold} คนซื้อ</span>
-                    )}
-                    {product.todaySold > 0 && (
-                      <span className="text-orange-400">{product.todaySold} คนวันนี้</span>
-                    )}
+                        {/* Daily Sales Count */}
+                        <p className="text-center text-[10px] text-white mt-1">
+                          {product.todaySold || 0} คนซื้อไปแล้ววันนี้
+                        </p>
+                      </div>
                   </div>
                 </div>
             </div>
           );
         })}
+          </div>
         </div>
         </div>
       </section>

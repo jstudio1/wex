@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { logOrderToDiscord } from '@/lib/discord';
 import { createCashcardOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
+import { validateCoupon } from '@/lib/coupons';
 import { z } from 'zod';
 
 const FALLBACK_BASE =
@@ -152,29 +153,22 @@ export async function POST(req: Request) {
     let couponDiscount = 0;
     if (coupon_code) {
       try {
-        const couponRes = await fetch(`${req.url.split('/api/cashcard/wepay/orders')[0]}/api/coupons/validate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: coupon_code, total_amount: itemPrice })
-        });
-        if (couponRes.ok) {
-          const couponData = await couponRes.json();
-          if (couponData.coupon) {
-            finalPrice = couponData.coupon.final_amount;
-            couponDiscount = itemPrice - finalPrice;
-            // อัพเดท used_count ของ coupon
-            const { data: currentCoupon } = await sb
+        const couponResult = await validateCoupon(coupon_code, itemPrice);
+        if (couponResult.valid && couponResult.coupon) {
+          finalPrice = couponResult.coupon.final_amount;
+          couponDiscount = itemPrice - finalPrice;
+          // อัพเดท used_count ของ coupon
+          const { data: currentCoupon } = await sb
+            .from('coupons')
+            .select('used_count')
+            .eq('code', coupon_code.toUpperCase())
+            .single();
+          
+          if (currentCoupon) {
+            await sb
               .from('coupons')
-              .select('used_count')
-              .eq('code', coupon_code)
-              .single();
-            
-            if (currentCoupon) {
-              await sb
-                .from('coupons')
-                .update({ used_count: Number(currentCoupon.used_count || 0) + 1 })
-                .eq('code', coupon_code);
-            }
+              .update({ used_count: Number(currentCoupon.used_count || 0) + 1 })
+              .eq('code', coupon_code.toUpperCase());
           }
         }
       } catch (err) {

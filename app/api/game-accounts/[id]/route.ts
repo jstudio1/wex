@@ -9,6 +9,7 @@ const updateGameAccountSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional().nullable(),
   cover_image_url: z.string().optional().nullable(),
+  banner_image_url: z.string().url().optional().nullable(),
   additional_images: z.array(z.string()).optional(),
   username: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
@@ -109,6 +110,7 @@ export async function PUT(
     if (validated.title !== undefined) updateData.title = validated.title;
     if (validated.description !== undefined) updateData.description = validated.description;
     if (validated.cover_image_url !== undefined) updateData.cover_image_url = validated.cover_image_url;
+    if (validated.banner_image_url !== undefined) updateData.banner_image_url = validated.banner_image_url;
     if (validated.additional_images !== undefined) updateData.additional_images = validated.additional_images;
     if (validated.username !== undefined) updateData.username = validated.username;
     if (validated.password !== undefined) updateData.password = validated.password;

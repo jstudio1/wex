@@ -3,6 +3,34 @@ import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
 import { slugify } from '@/lib/blog';
 
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const admin = await requireAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const sb = createServiceClient();
+
+    const { data: category, error } = await sb
+      .from('blog_categories')
+      .select('*')
+      .eq('id', parseInt(id))
+      .single();
+
+    if (error) {
+      console.error('[admin][blog][category] get error:', error);
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ category });
+  } catch (error: any) {
+    console.error('[admin][blog][category] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdmin();

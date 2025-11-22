@@ -393,12 +393,21 @@ export default function ProductDetailPage() {
       
       // Check if unauthorized
       if (res.status === 401) {
-        const json = await res.json().catch(() => ({}));
+        const contentType = res.headers.get('content-type');
+        const json = contentType?.includes('application/json') 
+          ? await res.json().catch(() => ({}))
+          : {};
         if (json.error === 'unauthorized' || res.status === 401) {
           setSubmitting(false);
           openLoginDialog();
           return;
         }
+      }
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
       }
       
       const json = await res.json();

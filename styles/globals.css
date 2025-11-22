@@ -727,5 +727,33 @@ main {
   }
 }
 
+/* Scroll text animation for product names */
+@keyframes scroll-text {
+  0%, 20% {
+    transform: translateX(0);
+  }
+  40%, 60% {
+    transform: translateX(calc(-100% + 200px));
+  }
+  80%, 100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll-text {
+  animation: scroll-text 8s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Only animate if text is longer than container */
+.flash-sale-card:has(.animate-scroll-text) .animate-scroll-text {
+  animation: scroll-text 8s ease-in-out infinite;
+}
+
+/* Pause scroll on hover */
+.group:hover .animate-scroll-text {
+  animation-play-state: paused;
+}
+
 
 

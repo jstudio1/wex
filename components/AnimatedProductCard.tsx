@@ -64,11 +64,17 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
   const { ref, isVisible } = noAnimation ? { ref: null, isVisible: true } : scrollAnimation;
   const manualPercent = typeof p.badge?.percent === 'number' ? Math.round(Number(p.badge?.percent)) : null;
   const manualText = p.badge?.text?.trim();
-  const badgeText = manualText && manualText.length
-    ? manualText
-    : manualPercent != null && manualPercent > 0
-      ? `${manualPercent}% OFF`
-      : null;
+  // แสดงทั้งข้อความป้ายและเปอร์เซ็นต์ลดใน badge เดียวกัน
+  const badgeDisplayText = (() => {
+    const parts: string[] = [];
+    if (manualText && manualText.length) {
+      parts.push(manualText);
+    }
+    if (manualPercent != null && manualPercent > 0) {
+      parts.push(`ลด ${manualPercent}%`);
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  })();
   const recommendedItem = p.items?.find(item => item.is_recommended === true);
   
   return (
@@ -102,11 +108,11 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
               <span className="text-xs text-gray-500 text-center px-2">ไม่มีรูป</span>
             </div>
           )}
-          {badgeText && (
-            <div className="absolute -bottom-2 left-2 flex flex-col gap-1.5">
-              <Badge variant="destructive" className="shadow-md gap-1">
+          {badgeDisplayText && (
+            <div className="absolute bottom-2 left-2 flex flex-col gap-1.5 z-10">
+              <Badge variant="destructive" className="shadow-md gap-1 h-5 min-w-fit">
                 <Zap className="h-3 w-3" />
-                <span className="font-semibold whitespace-nowrap">{badgeText}</span>
+                <span className="font-semibold whitespace-nowrap text-xs">{badgeDisplayText}</span>
               </Badge>
               {(flashStart || flashEnd) && (
                 <CountdownBadge flashStart={flashStart} flashEnd={flashEnd} />

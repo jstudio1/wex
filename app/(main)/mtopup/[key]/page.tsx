@@ -294,6 +294,13 @@ export default function MtopupDetailPage() {
           coupon_code: couponData?.code || undefined
         })
       });
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+      }
+      
       const json = await res.json();
       if (!res.ok) {
         if (json?.error === 'provider_error' || res.status === 502) {

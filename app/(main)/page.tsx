@@ -3,6 +3,42 @@ import Image from 'next/image';
 import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
 import { ChevronRight, Users, PackageCheck, AppWindow, Gamepad2, CreditCard, User } from 'lucide-react';
+
+const CashcardCarouselSection = dynamicImport(() => import('@/components/CashcardCarouselSection'), {
+  loading: () => (
+    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+      <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
+    </section>
+  ),
+  ssr: false,
+});
+
+const GtopupCarouselSection = dynamicImport(() => import('@/components/GtopupCarouselSection'), {
+  loading: () => (
+    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+      <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
+    </section>
+  ),
+  ssr: false,
+});
+
+const GameAccountsBannerSection = dynamicImport(() => import('@/components/GameAccountsBannerSection'), {
+  loading: () => (
+    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+      <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
+    </section>
+  ),
+  ssr: false,
+});
+
+const RecommendMenuSection = dynamicImport(() => import('@/components/RecommendMenuSection'), {
+  loading: () => (
+    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
+      <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
+    </section>
+  ),
+  ssr: false,
+});
 import { cache } from 'react';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
@@ -111,11 +147,12 @@ const getGameAccounts = cache(async (limit: number = 12) => {
   try {
     const sb = createServiceClient();
     
-    // Fetch game accounts
+    // Fetch game accounts with banner images
     const { data: accounts, error: accountsError } = await sb
       .from('game_accounts')
-      .select('id, game_name, title, cover_image_url, price, original_price, is_published')
+      .select('id, game_name, title, cover_image_url, banner_image_url, price, original_price, is_published')
       .eq('is_published', true)
+      .not('banner_image_url', 'is', null)
       .order('created_at', { ascending: false })
       .limit(limit);
     
@@ -132,9 +169,10 @@ const getGameAccounts = cache(async (limit: number = 12) => {
       id: account.id,
       name: account.title || account.game_name,
       image_url: account.cover_image_url,
+      banner_image_url: account.banner_image_url,
       price: Number(account.price || 0),
       originalPrice: Number(account.original_price || account.price || 0),
-    })).filter((a: any) => a.price > 0);
+    })).filter((a: any) => a.banner_image_url);
   } catch (error) {
     console.error('Error fetching game accounts:', error);
     return [];
@@ -146,14 +184,15 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
     const sb = createServiceClient();
     const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
     
-    // Fetch products
+    // Fetch products - เรียงตาม badge_enabled ก่อน (true มาก่อน), แล้วค่อยเรียงตาม id
     const { data: products, error: productsError } = await sb
       .from('products')
       .select('id, name, key, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price')
       .eq('is_published', true)
       .eq('product_type', productType)
+      .order('badge_enabled', { ascending: false }) // badge_enabled = true มาก่อน
       .order('id', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // ดึงมากกว่า limit เพื่อให้มีสินค้าที่มี badge เพียงพอ
     
     if (productsError || !products) {
       console.error(`Error fetching ${productType} products:`, productsError);
@@ -225,6 +264,12 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
         badge_percent: p.badge_percent,
         badge_text: p.badge_text,
         badge_apply_price: p.badge_apply_price,
+        badge: p.badge_enabled
+          ? {
+              text: p.badge_text as string | null,
+              percent: p.badge_percent as number | null,
+            }
+          : null,
         item: recommendedItem || null,
         totalSold: countByProduct.get(p.id) || 0,
       };
@@ -375,6 +420,11 @@ async function HomeServer() {
         </div>
       </div>
 
+      {/* Recommend Menu Section - Under Hero Banner */}
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
+        <RecommendMenuSection />
+      </div>
+
       <main className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 space-y-12 relative">
         {/* Flash Sale Section */}
         <FlashSaleSection />
@@ -432,7 +482,17 @@ async function HomeServer() {
             }))
           );
           
-          return allPremiumProducts.length > 0 ? (
+          // Shuffle array randomly (Fisher-Yates shuffle)
+          const shuffledProducts = [...allPremiumProducts];
+          for (let i = shuffledProducts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+          }
+          
+          // Limit to 12 products (2 rows x 6 columns)
+          const displayProducts = shuffledProducts.slice(0, 12);
+          
+          return displayProducts.length > 0 ? (
             <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -454,7 +514,7 @@ async function HomeServer() {
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                {allPremiumProducts.map((product: any, index: number) => (
+                {displayProducts.map((product: any, index: number) => (
                     <Link 
                       key={product.id} 
                       href={`/premium-app/${product.id}`} 
@@ -534,212 +594,46 @@ async function HomeServer() {
 
 
         {/* 2. Gtopup (เติมเกม) Section */}
-        {gtopupProducts.length > 0 && (
-          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 shadow-md">
-                  <Gamepad2 className="h-6 w-6 text-white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">เติมเกม</h2>
-                  <p className="text-sm text-gray-400">Game Top-up</p>
-                </div>
-              </div>
-              <Link 
-                href="/products" 
-                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-              >
-                ดูทั้งหมด
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-              {gtopupProducts.map((product: any, index: number) => (
-                <Link 
-                  key={product.id} 
-                  href={`/products/${product.key}`} 
-                  className="group block h-full"
-                  prefetch={index < 6}
-                >
-                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
-                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
-                      {product.image_url ? (
-                        <Image 
-                          src={product.image_url} 
-                          alt={product.name} 
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
-                          loading={index < 6 ? 'eager' : 'lazy'}
-                          priority={index < 3}
-                        />
-                      ) : (
-                        <Gamepad2 className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
-                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
-                        {product.name}
-                      </p>
-                      {product.item && (
-                        <div className="mt-auto text-center">
-                          <p className="text-lg sm:text-xl font-bold text-emerald-400">
-                            {Number(product.item.price).toFixed(0)} ฿
-                          </p>
-                          {Number(product.item.originalPrice) > Number(product.item.price) && (
-                            <p className="text-xs text-gray-500 line-through">
-                              {Number(product.item.originalPrice).toFixed(0)} ฿
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        {(() => {
+          // แยกสินค้าที่มี badge_enabled (มีโปรโมชั่น) กับไม่มี
+          const productsWithBadge = gtopupProducts.filter((p: any) => p.badge_enabled === true);
+          const productsWithoutBadge = gtopupProducts.filter((p: any) => !p.badge_enabled || p.badge_enabled === false);
+          
+          // สุ่มสินค้าที่มี badge
+          const shuffledWithBadge = [...productsWithBadge];
+          for (let i = shuffledWithBadge.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledWithBadge[i], shuffledWithBadge[j]] = [shuffledWithBadge[j], shuffledWithBadge[i]];
+          }
+          
+          // สุ่มสินค้าที่ไม่มี badge
+          const shuffledWithoutBadge = [...productsWithoutBadge];
+          for (let i = shuffledWithoutBadge.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledWithoutBadge[i], shuffledWithoutBadge[j]] = [shuffledWithoutBadge[j], shuffledWithoutBadge[i]];
+          }
+          
+          // รวมกัน โดยสินค้าที่มี badge มาก่อนเสมอ
+          // เอา badge มาก่อน (สูงสุด 12 อัน), ถ้าไม่พอค่อยเอาไม่มี badge มาเติม
+          const maxWithBadge = Math.min(shuffledWithBadge.length, 12);
+          const remainingSlots = 12 - maxWithBadge;
+          const displayProducts = [
+            ...shuffledWithBadge.slice(0, maxWithBadge),
+            ...shuffledWithoutBadge.slice(0, remainingSlots)
+          ];
+          
+          return displayProducts.length > 0 ? (
+            <GtopupCarouselSection products={displayProducts} />
+          ) : null;
+        })()}
 
         {/* 3. Cashcard (บัตรเติมเงิน) Section */}
         {cashcardProducts.length > 0 && (
-          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 shadow-md">
-                  <CreditCard className="h-6 w-6 text-white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">บัตรเติมเงิน</h2>
-                  <p className="text-sm text-gray-400">Cash Card</p>
-                </div>
-              </div>
-              <Link 
-                href="/cashcard" 
-                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-              >
-                ดูทั้งหมด
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-              {cashcardProducts.map((product: any, index: number) => (
-                <Link 
-                  key={product.id} 
-                  href={`/cashcard/${product.key}`} 
-                  className="group block h-full"
-                  prefetch={index < 6}
-                >
-                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
-                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
-                      {product.image_url ? (
-                        <Image 
-                          src={product.image_url} 
-                          alt={product.name} 
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
-                          loading={index < 6 ? 'eager' : 'lazy'}
-                          priority={index < 3}
-                        />
-                      ) : (
-                        <CreditCard className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
-                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
-                        {product.name}
-                      </p>
-                      {product.item && (
-                        <div className="mt-auto text-center">
-                          <p className="text-lg sm:text-xl font-bold text-emerald-400">
-                            {Number(product.item.price).toFixed(0)} ฿
-                          </p>
-                          {Number(product.item.originalPrice) > Number(product.item.price) && (
-                            <p className="text-xs text-gray-500 line-through">
-                              {Number(product.item.originalPrice).toFixed(0)} ฿
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
+          <CashcardCarouselSection products={cashcardProducts} />
         )}
 
         {/* 4. Game Accounts (ไอดีเกมส์) Section */}
-        {gameAccountProducts.length > 0 && (
-          <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-amber-600 to-amber-700 shadow-md">
-                  <User className="h-6 w-6 text-white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">ไอดีเกมส์</h2>
-                  <p className="text-sm text-gray-400">Game Accounts</p>
-                </div>
-              </div>
-              <Link 
-                href="/games" 
-                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
-              >
-                ดูทั้งหมด
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-              {gameAccountProducts.map((account: any, index: number) => (
-                <Link 
-                  key={account.id} 
-                  href={`/games/${account.id}`} 
-                  className="group block h-full"
-                  prefetch={index < 6}
-                >
-                  <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
-                    <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
-                      {account.image_url ? (
-                        <Image 
-                          src={account.image_url} 
-                          alt={account.name} 
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105" 
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
-                          loading={index < 6 ? 'eager' : 'lazy'}
-                          priority={index < 3}
-                        />
-                      ) : (
-                        <User className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
-                      <p className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center">
-                        {account.name}
-                      </p>
-                      <div className="mt-auto text-center">
-                        <p className="text-lg sm:text-xl font-bold text-emerald-400">
-                          {Number(account.price).toFixed(0)} ฿
-                        </p>
-                        {Number(account.originalPrice) > Number(account.price) && (
-                          <p className="text-xs text-gray-500 line-through">
-                            {Number(account.originalPrice).toFixed(0)} ฿
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <GameAccountsBannerSection />
 
         {/* 5. News Section (ข่าวสาร) */}
         <NewsSection />

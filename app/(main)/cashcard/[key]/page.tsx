@@ -205,6 +205,13 @@ export default function CashcardDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: trimmedCode, total_amount: selectedPrice }),
       });
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+      }
+      
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json.message || json.error || 'ไม่สามารถใช้คูปองนี้ได้');
@@ -246,6 +253,13 @@ export default function CashcardDetailPage() {
           coupon_code: couponData?.code || undefined
         })
       });
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+      }
+      
       const json = await res.json();
       if (!res.ok) {
         if (json?.error === 'provider_error' || res.status === 502) {

@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
 import { createGtopupOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
+import { validateCoupon } from '@/lib/coupons';
 import { z } from 'zod';
 
 const FALLBACK_BASE =
