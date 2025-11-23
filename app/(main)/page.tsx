@@ -64,7 +64,13 @@ const FlashSaleSection = dynamicImport(() => import('@/components/FlashSaleSecti
 
 const getSite = cache(async () => {
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { next: { revalidate: 120, tags: ['site'] } });
+  const res = await fetch(`${base}/api/site`, { 
+    next: { revalidate: 0, tags: ['site'] },
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    }
+  });
   return res.ok ? res.json() : { title: 'เติมเกม ง่าย รวดเร็ว', subtitle: 'เลือกเกมยอดนิยมและเริ่มสั่งซื้อได้ทันที', posters: [] };
 });
 
@@ -406,16 +412,29 @@ async function HomeServer() {
       <div className="relative">
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
           <div className="rounded-2xl overflow-hidden shadow-xl">
-            <div className="relative w-full" style={{ aspectRatio: '3264/1173' }}>
-              <Image
-                src="https://www.overzoneshop.com/img/slide/20251105_051454.jpg"
-                alt="Overzone Shop - เติมเกม ผ่อนได้เกม"
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 1600px) 100vw, 1600px"
-              />
-            </div>
+            {site.posters && site.posters.length > 0 ? (
+              <div className="relative w-full" style={{ aspectRatio: '16/6' }}>
+                <Image
+                  src={site.posters[0]}
+                  alt={site.title || 'Overzone Shop - เติมเกม ผ่อนได้เกม'}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, (max-width: 1600px) 1600px, 1600px"
+                />
+              </div>
+            ) : (
+              <div className="relative w-full bg-gradient-to-r from-gray-800 to-gray-900" style={{ aspectRatio: '16/6' }}>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <p className="text-gray-300 text-base font-medium">Banner Image ขนาดที่แนะนำ</p>
+                    <p className="text-gray-400 text-sm">ขนาดมาตรฐาน: 1920 x 720 px (16:6)</p>
+                    <p className="text-gray-500 text-xs">ขนาดสำหรับ Retina: 3840 x 1440 px (2x)</p>
+                    <p className="text-gray-500 text-xs mt-2">Container สูงสุด: 1600px กว้าง</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

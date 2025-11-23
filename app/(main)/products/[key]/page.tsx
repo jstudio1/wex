@@ -610,8 +610,8 @@ export default function ProductDetailPage() {
                   
                   return (
                     <div key={it.id} className="relative h-full">
-                      <button 
-                        onClick={() => setSku(it.sku)} 
+                  <button 
+                    onClick={() => setSku(it.sku)} 
                         className={`relative rounded-xl border-2 transition-all duration-200 overflow-visible group cursor-pointer h-full flex flex-col w-full ${
                           isSelected 
                             ? isFlashsale
@@ -644,54 +644,54 @@ export default function ProductDetailPage() {
                               แฟลชเซล
                             </Badge>
                           </div>
-                        )}
-                        
+                    )}
+                    
                         {/* Recommended Badge */}
                         {it.is_recommended && !isFlashsale && (
-                          <div className="absolute top-2 right-2 z-10">
-                            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-md">
-                              <Star className="size-3 mr-0.5" fill="currentColor" />
-                              แนะนำ
-                            </Badge>
-                          </div>
-                        )}
-                        
+                      <div className="absolute top-2 right-2 z-10">
+                        <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-md">
+                          <Star className="size-3 mr-0.5" fill="currentColor" />
+                          แนะนำ
+                        </Badge>
+                      </div>
+                    )}
+                    
                         {/* Content Section */}
                         <div className="p-4 bg-[#0a0a0a] flex flex-col flex-1 relative z-10 rounded-xl">
                           {/* Icon */}
                           <div className="flex items-center justify-center mb-3 flex-shrink-0">
-                            {getCurrencyIcon(it.name, it.icon_url, 'lg')}
-                          </div>
-                          
+                      {getCurrencyIcon(it.name, it.icon_url, 'lg')}
+                    </div>
+                    
                           {/* Name - ใช้ min-height และ line-clamp เพื่อให้การ์ดทั้งหมดสูงเท่ากัน */}
                           <div className="text-sm font-medium text-white mb-3 text-center min-h-[60px] flex items-center justify-center leading-tight">
                             <span className="line-clamp-3">{it.name}</span>
-                          </div>
-                          
+                      </div>
+                      
                           {/* Price Section - ใช้ mt-auto เพื่อให้อยู่ด้านล่าง */}
                           <div className="flex flex-col items-center gap-1.5 mt-auto">
                             <span className="text-2xl font-bold text-emerald-500 tabular-nums">
                               {Number(it.price).toFixed(2)}฿
                             </span>
-                            {(() => {
-                              // ถ้ามี original_price_for_permission แสดงว่าเป็น custom price จากสิทธิ์
-                              if (it.original_price_for_permission) {
-                                return (
-                                  <span className="text-xs text-gray-400 line-through tabular-nums">
-                                    {Number(it.original_price_for_permission).toFixed(2)}฿
-                                  </span>
-                                );
-                              }
-                              // ถ้าไม่มี custom price แต่ originalPrice มากกว่า price ให้แสดง
-                              if (Number(it.originalPrice) > Number(it.price)) {
-                                return (
-                                  <span className="text-xs text-gray-400 line-through tabular-nums">
-                                    {Number(it.originalPrice).toFixed(2)}฿
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
+                        {(() => {
+                          // ถ้ามี original_price_for_permission แสดงว่าเป็น custom price จากสิทธิ์
+                          if (it.original_price_for_permission) {
+                            return (
+                              <span className="text-xs text-gray-400 line-through tabular-nums">
+                                {Number(it.original_price_for_permission).toFixed(2)}฿
+                              </span>
+                            );
+                          }
+                          // ถ้าไม่มี custom price แต่ originalPrice มากกว่า price ให้แสดง
+                          if (Number(it.originalPrice) > Number(it.price)) {
+                            return (
+                              <span className="text-xs text-gray-400 line-through tabular-nums">
+                                {Number(it.originalPrice).toFixed(2)}฿
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                             
                             {/* แสดงจำนวนคงเหลือสำหรับ flash sale */}
                             {isFlashsale && it.quantity_remaining !== null && it.quantity_remaining !== undefined && (
@@ -701,9 +701,9 @@ export default function ProductDetailPage() {
                                 </span>
                               </div>
                             )}
-                          </div>
-                        </div>
-                      </button>
+                      </div>
+                    </div>
+                  </button>
                     </div>
                   );
                 })}
