@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
-import { createGtopupOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
+import { createGtopupOrder, generateDestRef, WepayError, getWepayServiceInfo } from '@/lib/providers/wepay';
 import { validateCoupon } from '@/lib/coupons';
 import { z } from 'zod';
 
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
     // ดึง item จาก database
     const { data: item, error: itemError } = await sb
       .from('product_items')
-      .select('id, name, sku, price, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
+      .select('id, name, sku, price, original_price, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
       .eq('product_id', product.id)
       .eq('sku', item_sku)
       .maybeSingle();
@@ -186,10 +186,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // ใช้ flashsale_price ถ้ามี, ไม่งั้นใช้ราคาปกติ
+    // ใช้ flashsale_price ถ้ามี, ไม่งั้นใช้ราคาปกติ (สำหรับการคำนวณราคาที่ขาย)
     const itemPrice = item.is_flashsale && item.flashsale_price 
       ? Number(item.flashsale_price) 
       : Number(item.price || 0);
+    
+    // จำนวนเงินที่แท้จริงที่จะเติม (face value) - ใช้ original_price ถ้ามี, ไม่งั้นใช้ price
+    const faceValue = Number((item as any).original_price || item.price || 0);
 
     // ตรวจสอบและคำนวณ coupon ถ้ามี
     let finalPrice = itemPrice;
@@ -266,11 +269,68 @@ export async function POST(req: Request) {
       }, { status: 500 });
     }
 
+    // Validate จำนวนเงินกับ wePAY service info (ถ้าดึงได้)
+    let serviceInfo = null;
+    try {
+      serviceInfo = await getWepayServiceInfo('gtopup', providerCompanyId);
+      
+      // ตรวจสอบ sof_defined_amounts (ถ้ามี) - ใช้ faceValue (จำนวนเงินที่แท้จริงที่จะเติม)
+      if (serviceInfo?.sof_defined_amounts && Array.isArray(serviceInfo.sof_defined_amounts) && serviceInfo.sof_defined_amounts.length > 0) {
+        const definedAmounts = serviceInfo.sof_defined_amounts.map(a => Number(a));
+        const faceValueNum = Number(faceValue);
+        
+        // ตรวจสอบว่า faceValue ตรงกับ defined amounts หรือไม่ (ใช้ tolerance เล็กน้อย)
+        const isMatch = definedAmounts.some(amount => Math.abs(amount - faceValueNum) < 0.01);
+        
+        if (!isMatch) {
+          await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
+          return NextResponse.json({
+            error: 'invalid_amount',
+            detail: `จำนวนเงิน ${faceValue} ไม่ถูกต้อง สำหรับ ${providerCompanyId} ต้องเป็น: ${definedAmounts.join(', ')} บาท`
+          }, { status: 400 });
+        }
+      }
+      
+      // ตรวจสอบ sof_min และ sof_max (ถ้ามี) - ใช้ faceValue
+      if (serviceInfo?.sof_min != null || serviceInfo?.sof_max != null) {
+        const faceValueNum = Number(faceValue);
+        const minAmount = serviceInfo.sof_min != null ? Number(serviceInfo.sof_min) : null;
+        const maxAmount = serviceInfo.sof_max != null ? Number(serviceInfo.sof_max) : null;
+        
+        if ((minAmount != null && faceValueNum < minAmount) || (maxAmount != null && faceValueNum > maxAmount)) {
+          await sb.rpc('wallet_credit', { u: user.id, amt: finalPrice });
+          const rangeText = minAmount != null && maxAmount != null 
+            ? `${minAmount} - ${maxAmount} บาท`
+            : minAmount != null 
+              ? `อย่างน้อย ${minAmount} บาท`
+              : `ไม่เกิน ${maxAmount} บาท`;
+          return NextResponse.json({
+            error: 'invalid_amount',
+            detail: `จำนวนเงิน ${faceValue} ไม่ถูกต้อง สำหรับ ${providerCompanyId} ต้องอยู่ในช่วง ${rangeText}`
+          }, { status: 400 });
+        }
+      }
+    } catch (serviceInfoError) {
+      // ถ้าดึง service info ไม่ได้ ให้ข้าม validation (ไม่ throw error)
+      console.warn('[orders] Failed to get wePAY service info for validation:', serviceInfoError);
+    }
+
     let upstreamOrder;
     try {
+      // ส่ง faceValue (original_price - ราคาแบบไม่หักส่วนลดตัวแทน) ไปที่ wePAY
+      // ตามเอกสาร wePAY: pay_to_amount ต้องเป็นจำนวนเงินที่แท้จริงที่จะเติม (ไม่ใช่ราคาหลังหักส่วนลด)
+      console.log('[orders] Creating wePAY order:', {
+        companyId: providerCompanyId,
+        faceValue: faceValue, // จำนวนเงินที่จะเติม (original_price)
+        itemPrice: itemPrice, // ราคาที่ขาย (ราคาหลังหักส่วนลด)
+        original_price: (item as any).original_price,
+        agent_cost_price: (item as any).agent_cost_price,
+        price: item.price
+      });
+      
       upstreamOrder = await createGtopupOrder({
         companyId: providerCompanyId,
-        amount: itemPrice,
+        amount: faceValue, // ใช้ original_price (ราคาแบบไม่หักส่วนลดตัวแทน)
         ref1: ref1Value,
         respUrl: webhookUrl,
         destRef,

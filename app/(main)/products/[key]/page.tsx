@@ -15,9 +15,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { SpinnerCustom } from '@/components/ui/spinner-custom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Star, Coins, Gem, Sparkles, Gamepad2, Home, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Zap, Star, Coins, Gem, Sparkles, Gamepad2, Home, ShoppingCart, CheckCircle2, Flame } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const FlashSaleCountdown = dynamic(() => import('@/components/FlashSaleCountdown'), { ssr: false });
+import ElectricBorder from '@/components/ElectricBorder';
 import { Progress } from '@/components/ui/progress';
 
 type Detail = {
@@ -27,7 +28,7 @@ type Detail = {
   image_url?: string | null;
   banner_url?: string | null;
   icon_url?: string | null;
-  items: { id: number; name: string; sku: string; price: string; originalPrice: string; original_price_for_permission?: string | null; is_recommended?: boolean; icon_url?: string | null }[];
+  items: { id: number; name: string; sku: string; price: string; originalPrice: string; original_price_for_permission?: string | null; is_recommended?: boolean; icon_url?: string | null; is_flashsale?: boolean; flashsale_price?: string | null; quantity_remaining?: number | null; max_quantity?: number | null }[];
   inputs: { key: string; title: string; regex: string; type: string; placeholder: string; options: { label: string; value: string }[] }[];
   badge?: { text?: string | null; percent?: number | null } | null;
 };
@@ -603,70 +604,109 @@ export default function ProductDetailPage() {
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {data.items.map((it) => (
-                  <button 
-                    key={it.id} 
-                    onClick={() => setSku(it.sku)} 
-                    className={`relative rounded-2xl border-2 transition-all duration-200 overflow-hidden group ${
-                      sku === it.sku 
-                        ? 'border-emerald-600 shadow-lg ring-4 ring-emerald-900/50 scale-[1.02]' 
-                        : 'border-gray-700 bg-[#0a0a0a] hover:border-emerald-500 hover:shadow-md'
-                    }`}
-                  >
-                    {/* Selected Indicator */}
-                    {sku === it.sku && (
-                      <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
-                    )}
-                    
-                    {it.is_recommended && (
-                      <div className="absolute top-2 right-2 z-10">
-                        <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-md">
-                          <Star className="size-3 mr-0.5" fill="currentColor" />
-                          แนะนำ
-                        </Badge>
-                      </div>
-                    )}
-                    
-                    {/* Icon Section */}
-                    <div className={`flex items-center justify-center py-8 px-4 transition-colors ${
-                      sku === it.sku 
-                        ? 'bg-gradient-to-br from-emerald-900/30 to-emerald-800/30' 
-                        : 'bg-gradient-to-br from-gray-800 to-gray-900'
-                    }`}>
-                      {getCurrencyIcon(it.name, it.icon_url, 'lg')}
+                {data.items.map((it) => {
+                  const isFlashsale = it.is_flashsale;
+                  const isSelected = sku === it.sku;
+                  
+                  return (
+                    <div key={it.id} className="relative h-full">
+                      <button 
+                        onClick={() => setSku(it.sku)} 
+                        className={`relative rounded-xl border-2 transition-all duration-200 overflow-visible group cursor-pointer h-full flex flex-col w-full ${
+                          isSelected 
+                            ? isFlashsale
+                              ? 'border-orange-500 shadow-xl shadow-orange-500/20'
+                              : 'border-white shadow-xl'
+                            : isFlashsale
+                              ? 'border-orange-500/50 bg-[#0a0a0a] hover:border-orange-500/80'
+                              : 'border-gray-700 bg-[#0a0a0a] hover:border-gray-600'
+                        }`}
+                      >
+                        {/* Electric Border สำหรับ Flash Sale */}
+                        {isFlashsale && (
+                          <div className="absolute -inset-1 z-0 pointer-events-none overflow-visible rounded-xl">
+                            <ElectricBorder
+                              color="#f97316"
+                              speed={0.9}
+                              chaos={0.3}
+                              thickness={2}
+                              style={{ borderRadius: 12 }}
+                              className="absolute inset-0 w-full h-full overflow-visible"
+                            >
+                              <div className="w-full h-full" />
+                            </ElectricBorder>
+                          </div>
+                        )}
+                        {/* Flash Sale Badge */}
+                        {isFlashsale && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <Badge variant="destructive" className="bg-red-600 text-white border-0 text-xs px-2.5 py-1 shadow-lg">
+                              แฟลชเซล
+                            </Badge>
+                          </div>
+                        )}
+                        
+                        {/* Recommended Badge */}
+                        {it.is_recommended && !isFlashsale && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-md">
+                              <Star className="size-3 mr-0.5" fill="currentColor" />
+                              แนะนำ
+                            </Badge>
+                          </div>
+                        )}
+                        
+                        {/* Content Section */}
+                        <div className="p-4 bg-[#0a0a0a] flex flex-col flex-1 relative z-10 rounded-xl">
+                          {/* Icon */}
+                          <div className="flex items-center justify-center mb-3 flex-shrink-0">
+                            {getCurrencyIcon(it.name, it.icon_url, 'lg')}
+                          </div>
+                          
+                          {/* Name - ใช้ min-height และ line-clamp เพื่อให้การ์ดทั้งหมดสูงเท่ากัน */}
+                          <div className="text-sm font-medium text-white mb-3 text-center min-h-[60px] flex items-center justify-center leading-tight">
+                            <span className="line-clamp-3">{it.name}</span>
+                          </div>
+                          
+                          {/* Price Section - ใช้ mt-auto เพื่อให้อยู่ด้านล่าง */}
+                          <div className="flex flex-col items-center gap-1.5 mt-auto">
+                            <span className="text-2xl font-bold text-emerald-500 tabular-nums">
+                              {Number(it.price).toFixed(2)}฿
+                            </span>
+                            {(() => {
+                              // ถ้ามี original_price_for_permission แสดงว่าเป็น custom price จากสิทธิ์
+                              if (it.original_price_for_permission) {
+                                return (
+                                  <span className="text-xs text-gray-400 line-through tabular-nums">
+                                    {Number(it.original_price_for_permission).toFixed(2)}฿
+                                  </span>
+                                );
+                              }
+                              // ถ้าไม่มี custom price แต่ originalPrice มากกว่า price ให้แสดง
+                              if (Number(it.originalPrice) > Number(it.price)) {
+                                return (
+                                  <span className="text-xs text-gray-400 line-through tabular-nums">
+                                    {Number(it.originalPrice).toFixed(2)}฿
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            
+                            {/* แสดงจำนวนคงเหลือสำหรับ flash sale */}
+                            {isFlashsale && it.quantity_remaining !== null && it.quantity_remaining !== undefined && (
+                              <div className="mt-2 pt-2 border-t border-gray-700 w-full">
+                                <span className="text-xs text-orange-400 font-medium">
+                                  คงเหลือ {it.quantity_remaining} สิทธิ์
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
                     </div>
-                    
-                    {/* Content Section */}
-                    <div className="p-4 text-center bg-[#0a0a0a] relative">
-                      <div className="text-sm font-semibold text-white mb-2">
-                        {it.name}
-                      </div>
-                      
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-xl font-bold text-emerald-500 tabular-nums">{Number(it.price).toFixed(2)}฿</span>
-                        {(() => {
-                          // ถ้ามี original_price_for_permission แสดงว่าเป็น custom price จากสิทธิ์
-                          if (it.original_price_for_permission) {
-                            return (
-                              <span className="text-xs text-gray-400 line-through tabular-nums">
-                                {Number(it.original_price_for_permission).toFixed(2)}฿
-                              </span>
-                            );
-                          }
-                          // ถ้าไม่มี custom price แต่ originalPrice มากกว่า price ให้แสดง
-                          if (Number(it.originalPrice) > Number(it.price)) {
-                            return (
-                              <span className="text-xs text-gray-400 line-through tabular-nums">
-                                {Number(it.originalPrice).toFixed(2)}฿
-                              </span>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </div>

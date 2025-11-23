@@ -137,7 +137,16 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
 
 function ensureSuccess(response: WepayClientResponse) {
   if (!response || response.code !== '00000') {
-    throw new WepayError(response?.code || 'provider_error', response?.message || 'ทำรายการกับ wePAY ไม่สำเร็จ', response);
+    // จัดการ error code 30007 (Invalid Payment Amount) ให้แสดงข้อความที่ชัดเจน
+    if (response.code === '30007') {
+      const desc = response.desc || response.message || 'Invalid Payment Amount';
+      throw new WepayError(
+        response.code,
+        `จำนวนเงินไม่ถูกต้อง: ${desc}. กรุณาตรวจสอบจำนวนเงินที่ต้องการเติม`,
+        response
+      );
+    }
+    throw new WepayError(response?.code || 'provider_error', response?.message || response?.desc || 'ทำรายการกับ wePAY ไม่สำเร็จ', response);
   }
 }
 
@@ -149,10 +158,16 @@ export async function createGtopupOrder(input: {
   respUrl: string;
   destRef: string;
 }): Promise<WepayOrderCreateResponse> {
+  // Format amount: ถ้าเป็นจำนวนเต็มให้ส่งเป็นจำนวนเต็ม, ถ้าเป็นทศนิยมให้ส่งเป็นทศนิยม 2 ตำแหน่ง
+  const amountNum = Number(input.amount || 0);
+  const amountStr = amountNum % 1 === 0 
+    ? String(amountNum) 
+    : amountNum.toFixed(2);
+
   const payload: Record<string, string> = {
     type: 'gtopup',
     pay_to_company: input.companyId,
-    pay_to_amount: Number(input.amount || 0).toFixed(2),
+    pay_to_amount: amountStr,
     pay_to_ref1: input.ref1.trim(),
     resp_url: input.respUrl,
     dest_ref: input.destRef,

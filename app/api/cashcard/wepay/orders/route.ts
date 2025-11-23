@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     // ดึง item จาก database
     const { data: item, error: itemError } = await sb
       .from('product_items')
-      .select('id, name, sku, price')
+      .select('id, name, sku, price, original_price')
       .eq('product_id', product.id)
       .eq('sku', item_sku)
       .maybeSingle();
@@ -146,7 +146,11 @@ export async function POST(req: Request) {
     if (itemError) return NextResponse.json({ error: 'db_error', detail: itemError.message }, { status: 500 });
     if (!item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 });
 
+    // ราคาที่ขาย (สำหรับคำนวณราคาที่ลูกค้าต้องจ่าย)
     const itemPrice = Number(item.price || 0);
+    
+    // จำนวนเงินที่แท้จริงที่จะเติม (face value) - ใช้ original_price ถ้ามี, ไม่งั้นใช้ price
+    const faceValue = Number((item as any).original_price || item.price || 0);
 
     // ตรวจสอบและคำนวณ coupon ถ้ามี
     let finalPrice = itemPrice;
@@ -217,9 +221,19 @@ export async function POST(req: Request) {
 
     let upstreamOrder;
     try {
+      // ส่ง faceValue (original_price - ราคาแบบไม่หักส่วนลดตัวแทน) ไปที่ wePAY
+      // ตามเอกสาร wePAY: pay_to_amount ต้องเป็นจำนวนเงินที่แท้จริงที่จะเติม (ไม่ใช่ราคาหลังหักส่วนลด)
+      console.log('[cashcard wepay] Creating wePAY order:', {
+        companyId: providerCompanyId,
+        faceValue: faceValue, // จำนวนเงินที่จะเติม (original_price)
+        itemPrice: itemPrice, // ราคาที่ขาย (ราคาหลังหักส่วนลด)
+        original_price: (item as any).original_price,
+        price: item.price
+      });
+      
       upstreamOrder = await createCashcardOrder({
         companyId: providerCompanyId,
-        amount: itemPrice,
+        amount: faceValue, // ใช้ original_price (ราคาแบบไม่หักส่วนลดตัวแทน)
         respUrl: webhookUrl,
         destRef,
       });

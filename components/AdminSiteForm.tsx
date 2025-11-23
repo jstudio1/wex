@@ -36,6 +36,7 @@ type SiteData = {
   title: string; 
   subtitle: string; 
   posters: string[]; 
+  gameAccountsBannerUrl?: string;
   premiumAppDisplayMode?: 'list' | 'cards';
   navbarMenus?: {
     home: boolean;
@@ -115,6 +116,7 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     title: '', 
     subtitle: '', 
     posters: [], 
+    gameAccountsBannerUrl: '',
     premiumAppDisplayMode: 'list',
     navbarMenus: {
       home: true,
@@ -219,6 +221,7 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
           title: json.title || '', 
           subtitle: json.subtitle || '', 
           posters: json.posters || [], 
+          gameAccountsBannerUrl: json.gameAccountsBannerUrl || '',
           premiumAppDisplayMode: normalizePremiumAppDisplayMode(json.premiumAppDisplayMode),
           navbarMenus: {
             ...defaultNavbarMenus,
@@ -357,6 +360,7 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
         body: JSON.stringify({
           ...form,
           posters: sanitizedPosters,
+          gameAccountsBannerUrl: form.gameAccountsBannerUrl || '',
           // ไม่ต้องเก็บ 'home' ใน order เพราะหน้าเว็บจะใส่ 'home' ไว้แรกเสมอ
           navbarMenuOrder: extractStorageNavbarOrder(form.navbarMenuOrder),
           navbarMenuLabels: form.navbarMenuLabels,
@@ -573,6 +577,17 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
               }}
             />
             <p className="text-xs text-[color:var(--text)]/50 mt-1">ใส่ URL ของรูปภาพแต่ละบรรทัด (สำหรับ Hero Slider)</p>
+          </div>
+          <div>
+            <Label htmlFor="game-accounts-banner">รูปภาพ Banner สำหรับ Section ไอดีเกมส์ (1920x400 px)</Label>
+            <Input 
+              id="game-accounts-banner"
+              className="mt-1" 
+              value={form.gameAccountsBannerUrl || ''} 
+              onChange={(e) => setForm({ ...form, gameAccountsBannerUrl: e.target.value })} 
+              placeholder="https://example.com/banner.jpg"
+            />
+            <p className="text-xs text-[color:var(--text)]/50 mt-1">ขนาดที่แนะนำ: 1920x400 px (กว้าง x สูง) - สำหรับแสดงบนหน้าแรก Section ไอดีเกมส์</p>
           </div>
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}

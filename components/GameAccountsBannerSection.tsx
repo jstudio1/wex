@@ -26,9 +26,9 @@ export default function GameAccountsBannerSection({ bannerUrl }: GameAccountsBan
         </div>
       </div>
 
-      {/* Banner - Clickable to go to games page */}
+      {/* Banner - Clickable to go to all game accounts page */}
       <Link 
-        href="/games" 
+        href="/accounts" 
         className="group block w-full"
       >
         <div className="relative rounded-xl overflow-hidden shadow-lg shadow-black/20 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-emerald-900/20 cursor-pointer">

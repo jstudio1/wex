@@ -54,7 +54,7 @@ export async function GET(req: Request, { params }: Params) {
     
     const { data: items, error: ierr } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price, public_price, agent_cost_price, agent_discount_percent, markup_percent, markup_fixed, is_recommended, icon_url')
+      .select('id, name, sku, price, original_price, public_price, agent_cost_price, agent_discount_percent, markup_percent, markup_fixed, is_recommended, icon_url, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
       .eq('product_id', productId);
     if (ierr) return NextResponse.json({ error: 'db_error', detail: ierr.message }, { status: 500 });
 
@@ -127,13 +127,61 @@ export async function GET(req: Request, { params }: Params) {
       ? iconUrl.trim() 
       : null;
 
+    // Get orders count for flashsale items (to calculate quantity remaining)
+    const flashsaleItemIds = (items || [])
+      .filter((i: any) => Boolean(i.is_flashsale))
+      .map((i: any) => i.id);
+    
+    const quantitySoldByItem = new Map<number, number>();
+    if (flashsaleItemIds.length > 0) {
+      const { data: orderRows } = await sb
+        .from('orders')
+        .select('item_id, state')
+        .in('item_id', flashsaleItemIds)
+        .in('state', ['completed', 'processing', 'pending']);
+      
+      for (const r of orderRows || []) {
+        const itemId = (r as any).item_id as number;
+        quantitySoldByItem.set(itemId, (quantitySoldByItem.get(itemId) || 0) + 1);
+      }
+    }
+
     // Map items and calculate prices
+    const now = new Date();
     const mappedItems = (items || []).map((i) => {
       const publicPrice = Number((i as any).public_price ?? i.original_price ?? i.price ?? 0);
       const agentCost = Number((i as any).agent_cost_price ?? i.price ?? 0);
       const pct = Number((i as any).markup_percent ?? 0);
       const fix = Number((i as any).markup_fixed ?? 0);
       const computed = computePrice(agentCost, pct, fix, gpct, gfix);
+      
+      // ตรวจสอบว่า item เป็น flashsale และยังอยู่ในช่วงเวลาหรือไม่
+      const isFlashsale = Boolean((i as any).is_flashsale);
+      let isFlashsaleActive = false;
+      
+      if (isFlashsale && (i as any).flashsale_start_date && (i as any).flashsale_duration_days) {
+        const startDate = new Date((i as any).flashsale_start_date);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + Number((i as any).flashsale_duration_days));
+        
+        if (now <= endDate) {
+          // ตรวจสอบจำนวนที่เหลือ (ถ้ามี max_quantity)
+          const maxQuantity = (i as any).flashsale_max_quantity ? Number((i as any).flashsale_max_quantity) : null;
+          if (maxQuantity === null) {
+            isFlashsaleActive = true;
+          } else {
+            // ตรวจสอบจำนวนที่ขายไปแล้ว
+            const quantitySold = quantitySoldByItem.get(i.id) || 0;
+            if (quantitySold < maxQuantity) {
+              isFlashsaleActive = true;
+            }
+          }
+        }
+      }
+      
+      // ใช้ flashsale_price ถ้า item เป็น flashsale และยัง active อยู่
+      const useFlashsalePrice = isFlashsaleActive && (i as any).flashsale_price != null;
+      const flashsalePrice = useFlashsalePrice ? Number((i as any).flashsale_price) : null;
       
       // Check if there's a custom price for this item
       const customPrice = customPricesMap.get(i.id);
@@ -146,10 +194,24 @@ export async function GET(req: Request, { params }: Params) {
         originalPriceForPermission = applyDiscount 
           ? Math.max(0, computed * (1 - (badgePercent as number) / 100))
           : computed;
+      } else if (useFlashsalePrice && flashsalePrice !== null) {
+        // Use flashsale price
+        finalPrice = flashsalePrice;
+        originalPriceForPermission = computed; // เก็บราคาปกติไว้สำหรับแสดง original price
       } else {
         // Use computed price
         finalPrice = applyDiscount ? Math.max(0, computed * (1 - (badgePercent as number) / 100)) : computed;
       }
+      
+      // สำหรับ originalPrice: ถ้าเป็น flashsale ให้ใช้ computed price (ราคาปกติ), ไม่งั้นใช้ publicPrice
+      const displayOriginalPrice = useFlashsalePrice && flashsalePrice !== null 
+        ? computed 
+        : publicPrice;
+      
+      // คำนวณจำนวนคงเหลือสำหรับ flashsale
+      const maxQuantity = (i as any).flashsale_max_quantity ? Number((i as any).flashsale_max_quantity) : null;
+      const quantitySold = isFlashsaleActive ? (quantitySoldByItem.get(i.id) || 0) : 0;
+      const quantityRemaining = maxQuantity !== null ? Math.max(0, maxQuantity - quantitySold) : null;
       
       return {
         id: i.id,
@@ -158,11 +220,15 @@ export async function GET(req: Request, { params }: Params) {
         sku: i.sku,
         price: finalPrice.toFixed(2),
         priceValue: finalPrice, // Keep numeric value for sorting
-        originalPrice: Number.isFinite(publicPrice) ? publicPrice.toFixed(2) : '0.00',
+        originalPrice: Number.isFinite(displayOriginalPrice) ? displayOriginalPrice.toFixed(2) : '0.00',
         agentCost: Number.isFinite(agentCost) ? agentCost.toFixed(2) : '0.00',
         agentDiscountPercent: Number((i as any).agent_discount_percent ?? 0),
         original_price_for_permission: originalPriceForPermission !== null ? originalPriceForPermission.toFixed(2) : null,
-        icon_url: (i as any).icon_url || null
+        icon_url: (i as any).icon_url || null,
+        is_flashsale: isFlashsaleActive, // เพิ่ม flag เพื่อบอกว่าเป็น flashsale
+        flashsale_price: flashsalePrice !== null ? flashsalePrice.toFixed(2) : null, // เก็บราคา flashsale ไว้
+        quantity_remaining: quantityRemaining, // จำนวนคงเหลือ
+        max_quantity: maxQuantity, // จำนวนสูงสุด
       };
     });
 

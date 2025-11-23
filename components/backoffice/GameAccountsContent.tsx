@@ -723,7 +723,7 @@ export default function GameAccountsContent() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="banner_image_url" className="text-sm font-medium text-gray-300 mb-1">
-                      รูปภาพ Banner สำหรับหน้าแรก (1280x720) (URL)
+                      รูปภาพ Banner สำหรับหน้าแรก (1920x400 px) (URL)
                     </Label>
                     <Textarea
                       id="banner_image_url"

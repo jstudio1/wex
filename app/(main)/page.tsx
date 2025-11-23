@@ -633,7 +633,7 @@ async function HomeServer() {
         )}
 
         {/* 4. Game Accounts (ไอดีเกมส์) Section */}
-        <GameAccountsBannerSection />
+        <GameAccountsBannerSection bannerUrl={site.gameAccountsBannerUrl || null} />
 
         {/* 5. News Section (ข่าวสาร) */}
         <NewsSection />

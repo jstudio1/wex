@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // ไม่ cache เลย
+export const fetchCache = 'force-no-store'; // บังคับไม่ให้ cache fetch
 
 export async function GET() {
   try {
@@ -180,7 +182,18 @@ export async function GET() {
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    return NextResponse.json({ data: result });
+    // เพิ่ม headers เพื่อป้องกัน cache
+    return NextResponse.json(
+      { data: result },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      }
+    );
   } catch (error) {
     console.error('[GET /api/products/flashsale] Unexpected error:', error);
     return NextResponse.json({ error: 'unexpected', detail: (error as Error).message }, { status: 500 });

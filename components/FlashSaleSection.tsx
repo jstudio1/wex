@@ -43,24 +43,32 @@ export default function FlashSaleSection() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
   const [velocity, setVelocity] = useState(0);
-  const [lastX, setLastX] = useState(0);
-  const [lastTime, setLastTime] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
   const animationFrameRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const autoScrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isUserInteractingRef = useRef(false);
+  
+  // ใช้ ref แทน state เพื่อลด re-renders และทำให้ smooth ขึ้น
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const lastXRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  const currentXRef = useRef(0);
   const toast = useToast();
   const { openLoginDialog } = useAuthDialog();
 
   useEffect(() => {
     const fetchFlashSale = async () => {
       try {
-        const res = await fetch('/api/products/flashsale', {
+        // เพิ่ม timestamp เพื่อป้องกัน cache ใน production
+        const timestamp = Date.now();
+        const res = await fetch(`/api/products/flashsale?t=${timestamp}`, {
           cache: 'no-store',
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
         });
         if (!res.ok) throw new Error('Failed to fetch flashsale products');
@@ -105,18 +113,28 @@ export default function FlashSaleSection() {
     };
   }, [products]);
 
-  // Auto-scroll functionality
+  // Auto-scroll functionality - หยุดเมื่อผู้ใช้กำลัง drag
   useEffect(() => {
     if (products.length <= 3) return; // Don't auto-scroll if 3 or fewer items
     
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const autoScroll = setInterval(() => {
-    // Card width is w-[400px] = 400px, gap is gap-6 = 24px
-    const cardWidth = 400;
-    const gap = 24;
-    const scrollAmount = (cardWidth + gap) * 3; // Scroll 3 cards at a time
+    // Clear existing interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+    }
+
+    autoScrollIntervalRef.current = setInterval(() => {
+      // หยุด auto-scroll ถ้าผู้ใช้กำลัง drag หรือ interact
+      if (isDragging || isUserInteractingRef.current) {
+        return;
+      }
+      
+      // Card width is w-[400px] = 400px, gap is gap-6 = 24px
+      const cardWidth = 400;
+      const gap = 24;
+      const scrollAmount = (cardWidth + gap) * 3; // Scroll 3 cards at a time
       
       const maxScroll = container.scrollWidth - container.clientWidth;
       const nextScroll = container.scrollLeft + scrollAmount;
@@ -132,8 +150,12 @@ export default function FlashSaleSection() {
       setTimeout(checkScrollPosition, 500);
     }, 4000); // Auto-scroll every 4 seconds
 
-    return () => clearInterval(autoScroll);
-  }, [products]);
+    return () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+      }
+    };
+  }, [products, isDragging]);
 
   const scrollTo = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
@@ -159,16 +181,47 @@ export default function FlashSaleSection() {
       const container = scrollContainerRef.current;
       if (!container) return;
 
-      const animate = () => {
+      isUserInteractingRef.current = true;
+      let lastFrameTime = performance.now();
+
+      const animate = (currentTime: number) => {
         if (!container) return;
         
-        container.scrollLeft -= velocity;
-        setVelocity(velocity * 0.95); // Friction coefficient
+        const deltaTime = (currentTime - lastFrameTime) / 16.67; // Normalize to 60fps
+        lastFrameTime = currentTime;
         
-        if (Math.abs(velocity) > 0.1) {
+        const currentScrollLeft = container.scrollLeft;
+        const newScrollLeft = currentScrollLeft - (velocity * deltaTime);
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        
+        // จำกัดการเลื่อนไม่ให้เกินขอบ
+        if (newScrollLeft < 0) {
+          container.scrollLeft = 0;
+          setVelocity(0);
+          isUserInteractingRef.current = false;
+          checkScrollPosition();
+          return;
+        }
+        
+        if (newScrollLeft > maxScroll) {
+          container.scrollLeft = maxScroll;
+          setVelocity(0);
+          isUserInteractingRef.current = false;
+          checkScrollPosition();
+          return;
+        }
+        
+        // อัพเดท scrollLeft โดยตรง (ไม่ใช้ state เพื่อลด re-renders)
+        container.scrollLeft = newScrollLeft;
+        scrollLeftRef.current = newScrollLeft;
+        const newVelocity = velocity * 0.92; // Friction coefficient
+        setVelocity(newVelocity);
+        
+        if (Math.abs(newVelocity) > 0.1) {
           animationFrameRef.current = requestAnimationFrame(animate);
         } else {
           setVelocity(0);
+          isUserInteractingRef.current = false;
           checkScrollPosition();
         }
       };
@@ -183,30 +236,52 @@ export default function FlashSaleSection() {
     }
   }, [isDragging, velocity]);
 
-  // Continuous smooth scrolling during drag
+  // Continuous smooth scrolling during drag - ใช้ ref เพื่อลด re-renders
   useEffect(() => {
     if (isDragging) {
       const container = scrollContainerRef.current;
       if (!container) return;
 
+      isUserInteractingRef.current = true;
+      let rafId: number | null = null;
+
       const animate = () => {
-        if (!isDragging || !container) return;
+        if (!isDragging || !container) {
+          isUserInteractingRef.current = false;
+          return;
+        }
+        
         const rect = container.getBoundingClientRect();
-        const x = currentX - rect.left;
-        const walk = (x - startX) * 1.2;
-        container.scrollLeft = scrollLeft - walk;
-        animationFrameRef.current = requestAnimationFrame(animate);
+        const x = currentXRef.current - rect.left;
+        const walk = (x - startXRef.current) * 1.2;
+        const newScrollLeft = scrollLeftRef.current - walk;
+        
+        // จำกัดการเลื่อนไม่ให้เกินขอบ
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        const clampedScroll = Math.max(0, Math.min(maxScroll, newScrollLeft));
+        
+        // อัพเดท scrollLeft โดยตรง (ไม่ใช้ state)
+        container.scrollLeft = clampedScroll;
+        scrollLeftRef.current = clampedScroll;
+        
+        rafId = requestAnimationFrame(animate);
+        animationFrameRef.current = rafId;
       };
 
-      animationFrameRef.current = requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
+      animationFrameRef.current = rafId;
 
       return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
         }
+        isUserInteractingRef.current = false;
       };
     }
-  }, [isDragging, currentX, startX, scrollLeft]);
+  }, [isDragging]);
 
   // Drag to scroll functionality with smooth momentum
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -219,14 +294,15 @@ export default function FlashSaleSection() {
       animationFrameRef.current = null;
     }
     
+    isUserInteractingRef.current = true;
     setIsDragging(true);
     setVelocity(0);
     const rect = container.getBoundingClientRect();
-    setStartX(e.pageX - rect.left);
-    setCurrentX(e.pageX);
-    setLastX(e.pageX);
-    setLastTime(Date.now());
-    setScrollLeft(container.scrollLeft);
+    startXRef.current = e.pageX - rect.left;
+    currentXRef.current = e.pageX;
+    lastXRef.current = e.pageX;
+    lastTimeRef.current = Date.now();
+    scrollLeftRef.current = container.scrollLeft;
     container.style.cursor = 'grabbing';
     container.style.userSelect = 'none';
     container.style.scrollBehavior = 'auto';
@@ -251,10 +327,18 @@ export default function FlashSaleSection() {
       if (container) {
         container.style.cursor = 'grab';
         container.style.userSelect = 'auto';
-        container.style.scrollBehavior = 'smooth';
+        container.style.scrollBehavior = 'auto'; // ใช้ auto เพื่อไม่ให้ snap ชนกับ momentum
+        
         // Update scroll position after drag ends
         setTimeout(() => {
           checkScrollPosition();
+          // เปลี่ยนกลับเป็น smooth หลังจาก momentum เสร็จ
+          setTimeout(() => {
+            if (container) {
+              container.style.scrollBehavior = 'smooth';
+              isUserInteractingRef.current = false;
+            }
+          }, 500);
         }, 100);
       }
     }
@@ -265,18 +349,20 @@ export default function FlashSaleSection() {
     e.preventDefault();
     
     const currentTime = Date.now();
-    const timeDelta = currentTime - lastTime;
+    const timeDelta = currentTime - lastTimeRef.current;
     
-    // Calculate velocity for momentum
-    if (timeDelta > 0) {
-      const currentVelocity = ((e.pageX - lastX) / timeDelta) * 16; // Normalize to 60fps
-      setVelocity(currentVelocity);
+    // Update current position immediately for smooth scrolling (ใช้ ref)
+    currentXRef.current = e.pageX;
+    
+    // Calculate velocity for momentum (ใช้ค่าเฉลี่ยเพื่อลดการกระตุก)
+    if (timeDelta > 0 && timeDelta < 100) { // จำกัด timeDelta เพื่อป้องกันค่า velocity ที่ผิดปกติ
+      const currentVelocity = ((e.pageX - lastXRef.current) / timeDelta) * 16; // Normalize to 60fps
+      // ใช้ค่าเฉลี่ยเพื่อลดการกระตุก
+      setVelocity(prev => prev * 0.7 + currentVelocity * 0.3);
     }
     
-    // Update current position for smooth scrolling
-    setCurrentX(e.pageX);
-    setLastX(e.pageX);
-    setLastTime(currentTime);
+    lastXRef.current = e.pageX;
+    lastTimeRef.current = currentTime;
   };
 
   // Touch events for mobile with smooth momentum
@@ -290,14 +376,15 @@ export default function FlashSaleSection() {
       animationFrameRef.current = null;
     }
     
+    isUserInteractingRef.current = true;
     setIsDragging(true);
     setVelocity(0);
     const rect = container.getBoundingClientRect();
-    setStartX(e.touches[0].pageX - rect.left);
-    setCurrentX(e.touches[0].pageX);
-    setLastX(e.touches[0].pageX);
-    setLastTime(Date.now());
-    setScrollLeft(container.scrollLeft);
+    startXRef.current = e.touches[0].pageX - rect.left;
+    currentXRef.current = e.touches[0].pageX;
+    lastXRef.current = e.touches[0].pageX;
+    lastTimeRef.current = Date.now();
+    scrollLeftRef.current = container.scrollLeft;
     container.style.scrollBehavior = 'auto';
   };
 
@@ -306,18 +393,20 @@ export default function FlashSaleSection() {
     e.preventDefault();
     
     const currentTime = Date.now();
-    const timeDelta = currentTime - lastTime;
+    const timeDelta = currentTime - lastTimeRef.current;
     
-    // Calculate velocity for momentum
-    if (timeDelta > 0) {
-      const currentVelocity = ((e.touches[0].pageX - lastX) / timeDelta) * 16;
-      setVelocity(currentVelocity);
+    // Update current position immediately for smooth scrolling (ใช้ ref)
+    currentXRef.current = e.touches[0].pageX;
+    
+    // Calculate velocity for momentum (ใช้ค่าเฉลี่ยเพื่อลดการกระตุก)
+    if (timeDelta > 0 && timeDelta < 100) { // จำกัด timeDelta เพื่อป้องกันค่า velocity ที่ผิดปกติ
+      const currentVelocity = ((e.touches[0].pageX - lastXRef.current) / timeDelta) * 16;
+      // ใช้ค่าเฉลี่ยเพื่อลดการกระตุก
+      setVelocity(prev => prev * 0.7 + currentVelocity * 0.3);
     }
     
-    // Update current position for smooth scrolling
-    setCurrentX(e.touches[0].pageX);
-    setLastX(e.touches[0].pageX);
-    setLastTime(currentTime);
+    lastXRef.current = e.touches[0].pageX;
+    lastTimeRef.current = currentTime;
   };
 
   const handleTouchEnd = () => {
@@ -325,10 +414,18 @@ export default function FlashSaleSection() {
       setIsDragging(false);
       const container = scrollContainerRef.current;
       if (container) {
-        container.style.scrollBehavior = 'smooth';
+        container.style.scrollBehavior = 'auto'; // ใช้ auto เพื่อไม่ให้ snap ชนกับ momentum
+        
         // Update scroll position after drag ends
         setTimeout(() => {
           checkScrollPosition();
+          // เปลี่ยนกลับเป็น smooth หลังจาก momentum เสร็จ
+          setTimeout(() => {
+            if (container) {
+              container.style.scrollBehavior = 'smooth';
+              isUserInteractingRef.current = false;
+            }
+          }, 500);
         }, 100);
       }
     }
@@ -495,7 +592,12 @@ export default function FlashSaleSection() {
         {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
-          className={`flex gap-6 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth px-4 py-4 cursor-grab active:cursor-grabbing select-none min-h-[280px] ${!isDragging ? 'snap-x snap-mandatory' : ''}`}
+          className={`flex gap-6 overflow-x-auto overflow-y-hidden scrollbar-hide px-4 py-4 cursor-grab active:cursor-grabbing select-none min-h-[280px]`}
+          style={{ 
+            scrollBehavior: (isDragging || Math.abs(velocity) > 0.1 || isUserInteractingRef.current) ? 'auto' : 'smooth',
+            scrollSnapType: 'none', // ปิด snap ทั้งหมดเพื่อให้ smooth ขึ้น
+            WebkitOverflowScrolling: 'touch' // เพิ่ม smooth scrolling สำหรับ iOS
+          }}
           onMouseDown={handleMouseDown}
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
@@ -515,7 +617,7 @@ export default function FlashSaleSection() {
           return (
               <div 
                 key={`${product.id}-${product.itemId}`} 
-                className="flash-sale-card group relative flex-shrink-0 w-[400px] snap-start my-2"
+                className="flash-sale-card group relative flex-shrink-0 w-[400px] my-2"
               >
               {/* Electric Border on Hover - Wraps entire card */}
               <div className="absolute -inset-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 rounded-lg overflow-visible">
