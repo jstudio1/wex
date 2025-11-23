@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET(req: Request) {
   try {
@@ -155,7 +157,9 @@ export async function GET(req: Request) {
         { data: filtered },
         {
           headers: {
-            'Cache-Control': 'no-store',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
         }
       );
@@ -166,7 +170,9 @@ export async function GET(req: Request) {
       { data: result },
       {
         headers: {
-          'Cache-Control': 'no-store',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

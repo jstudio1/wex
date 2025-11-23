@@ -102,7 +102,13 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
         <div className={`relative ${isHighlight ? 'border-2 border-yellow-500 rounded-xl p-1' : ''}`}>
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.image_url} alt={p.name} className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`} />
+            <img 
+              src={p.image_url} 
+              alt={p.name} 
+              className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}
+              loading="lazy"
+              key={`${p.id}-${p.image_url}`}
+            />
           ) : (
             <div className={`rounded-xl bg-gray-800 flex items-center justify-center ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
               <span className="text-xs text-gray-500 text-center px-2">ไม่มีรูป</span>

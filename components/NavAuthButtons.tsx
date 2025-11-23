@@ -524,7 +524,7 @@ export default function NavAuthButtons() {
                   >
                     ยอมรับ{' '}
                     <Link
-                      href="/terms-policy"
+                      href="/terms"
                       target="_blank"
                       className="text-emerald-400 hover:text-emerald-300 underline"
                       onClick={(e) => e.stopPropagation()}
@@ -533,7 +533,7 @@ export default function NavAuthButtons() {
                     </Link>
                     {' '}และ{' '}
                     <Link
-                      href="/terms-policy"
+                      href="/privacy"
                       target="_blank"
                       className="text-emerald-400 hover:text-emerald-300 underline"
                       onClick={(e) => e.stopPropagation()}

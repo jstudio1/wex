@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Save, Edit, Trash2, Plus, Grid3x3 } from 'lucide-react';
 
@@ -259,17 +260,20 @@ export default function GameCategoriesContent() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                  <div className="flex-1">
+                    <Label htmlFor="is_published" className="cursor-pointer text-sm font-medium">
+                      เผยแพร่
+                    </Label>
+                    <p className="text-xs text-[color:var(--text)]/60 mt-0.5">
+                      หมวดหมู่จะแสดงในหน้า /categories เฉพาะเมื่อเปิดใช้งาน
+                    </p>
+                  </div>
+                  <Switch
                     id="is_published"
                     checked={formData.is_published}
-                    onChange={(e) => setFormData(prev => ({ ...prev, is_published: e.target.checked }))}
-                    className="h-4 w-4 rounded border border-border bg-transparent text-accent focus:ring-2 focus:ring-accent-50 focus:ring-offset-0"
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
                   />
-                  <Label htmlFor="is_published" className="cursor-pointer">
-                    เผยแพร่
-                  </Label>
                 </div>
               </div>
               <DialogFooter>
@@ -343,15 +347,35 @@ export default function GameCategoriesContent() {
                     <code className="text-sm text-[color:var(--text)]/60">{category.slug}</code>
                   </TableCell>
                   <TableCell>
-                    {category.is_published ? (
-                      <Badge variant="outline" className="border-green-500/30 text-green-300 bg-green-500/10">
-                        เผยแพร่
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="border-amber-500/30 text-amber-300 bg-amber-500/10">
-                        ไม่เผยแพร่
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={category.is_published}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            const res = await fetch('/api/admin/game-categories', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: category.id, is_published: checked })
+                            });
+                            if (!res.ok) throw new Error('อัพเดทไม่สำเร็จ');
+                            toast.show({ 
+                              title: 'สำเร็จ', 
+                              description: checked ? 'เปิดเผยแพร่แล้ว' : 'ปิดเผยแพร่แล้ว' 
+                            });
+                            await fetchData();
+                          } catch (err) {
+                            toast.show({
+                              title: 'เกิดข้อผิดพลาด',
+                              description: (err as Error).message,
+                              variant: 'destructive'
+                            });
+                          }
+                        }}
+                      />
+                      <span className="text-xs text-[color:var(--text)]/60">
+                        {category.is_published ? 'แสดงใน /categories' : 'ซ่อนจาก /categories'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-[color:var(--text)]/60">

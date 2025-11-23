@@ -1,10 +1,12 @@
 import { getBaseUrl } from '@/lib/url';
 import GameCategoryList from '@/components/GameCategoryList';
 import type { Metadata } from 'next';
+import { unstable_noStore as noStore } from 'next/cache';
 
 // Force dynamic rendering - no cache
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export const metadata: Metadata = {
   title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว',
@@ -31,13 +33,34 @@ type GameCategory = {
 };
 
 async function fetchCategories(): Promise<GameCategory[]> {
+  noStore();
+  try {
   const base = getBaseUrl();
-  const categoriesRes = await fetch(`${base}/api/game-categories`, { 
+    const timestamp = Date.now();
+    const categoriesRes = await fetch(`${base}/api/game-categories?t=${timestamp}&_=${Math.random()}`, { 
     cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      next: { revalidate: 0 },
+      headers: { 
+        'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
   });
-  const categories = categoriesRes.ok ? (await categoriesRes.json()).data : [];
-  return categories;
+    
+    if (!categoriesRes.ok) {
+      return [];
+    }
+    
+    const json = await categoriesRes.json();
+    
+    if (!json.ok) {
+      return [];
+    }
+    
+    return json.data || [];
+  } catch (err) {
+    return [];
+  }
 }
 
 export default async function CategoriesPage() {

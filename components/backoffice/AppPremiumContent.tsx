@@ -1571,21 +1571,6 @@ export default function AppPremiumContent() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg border border-gray-800">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="edit-homepage" className="text-xs font-medium cursor-pointer">
-                      แสดงหน้าแรก
-                    </Label>
-                    <p className="text-[10px] text-gray-400">
-                      {editingProduct.show_on_homepage ? 'สินค้าจะแสดงบนหน้าแรก' : 'สินค้าจะไม่แสดงบนหน้าแรก'}
-                    </p>
-                  </div>
-                  <Switch
-                    id="edit-homepage"
-                    checked={editingProduct.show_on_homepage}
-                    onCheckedChange={(checked) => setEditingProduct({ ...editingProduct, show_on_homepage: checked })}
-                  />
-                </div>
               </div>
 
               {/* Description */}

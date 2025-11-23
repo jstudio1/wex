@@ -213,10 +213,11 @@ export async function GET(req: Request, { params }: Params) {
       const quantitySold = isFlashsaleActive ? (quantitySoldByItem.get(i.id) || 0) : 0;
       const quantityRemaining = maxQuantity !== null ? Math.max(0, maxQuantity - quantitySold) : null;
       
+      const isRecommended = Boolean((i as any).is_recommended ?? false);
       return {
         id: i.id,
         name: i.name,
-        is_recommended: Boolean((i as any).is_recommended),
+        is_recommended: isRecommended, // ใช้ ?? false เพื่อให้แน่ใจว่าเป็น boolean
         sku: i.sku,
         price: finalPrice.toFixed(2),
         priceValue: finalPrice, // Keep numeric value for sorting
@@ -268,7 +269,9 @@ export async function GET(req: Request, { params }: Params) {
       { data: mapped },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       }
     );

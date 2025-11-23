@@ -38,18 +38,36 @@ type ProductCard = {
 
 const fetchProducts = cache(async (): Promise<ProductCard[]> => {
   const base = getBaseUrl();
-  const p = await fetch(`${base}/api/products`, { cache: 'no-store' });
+  const timestamp = Date.now();
+  const p = await fetch(`${base}/api/products?t=${timestamp}`, { 
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  });
   const products = p.ok ? (await p.json()).data : [];
   return products;
 });
 
 const fetchSite = cache(async () => {
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { cache: 'no-store' });
+  const timestamp = Date.now();
+  const res = await fetch(`${base}/api/site?t=${timestamp}`, { 
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  });
   return res.ok ? res.json() : { flashStart: null, flashEnd: null };
 });
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export const metadata: Metadata = {
   title: 'รายการบริการเติมเกมทั้งหมด - ราคาถูก เติมเร็ว ปลอดภัย',

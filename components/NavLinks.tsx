@@ -57,7 +57,7 @@ export default function NavLinks({
 
   const orderedKeys = normalizeNavbarOrder(navbarMenuOrder);
 
-  const isContactActive = pathname === '/contact' || pathname === '/terms-policy' || pathname === '/account/tickets';
+  const isContactActive = pathname === '/contact' || pathname === '/terms' || pathname === '/privacy' || pathname === '/account/tickets';
   // Build menu items in order
   const menuItems: Array<{ type: 'link' | 'contact'; data?: any; index: number }> = [];
   
@@ -134,13 +134,24 @@ export default function NavLinks({
                 )}
                 <DropdownMenuItem asChild>
                   <Link 
-                    href="/terms-policy" 
+                    href="/terms" 
                     className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
-                      pathname === '/terms-policy' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
+                      pathname === '/terms' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
                     }`}
                   >
                     <FileText className="h-4 w-4" />
                     <span>ข้อกำหนดการใช้งาน</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href="/privacy" 
+                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
+                      pathname === '/privacy' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>นโยบายความเป็นส่วนตัว</span>
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>

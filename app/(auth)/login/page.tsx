@@ -7,11 +7,12 @@ import { Spinner } from '@/components/ui/spinner';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { redirect?: string };
+  searchParams: Promise<{ redirect?: string }>;
 }) {
+  const params = await searchParams;
   const user = await getAuthUser();
   if (user) {
-    const redirectTo = searchParams?.redirect || '/';
+    const redirectTo = params?.redirect || '/';
     redirect(redirectTo);
   }
   return (

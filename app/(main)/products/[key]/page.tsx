@@ -166,15 +166,24 @@ export default function ProductDetailPage() {
         setCouponData(null);
         setIconErrors(new Set());
         
+        const timestamp = Date.now();
         const [detailRes, siteRes] = await Promise.all([
-          fetch(`/api/products/${currentKey ?? ''}`, { 
-            cache: 'default',
-            headers: { 'Cache-Control': 'max-age=30' },
+          fetch(`/api/products/${currentKey ?? ''}?t=${timestamp}`, { 
+            cache: 'no-store',
+            headers: { 
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            },
             signal: controller.signal 
           }),
-          fetch(`/api/site`, { 
-            cache: 'default',
-            headers: { 'Cache-Control': 'max-age=120' },
+          fetch(`/api/site?t=${timestamp}`, { 
+            cache: 'no-store',
+            headers: { 
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            },
             signal: controller.signal 
           })
         ]);
@@ -607,6 +616,7 @@ export default function ProductDetailPage() {
                 {data.items.map((it) => {
                   const isFlashsale = it.is_flashsale;
                   const isSelected = sku === it.sku;
+                  const isRecommended = Boolean(it.is_recommended);
                   
                   return (
                     <div key={it.id} className="relative h-full">
@@ -647,8 +657,8 @@ export default function ProductDetailPage() {
                     )}
                     
                         {/* Recommended Badge */}
-                        {it.is_recommended && !isFlashsale && (
-                      <div className="absolute top-2 right-2 z-10">
+                        {isRecommended && !isFlashsale && (
+                      <div className="absolute top-2 right-2 z-20">
                         <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-2 py-0.5 shadow-md">
                           <Star className="size-3 mr-0.5" fill="currentColor" />
                           แนะนำ

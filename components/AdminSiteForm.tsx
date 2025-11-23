@@ -33,8 +33,6 @@ type AdminSiteFormProps = {
 };
 
 type SiteData = { 
-  title: string; 
-  subtitle: string; 
   posters: string[]; 
   gameAccountsBannerUrl?: string;
   premiumAppDisplayMode?: 'list' | 'cards';
@@ -113,8 +111,6 @@ type AnnouncementData = { text: string; enabled: boolean };
 
 export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteFormProps = {}) {
   const [form, setForm] = useState<SiteData>({ 
-    title: '', 
-    subtitle: '', 
     posters: [], 
     gameAccountsBannerUrl: '',
     premiumAppDisplayMode: 'list',
@@ -218,8 +214,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
           blog: true,
         };
         setForm({ 
-          title: json.title || '', 
-          subtitle: json.subtitle || '', 
           posters: json.posters || [], 
           gameAccountsBannerUrl: json.gameAccountsBannerUrl || '',
           premiumAppDisplayMode: normalizePremiumAppDisplayMode(json.premiumAppDisplayMode),
@@ -551,22 +545,6 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
           </div>
           
           <div>
-            <Label>หัวเรื่องหน้าแรก</Label>
-            <Input 
-              className="mt-1" 
-              value={form.title} 
-              onChange={(e) => setForm({ ...form, title: e.target.value })} 
-            />
-          </div>
-          <div>
-            <Label>คำอธิบาย</Label>
-            <Input 
-              className="mt-1" 
-              value={form.subtitle} 
-              onChange={(e) => setForm({ ...form, subtitle: e.target.value })} 
-            />
-          </div>
-          <div>
             <Label>Poster URLs (ขึ้นบรรทัดใหม่แต่ละรูป)</Label>
             <Textarea
               className="mt-1 h-36"
@@ -778,6 +756,34 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
                       className="scale-75"
           />
                   </div>
+                  {/* แสดง Sub Menu สำหรับ Contact */}
+                  {menuKey === 'contact' && isEnabled && (
+                    <div className="mt-2 ml-8 space-y-1.5 border-l-2 border-emerald-500/30 pl-3 bg-black/20 rounded-r-md p-2">
+                      <div className="text-[10px] font-medium text-emerald-400 mb-1.5">Sub Menu Items:</div>
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-[color:var(--text)]/70 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+                          <span>ติดต่อเรา</span>
+                          <span className="text-[color:var(--text)]/40">(/contact)</span>
+                        </div>
+                        <div className="text-[10px] text-[color:var(--text)]/70 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+                          <span>Ticket Support</span>
+                          <span className="text-[color:var(--text)]/40">(/account/tickets)</span>
+                        </div>
+                        <div className="text-[10px] text-[color:var(--text)]/70 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+                          <span>ข้อกำหนดการใช้งาน</span>
+                          <span className="text-[color:var(--text)]/40">(/terms)</span>
+                        </div>
+                        <div className="text-[10px] text-[color:var(--text)]/70 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400"></span>
+                          <span>นโยบายความเป็นส่วนตัว</span>
+                          <span className="text-[color:var(--text)]/40">(/privacy)</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
         </div>
           </div>
             );

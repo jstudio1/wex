@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
+import { unstable_noStore as noStore } from 'next/cache';
+
+// Force dynamic rendering - no cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET(req: Request) {
+  noStore();
   try {
     const sb = createServiceClient();
     const { data: categories, error } = await sb
@@ -11,10 +18,9 @@ export async function GET(req: Request) {
       .order('id', { ascending: true });
 
     if (error) {
-      console.error('Game categories GET error:', error);
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
-
+    
     if (!categories || categories.length === 0) {
       return NextResponse.json({ ok: true, data: [] }, {
         headers: {
@@ -63,7 +69,6 @@ export async function GET(req: Request) {
       }
     );
   } catch (err) {
-    console.error('Game categories GET error:', err);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 }

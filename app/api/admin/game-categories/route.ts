@@ -67,8 +67,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Revalidate categories page so UI updates
-    try { revalidatePath('/categories'); } catch {}
+    // Revalidate categories page and API endpoint so UI updates
+    try { 
+      revalidatePath('/categories', 'page');
+      revalidatePath('/categories', 'layout');
+      revalidatePath('/api/game-categories', 'page');
+    } catch {}
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -115,8 +119,12 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
 
-    // Revalidate categories page so UI updates
-    try { revalidatePath('/categories'); } catch {}
+    // Revalidate categories page and API endpoint so UI updates
+    try { 
+      revalidatePath('/categories', 'page');
+      revalidatePath('/categories', 'layout');
+      revalidatePath('/api/game-categories', 'page');
+    } catch {}
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -149,8 +157,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
 
-    // Revalidate categories page so UI updates
-    try { revalidatePath('/categories'); } catch {}
+    // Revalidate categories page and API endpoint so UI updates
+    try { 
+      revalidatePath('/categories', 'page');
+      revalidatePath('/categories', 'layout');
+      revalidatePath('/api/game-categories', 'page');
+    } catch {}
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Game categories DELETE error:', err);

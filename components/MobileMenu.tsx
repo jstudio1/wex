@@ -264,10 +264,18 @@ export default function MobileMenu({ isLoggedIn, isAdmin, username, avatarUrl, n
                       <Link 
                         onClick={() => setOpen(false)} 
                         className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11 focus:outline-none focus-visible:outline-none" 
-                        href="/terms-policy"
+                        href="/terms"
                       >
                         <FileText className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
                         ข้อกำหนดการใช้งาน
+                      </Link>
+                      <Link 
+                        onClick={() => setOpen(false)} 
+                        className="group flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium text-gray-300 transition-all duration-200 hover:bg-emerald-700 hover:text-white pl-11 focus:outline-none focus-visible:outline-none" 
+                        href="/privacy"
+                      >
+                        <FileText className="h-4 w-4 text-emerald-500/70 transition-colors duration-200 group-hover:text-white" />
+                        นโยบายความเป็นส่วนตัว
                       </Link>
                     </div>
                   );

@@ -14,7 +14,7 @@ export async function GET() {
       // 1. Gtopup orders (เติมเกม)
       sb
         .from('orders')
-        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type, input_json, result_code')
         .eq('product_type', 'gtopup')
         .order('created_at', { ascending: false })
         .limit(1000),
@@ -22,7 +22,7 @@ export async function GET() {
       // 2. Mtopup orders (เติมเงินมือถือ)
       sb
         .from('orders')
-        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type, input_json, result_code')
         .eq('product_type', 'mtopup')
         .order('created_at', { ascending: false })
         .limit(1000),
@@ -30,7 +30,7 @@ export async function GET() {
       // 3. Cashcard orders (บัตรเติมเงิน)
       sb
         .from('orders')
-        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type')
+        .select('id, transaction_id, product_id, item_id, created_at, state, price, user_id, product_type, input_json, result_code')
         .eq('product_type', 'cashcard')
         .order('created_at', { ascending: false })
         .limit(1000),
@@ -38,7 +38,7 @@ export async function GET() {
       // 4. App Premium orders
       sb
         .from('app_premium_orders')
-        .select('id, reference, external_reference, product_id, created_at, status, price, user_id')
+        .select('id, reference, external_reference, product_id, created_at, status, price, user_id, product_data, raw_response')
         .order('created_at', { ascending: false })
         .limit(1000),
       
@@ -91,6 +91,32 @@ export async function GET() {
     const socialServicesMap = new Map((socialServices.data || []).map((ss: any) => [ss.id, ss]));
     const usersMap = new Map((users.data || []).map((u: any) => [u.id, u]));
 
+    // Get order logs for messages (SMS, operator transaction ID, etc.)
+    const allTransactionIds = [
+      ...(gtopupOrders.data || []).map((o: any) => o.transaction_id).filter(Boolean),
+      ...(mtopupOrders.data || []).map((o: any) => o.transaction_id).filter(Boolean),
+      ...(cashcardOrders.data || []).map((o: any) => o.transaction_id).filter(Boolean),
+    ];
+    
+    const orderLogsMap = new Map<string, string>();
+    if (allTransactionIds.length > 0) {
+      const { data: logs } = await sb
+        .from('order_status_logs')
+        .select('transaction_id, message')
+        .in('transaction_id', allTransactionIds)
+        .not('message', 'is', null);
+      
+      if (logs) {
+        for (const log of logs) {
+          const txId = log.transaction_id as string;
+          const message = log.message as string;
+          if (txId && message && !orderLogsMap.has(txId)) {
+            orderLogsMap.set(txId, message);
+          }
+        }
+      }
+    }
+
     // Format gtopup orders (เติมเกม)
     const formattedGtopupOrders = (gtopupOrders.data || []).map((order: any) => ({
       type: 'gtopup' as const,
@@ -101,6 +127,9 @@ export async function GET() {
       created_at: order.created_at,
       state: order.state,
       price: order.price,
+      input_json: order.input_json || null,
+      result_code: order.result_code || null,
+      result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
@@ -115,6 +144,9 @@ export async function GET() {
       created_at: order.created_at,
       state: order.state,
       price: order.price,
+      input_json: order.input_json || null,
+      result_code: order.result_code || null,
+      result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
@@ -129,6 +161,9 @@ export async function GET() {
       created_at: order.created_at,
       state: order.state,
       price: order.price,
+      input_json: order.input_json || null,
+      result_code: order.result_code || null,
+      result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
@@ -143,6 +178,8 @@ export async function GET() {
       created_at: order.created_at,
       state: order.status,
       price: order.price,
+      product_data: order.product_data || null,
+      raw_response: order.raw_response || null,
       product: appPremiumProductsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));

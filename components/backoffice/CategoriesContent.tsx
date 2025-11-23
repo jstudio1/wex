@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface Category {
@@ -45,32 +47,64 @@ export default function CategoriesContent() {
     }
   };
 
+  const generateSlug = (text: string): string => {
+    // แปลงเป็น slug แบบง่าย (สำหรับกรณีไม่ได้กรอก slug)
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9_-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      || 'category';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !slug.trim()) {
+    if (!name.trim()) {
       toast.show({
-        title: 'กรุณากรอกข้อมูลให้ครบ',
+        title: 'กรุณากรอกชื่อหมวดหมู่',
         variant: 'destructive',
       });
       return;
     }
+
+    // สร้าง slug อัตโนมัติถ้าไม่ได้กรอก (รองรับภาษาไทยใน slug)
+    const finalSlug = slug.trim() || generateSlug(name.trim());
 
     setSaving(true);
     try {
       const res = await fetch('/api/admin/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), slug: slug.trim() }),
+        body: JSON.stringify({ name: name.trim(), slug: finalSlug }),
       });
 
       if (!res.ok) {
         const json = await res.json();
-        throw new Error(json.error || 'สร้างไม่สำเร็จ');
+        let errorMessage = 'สร้างไม่สำเร็จ';
+        if (json.error) {
+          if (Array.isArray(json.error)) {
+            // ถ้าเป็น array ของ validation errors
+            errorMessage = json.error.map((err: any) => {
+              if (typeof err === 'object' && err.message) {
+                return err.message;
+              }
+              return String(err);
+            }).join(', ');
+          } else if (typeof json.error === 'object') {
+            // ถ้าเป็น object ให้แปลงเป็น string
+            errorMessage = JSON.stringify(json.error);
+          } else {
+            errorMessage = String(json.error);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       toast.show({ title: 'สำเร็จ', description: 'สร้างหมวดหมู่เรียบร้อย' });
       setName('');
-      setSlug('');
+      setSlug(''); // รีเซ็ต slug field
       await fetchCategories();
     } catch (err) {
       toast.show({
@@ -186,7 +220,7 @@ export default function CategoriesContent() {
           className="flex-1 min-w-[150px]"
         />
         <Input
-          placeholder="slug"
+          placeholder="slug (รองรับภาษาไทย, ถ้าไม่กรอกจะสร้างอัตโนมัติ)"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
           className="flex-1 min-w-[150px]"
@@ -213,39 +247,27 @@ export default function CategoriesContent() {
               <div className="font-medium">{cat.name}</div>
               <div className="text-sm text-[color:var(--text)]/60">slug: {cat.slug}</div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  cat.is_published
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-secondary text-muted-foreground'
-                }`}
-              >
-                {cat.is_published ? 'เผยแพร่' : 'ซ่อน'}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleTogglePublish(cat.id, cat.is_published)}
-              >
-                สลับ
-              </Button>
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  cat.show_on_homepage
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-secondary text-muted-foreground'
-                }`}
-              >
-                {cat.show_on_homepage ? 'แสดงหน้าแรก' : 'ไม่แสดง'}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleToggleHomepage(cat.id, cat.show_on_homepage)}
-              >
-                สลับ
-              </Button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`publish-${cat.id}`}
+                  checked={cat.is_published}
+                  onCheckedChange={() => handleTogglePublish(cat.id, cat.is_published)}
+                />
+                <Label htmlFor={`publish-${cat.id}`} className="text-sm cursor-pointer">
+                  เผยแพร่
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`homepage-${cat.id}`}
+                  checked={cat.show_on_homepage}
+                  onCheckedChange={() => handleToggleHomepage(cat.id, cat.show_on_homepage)}
+                />
+                <Label htmlFor={`homepage-${cat.id}`} className="text-sm cursor-pointer">
+                  แสดงหน้าแรก
+                </Label>
+              </div>
               <Button
                 size="sm"
                 variant="destructive"

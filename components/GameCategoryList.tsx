@@ -20,17 +20,17 @@ type Props = {
 export default function GameCategoryList({ categories, title = 'รายการหมวดหมู่' }: Props) {
   if (categories.length === 0) {
     return (
-      <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
-        <p className="text-red-600 font-semibold text-lg">ยังไม่มีหมวดหมู่</p>
+      <div className="text-center py-12 bg-gray-900/50 rounded-lg border-2 border-gray-700">
+        <p className="text-gray-400 font-semibold text-lg">ยังไม่มีหมวดหมู่</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="border-l-4 border-red-600 pl-4 bg-gradient-to-r from-red-50 to-transparent py-3 rounded-r-lg">
-        <h2 className="text-red-600 text-2xl font-bold mb-1">{title}</h2>
-        <p className="text-gray-500 text-sm">เลือกหมวดหมู่เกมที่คุณต้องการ</p>
+      <div className="border-l-4 border-emerald-500 pl-4 bg-gradient-to-r from-emerald-950/30 to-transparent py-3 rounded-r-lg">
+        <h2 className="text-white text-2xl font-bold mb-1">{title}</h2>
+        <p className="text-gray-400 text-sm">เลือกหมวดหมู่เกมที่คุณต้องการ</p>
       </div>
       <div className="grid grid-cols-2 gap-3 md:gap-4">
         {categories.map((category) => (

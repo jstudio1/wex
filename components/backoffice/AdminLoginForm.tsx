@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Shield } from 'lucide-react';
 
 export default function AdminLoginForm() {
-  const [username, setUsername] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export default function AdminLoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ usernameOrEmail, password })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'เข้าสู่ระบบไม่สำเร็จ');
@@ -59,12 +59,12 @@ export default function AdminLoginForm() {
           <p className="mt-2 text-center text-sm text-[color:var(--text)]/70">กรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลระบบ</p>
           <form className="my-8" onSubmit={onSubmit}>
             <div className="mb-4 grid gap-2">
-              <Label htmlFor="admin-username" className="text-[color:var(--text)]">ชื่อผู้ใช้</Label>
+              <Label htmlFor="admin-username" className="text-[color:var(--text)]">ชื่อผู้ใช้หรืออีเมล</Label>
               <Input 
                 id="admin-username" 
-                placeholder="username" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder="username หรือ email" 
+                value={usernameOrEmail} 
+                onChange={(e) => setUsernameOrEmail(e.target.value)}
                 autoFocus
               />
             </div>

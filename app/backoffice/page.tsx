@@ -30,6 +30,8 @@ import TicketsContent from '@/components/backoffice/TicketsContent';
 import BlogPostsContent from '@/components/backoffice/BlogPostsContent';
 import BlogCategoriesContent from '@/components/backoffice/BlogCategoriesContent';
 import NewsContent from '@/components/backoffice/NewsContent';
+import PolicyContent from '@/components/backoffice/PolicyContent';
+import PrivacyContent from '@/components/backoffice/PrivacyContent';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -176,6 +178,15 @@ const menuSections: MenuSection[] = [
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
+      { 
+        id: 'legal', 
+        label: 'ข้อกำหนดและนโยบาย', 
+        icon: FileText,
+        subItems: [
+          { id: 'terms', label: 'ข้อกำหนดการใช้งาน' },
+          { id: 'privacy', label: 'นโยบายความเป็นส่วนตัว' },
+        ],
+      },
     ],
   },
   {
@@ -567,6 +578,10 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <BlogCategoriesContent />;
     case 'news':
       return <NewsContent />;
+    case 'terms':
+      return <PolicyContent />;
+    case 'privacy':
+      return <PrivacyContent />;
     default:
       return (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">

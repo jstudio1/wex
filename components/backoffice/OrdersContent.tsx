@@ -40,24 +40,35 @@ interface BaseOrder {
 interface GtopupOrder extends BaseOrder {
   type: 'gtopup';
   product_id: number;
+  input_json?: Record<string, any> | null;
+  result_code?: string | null;
+  result_message?: string | null;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
 interface MtopupOrder extends BaseOrder {
   type: 'mtopup';
   product_id: number;
+  input_json?: Record<string, any> | null;
+  result_code?: string | null;
+  result_message?: string | null;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
 interface CashcardOrder extends BaseOrder {
   type: 'cashcard';
   product_id: number;
+  input_json?: Record<string, any> | null;
+  result_code?: string | null;
+  result_message?: string | null;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
 interface AppPremiumOrder extends BaseOrder {
   type: 'app_premium';
   product_id: number;
+  product_data?: any;
+  raw_response?: any;
   product?: { id: number; display_name: string | null; name: string; image_url: string | null; icon_url: string | null } | null;
 }
 
@@ -203,6 +214,9 @@ export default function OrdersContent() {
     // Gtopup, Mtopup, Cashcard orders
     if (order.type === 'gtopup' || order.type === 'mtopup' || order.type === 'cashcard') {
       const productOrder = order as GtopupOrder | MtopupOrder | CashcardOrder;
+      const inputData = productOrder.input_json || {};
+      const inputEntries = Object.entries(inputData).filter(([_, v]) => v != null && v !== '');
+      
       return (
         <TableRow key={order.id}>
           <TableCell className="font-medium text-white">{order.transaction_id || '-'}</TableCell>
@@ -220,6 +234,39 @@ export default function OrdersContent() {
             </div>
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">
+            <div className="space-y-1">
+              {inputEntries.length > 0 ? (
+                inputEntries.map(([key, value]) => (
+                  <div key={key} className="text-xs">
+                    <span className="text-gray-400">{key}:</span>{' '}
+                    <span className="text-white font-medium">{String(value)}</span>
+                  </div>
+                ))
+              ) : (
+                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-gray-300">
+            <div className="space-y-1">
+              {productOrder.result_code && (
+                <div className="text-xs">
+                  <span className="text-gray-400">รหัส:</span>{' '}
+                  <span className="text-emerald-400 font-mono">{productOrder.result_code}</span>
+                </div>
+              )}
+              {productOrder.result_message && (
+                <div className="text-xs">
+                  <span className="text-gray-400">ข้อความ:</span>{' '}
+                  <span className="text-emerald-400">{productOrder.result_message}</span>
+                </div>
+              )}
+              {!productOrder.result_code && !productOrder.result_message && (
+                <span className="text-gray-500 text-xs">-</span>
+              )}
+            </div>
+          </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
@@ -234,6 +281,10 @@ export default function OrdersContent() {
     // App Premium orders
     if (order.type === 'app_premium') {
       const appOrder = order as AppPremiumOrder;
+      const productData = appOrder.product_data || {};
+      const inputEntries = Object.entries(productData).filter(([_, v]) => v != null && v !== '');
+      const resultData = appOrder.raw_response || {};
+      
       return (
         <TableRow key={order.id}>
           <TableCell className="font-medium text-white">{order.transaction_id || '-'}</TableCell>
@@ -251,6 +302,46 @@ export default function OrdersContent() {
             </div>
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">
+            <div className="space-y-1">
+              {inputEntries.length > 0 ? (
+                inputEntries.map(([key, value]) => (
+                  <div key={key} className="text-xs">
+                    <span className="text-gray-400">{key}:</span>{' '}
+                    <span className="text-white font-medium">{String(value)}</span>
+                  </div>
+                ))
+              ) : (
+                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-gray-300">
+            {resultData.prize || resultData.code || resultData.result ? (
+              <div className="text-xs space-y-1">
+                {resultData.prize && (
+                  <div>
+                    <span className="text-gray-400">รางวัล:</span>{' '}
+                    <span className="text-emerald-400 font-medium">{String(resultData.prize)}</span>
+                  </div>
+                )}
+                {resultData.code && (
+                  <div>
+                    <span className="text-gray-400">รหัส:</span>{' '}
+                    <span className="text-emerald-400 font-mono">{String(resultData.code)}</span>
+                  </div>
+                )}
+                {resultData.result && (
+                  <div>
+                    <span className="text-gray-400">ผลลัพธ์:</span>{' '}
+                    <span className="text-emerald-400">{String(resultData.result)}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-500 text-xs">-</span>
+            )}
+          </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
@@ -269,15 +360,33 @@ export default function OrdersContent() {
           <TableCell>
             <div>
               <div className="font-medium text-white">{order.social_service?.display_name || order.social_service?.name || 'ไม่พบข้อมูล'}</div>
-              {order.link && (
-                <div className="text-xs text-gray-400 truncate max-w-xs">{order.link}</div>
-              )}
-              {order.quantity && (
-                <div className="text-xs text-gray-400">จำนวน: {order.quantity}</div>
-              )}
             </div>
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
+          <TableCell className="text-gray-300">
+            <div className="space-y-1">
+              {order.link && (
+                <div className="text-xs">
+                  <span className="text-gray-400">ลิงค์:</span>{' '}
+                  <a href={order.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                    {order.link.length > 50 ? `${order.link.substring(0, 50)}...` : order.link}
+                  </a>
+                </div>
+              )}
+              {order.quantity && (
+                <div className="text-xs">
+                  <span className="text-gray-400">จำนวน:</span>{' '}
+                  <span className="text-white font-medium">{order.quantity}</span>
+                </div>
+              )}
+              {!order.link && !order.quantity && (
+                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-gray-300">
+            <span className="text-gray-500 text-xs">-</span>
+          </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
             <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
@@ -362,6 +471,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -370,7 +481,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -412,6 +523,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -420,7 +533,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -462,6 +575,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -470,7 +585,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -512,6 +627,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -520,7 +637,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -562,6 +679,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -570,7 +689,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -612,6 +731,8 @@ export default function OrdersContent() {
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
+                  <TableHead>ข้อมูลที่ใส่</TableHead>
+                  <TableHead>ผลลัพธ์</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -620,7 +741,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8">
+                    <TableCell colSpan={8} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
