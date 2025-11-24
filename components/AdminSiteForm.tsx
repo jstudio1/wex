@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText, Shield, KeyRound } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText, Shield, KeyRound, Copy } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PolicyContent from '@/components/backoffice/PolicyContent';
 import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
@@ -211,14 +211,45 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
   const [qrLoading, setQrLoading] = useState(true);
   const [qrSaving, setQrSaving] = useState(false);
   const [qrStatus, setQrStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+  const WEBHOOK_PATH = '/api/payments/webhook';
+  const baseUrlFromEnv =
+    (process.env.NEXT_PUBLIC_BASE_URL && process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')) ||
+    (process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')) ||
+    '';
+  const hasEnvBaseUrl = Boolean(baseUrlFromEnv);
+  const [clientOriginWebhook, setClientOriginWebhook] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasEnvBaseUrl && typeof window !== 'undefined') {
+      const origin = window.location.origin?.replace(/\/$/, '') || '';
+      if (origin) {
+        setClientOriginWebhook(`${origin}${WEBHOOK_PATH}`);
+      } else {
+        setClientOriginWebhook(`https://wexplus.com${WEBHOOK_PATH}`);
+      }
+    } else if (!hasEnvBaseUrl) {
+      setClientOriginWebhook(`https://wexplus.com${WEBHOOK_PATH}`);
+    }
+  }, [hasEnvBaseUrl]);
+
+  useEffect(() => {
+    setQrConfig((prev) => ({
+      ...prev,
+      webhookUrl: hasEnvBaseUrl
+        ? `${baseUrlFromEnv}${WEBHOOK_PATH}`
+        : clientOriginWebhook || prev.webhookUrl || '',
+    }));
+  }, [baseUrlFromEnv, hasEnvBaseUrl, clientOriginWebhook]);
+
   const resolvedWebhookUrl = React.useMemo(() => {
+    if (hasEnvBaseUrl) {
+      return `${baseUrlFromEnv}${WEBHOOK_PATH}`;
+    }
     const trimmed = qrConfig.webhookUrl?.trim();
     if (trimmed) return trimmed;
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin.replace(/\/$/, '')}/api/payments/webhook`;
-    }
-    return 'https://wexplus.com/api/payments/webhook';
-  }, [qrConfig.webhookUrl]);
+    if (clientOriginWebhook) return clientOriginWebhook;
+    return `https://wexplus.com${WEBHOOK_PATH}`;
+  }, [qrConfig.webhookUrl, baseUrlFromEnv, hasEnvBaseUrl, clientOriginWebhook]);
   const toast = useToast();
 
   useEffect(() => {
@@ -470,7 +501,7 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
       const payload = {
         ...qrConfig,
         promptpayType: qrConfig.promptpayType === '01' ? '01' : '02',
-      webhookUrl: qrConfig.webhookUrl?.trim(),
+        webhookUrl: resolvedWebhookUrl,
       };
       const res = await fetch('/api/admin/payments/qr-config', {
         method: 'PUT',
@@ -497,14 +528,14 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     }
   };
 
-  const handleCopyWebhook = () => {
+  const handleCopyWebhook = (withToastMessage = 'คัดลอกสำเร็จ') => {
     const text = resolvedWebhookUrl;
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard
         .writeText(text)
         .then(() => {
           toast.show({
-            title: 'คัดลอกสำเร็จ',
+            title: withToastMessage,
             description: text,
             variant: 'default',
           });
@@ -1208,20 +1239,29 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
                 </p>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Webhook URL (ใช้คัดลอกไปใส่ใน TMweasy)</Label>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <Label>
+                  Webhook URL (ล็อกจาก `{hasEnvBaseUrl ? 'NEXT_PUBLIC_BASE_URL' : 'โดเมนปัจจุบัน'}`)
+                </Label>
+                <div className="flex flex-col gap-2 sm:flex-row items-center">
                   <Input
-                    value={qrConfig.webhookUrl || ''}
-                    onChange={(e) => setQrConfig({ ...qrConfig, webhookUrl: e.target.value })}
-                    placeholder="https://example.com/api/payments/webhook"
-                    className="flex-1"
+                    value={resolvedWebhookUrl}
+                    readOnly
+                    disabled
+                    className="flex-1 bg-black/40 text-white"
                   />
-                  <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyWebhook}>
-                    คัดลอกลิงก์
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 w-full sm:w-auto"
+                    onClick={() => handleCopyWebhook('คัดลอกสำเร็จ')}
+                  >
+                    <Copy className="mr-2 size-4" />
+                    คัดลอก
                   </Button>
                 </div>
                 <p className="text-[11px] text-[color:var(--text)]/60">
-                  ถ้าเว้นว่าง ระบบจะแนะนำลิงก์จากโดเมนปัจจุบัน เช่น {resolvedWebhookUrl}
+                  ระบบจะเติม `{WEBHOOK_PATH}` ต่อท้ายโดเมนหลักจากไฟล์ `.env` (เช่น{' '}
+                  {hasEnvBaseUrl ? baseUrlFromEnv : 'http://localhost:3000'}) และล็อกไม่ให้แก้ไข
                 </p>
               </div>
             </div>
