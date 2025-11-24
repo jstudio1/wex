@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
+export const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 // ไม่ throw error ตอน build time (module load time)
@@ -26,6 +26,9 @@ export function createServiceClient() {
   }
   if (!supabaseUrl) {
     throw new Error('SUPABASE_URL is not set');
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[supabase] createServiceClient using URL', supabaseUrl);
   }
   return createClient(supabaseUrl as string, serviceKey, { auth: { persistSession: false } });
 }

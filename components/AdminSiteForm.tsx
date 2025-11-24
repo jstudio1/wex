@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText, Shield, KeyRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PolicyContent from '@/components/backoffice/PolicyContent';
 import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
@@ -108,6 +108,15 @@ type SiteData = {
   };
 };
 type AnnouncementData = { text: string; enabled: boolean };
+type QrConfigState = {
+  username: string;
+  password: string;
+  conId: string;
+  promptpayId: string;
+  promptpayType: '01' | '02';
+  webhookKey: string;
+  webhookUrl: string;
+};
 
 export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteFormProps = {}) {
   const [form, setForm] = useState<SiteData>({ 
@@ -190,6 +199,26 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<AdminSiteTab>(initialTab);
+  const [qrConfig, setQrConfig] = useState<QrConfigState>({
+    username: '',
+    password: '',
+    conId: '',
+    promptpayId: '',
+    promptpayType: '02',
+    webhookKey: '',
+    webhookUrl: '',
+  });
+  const [qrLoading, setQrLoading] = useState(true);
+  const [qrSaving, setQrSaving] = useState(false);
+  const [qrStatus, setQrStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+  const resolvedWebhookUrl = React.useMemo(() => {
+    const trimmed = qrConfig.webhookUrl?.trim();
+    if (trimmed) return trimmed;
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin.replace(/\/$/, '')}/api/payments/webhook`;
+    }
+    return 'https://wexplus.com/api/payments/webhook';
+  }, [qrConfig.webhookUrl]);
   const toast = useToast();
 
   useEffect(() => {
@@ -285,6 +314,37 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
         setLoading(false);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setQrLoading(true);
+        const res = await fetch('/api/admin/payments/qr-config', { cache: 'no-store' });
+        if (!res.ok) throw new Error('load failed');
+        const json = await res.json();
+        if (!mounted) return;
+        setQrConfig({
+          username: json.username || '',
+          password: json.password || '',
+          conId: json.conId || '',
+          promptpayId: json.promptpayId || '',
+          promptpayType: json.promptpayType === '01' ? '01' : '02',
+          webhookKey: json.webhookKey || '',
+          webhookUrl: json.webhookUrl || '',
+        });
+        setQrStatus('idle');
+      } catch (error) {
+        console.error('QR config load error:', error);
+        if (mounted) setQrStatus('error');
+      } finally {
+        if (mounted) setQrLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -399,6 +459,69 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onQrSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setQrSaving(true);
+    setQrStatus('idle');
+    try {
+      const payload = {
+        ...qrConfig,
+        promptpayType: qrConfig.promptpayType === '01' ? '01' : '02',
+      webhookUrl: qrConfig.webhookUrl?.trim(),
+      };
+      const res = await fetch('/api/admin/payments/qr-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setQrStatus('ok');
+      toast.show({
+        title: 'บันทึกสำเร็จ',
+        description: 'อัปเดตการตั้งค่า QR PromptPay เรียบร้อย',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('QR config save error:', error);
+      setQrStatus('error');
+      toast.show({
+        title: 'เกิดข้อผิดพลาด',
+        description: 'บันทึกไม่สำเร็จ โปรดลองใหม่',
+        variant: 'destructive',
+      });
+    } finally {
+      setQrSaving(false);
+    }
+  };
+
+  const handleCopyWebhook = () => {
+    const text = resolvedWebhookUrl;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          toast.show({
+            title: 'คัดลอกสำเร็จ',
+            description: text,
+            variant: 'default',
+          });
+        })
+        .catch(() => {
+          toast.show({
+            title: 'คัดลอกไม่สำเร็จ',
+            description: 'กรุณาคัดลอกด้วยตนเอง',
+            variant: 'destructive',
+          });
+        });
+    } else {
+      toast.show({
+        title: 'ไม่รองรับการคัดลอกอัตโนมัติ',
+        description: text,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -988,6 +1111,139 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
           </Button>
         </form>
+
+      <form onSubmit={onQrSubmit} className="card p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-full bg-emerald-900/40 border border-emerald-600">
+            <Shield className="size-5 text-emerald-300" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-1">ตั้งค่า QR PromptPay API</h2>
+            <p className="text-sm text-[color:var(--text)]/60">
+              จัดการ Credential สำหรับสร้าง QR Payment และรับ webhook จาก TMweasy/TMwallet
+            </p>
+          </div>
+        </div>
+
+        {qrStatus === 'ok' && (
+          <Alert>
+            <AlertTitle>บันทึกสำเร็จ</AlertTitle>
+            <AlertDescription>อัปเดตการตั้งค่า QR PromptPay เรียบร้อย</AlertDescription>
+          </Alert>
+        )}
+        {qrStatus === 'error' && (
+          <Alert variant="destructive">
+            <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
+            <AlertDescription>โหลดหรือบันทึกการตั้งค่าไม่สำเร็จ โปรดลองใหม่</AlertDescription>
+          </Alert>
+        )}
+
+        {qrLoading ? (
+          <div className="flex items-center gap-2 text-sm text-[color:var(--text)]/60">
+            <Spinner className="size-4" />
+            กำลังโหลดการตั้งค่า...
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Username</Label>
+                <Input
+                  value={qrConfig.username}
+                  onChange={(e) => setQrConfig({ ...qrConfig, username: e.target.value })}
+                  placeholder="username จาก TMwallet"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>รหัสผ่าน</Label>
+                <Input
+                  type="password"
+                  value={qrConfig.password}
+                  onChange={(e) => setQrConfig({ ...qrConfig, password: e.target.value })}
+                  placeholder="password API"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>CON ID</Label>
+                <Input
+                  value={qrConfig.conId}
+                  onChange={(e) => setQrConfig({ ...qrConfig, conId: e.target.value })}
+                  placeholder="เช่น 106233"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>PromptPay ID</Label>
+                <Input
+                  value={qrConfig.promptpayId}
+                  onChange={(e) => setQrConfig({ ...qrConfig, promptpayId: e.target.value })}
+                  placeholder="เลข PromptPay 10 หรือ 13 หลัก"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>PromptPay Type</Label>
+                <select
+                  className="input w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                  value={qrConfig.promptpayType}
+                  onChange={(e) =>
+                    setQrConfig({
+                      ...qrConfig,
+                      promptpayType: e.target.value === '01' ? '01' : '02',
+                    })
+                  }
+                >
+                  <option value="01">01 - เบอร์โทรศัพท์</option>
+                  <option value="02">02 - เลขบัตรประชาชน</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Webhook Secret (API Key)</Label>
+                <Input
+                  type="password"
+                  value={qrConfig.webhookKey}
+                  onChange={(e) => setQrConfig({ ...qrConfig, webhookKey: e.target.value })}
+                  placeholder="API Key สำหรับตรวจสอบ webhook"
+                />
+                <p className="text-[11px] text-[color:var(--text)]/60">
+                  ต้องตรงกับค่าใน TMweasy เพื่อยืนยัน webhook
+                </p>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Webhook URL (ใช้คัดลอกไปใส่ใน TMweasy)</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={qrConfig.webhookUrl || ''}
+                    onChange={(e) => setQrConfig({ ...qrConfig, webhookUrl: e.target.value })}
+                    placeholder="https://example.com/api/payments/webhook"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyWebhook}>
+                    คัดลอกลิงก์
+                  </Button>
+                </div>
+                <p className="text-[11px] text-[color:var(--text)]/60">
+                  ถ้าเว้นว่าง ระบบจะแนะนำลิงก์จากโดเมนปัจจุบัน เช่น {resolvedWebhookUrl}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-3 text-xs text-amber-200">
+              ตั้งค่า Webhook URL ใน TMweasy ให้ชี้ไปที่ <code className="text-amber-100">{resolvedWebhookUrl}</code>
+            </div>
+            <Button disabled={qrSaving} type="submit" className="w-full sm:w-auto">
+              {qrSaving ? (
+                <>
+                  <Spinner className="mr-2 size-4" />
+                  กำลังบันทึก...
+                </>
+              ) : (
+                <>
+                  <KeyRound className="mr-2 size-4" />
+                  บันทึกการตั้งค่า QR PromptPay
+                </>
+              )}
+            </Button>
+          </>
+        )}
+      </form>
       </TabsContent>
 
       {/* การแจ้งเตือน */}
