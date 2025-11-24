@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     
     let query = sb
       .from('game_accounts')
-      .select('id, game_name, game_category_id, title, description, cover_image_url, additional_images, price, original_price, discount_percent, permission_id, stock, sold_at, created_at')
+      .select('id, game_name, game_category_id, title, description, cover_image_url, additional_images, price, original_price, discount_percent, stock, sold_at, created_at')
       .eq('is_published', true);
       // ไม่กรอง sold_at และ stock = 0 เพื่อให้แสดงสินค้าหมดเป็นสีเทา
 
@@ -115,12 +115,12 @@ export async function GET(req: Request) {
         });
       } else {
         // ถ้า account นี้มี custom price ให้ใช้ราคานี้แทน
-        const existing = grouped.get(key);
-        const accWithPrice = acc as any;
-        if (accWithPrice.original_price_for_permission && !existing.original_price_for_permission) {
-          existing.price = acc.price;
-          existing.original_price_for_permission = accWithPrice.original_price_for_permission;
-        }
+          const existing = grouped.get(key);
+          const accWithPrice = acc as any;
+          if (accWithPrice.original_price_for_permission && !existing.original_price_for_permission) {
+            existing.price = acc.price;
+            existing.original_price_for_permission = accWithPrice.original_price_for_permission;
+          }
       }
       // รวม stock เฉพาะไอดีที่ยังไม่ถูกขาย (sold_at == null)
       if (!acc.sold_at) {
@@ -148,6 +148,7 @@ export async function GET(req: Request) {
 
     const enriched = groupedAccounts.map((item: any) => ({
       ...item,
+      permission_id: (item as any).permission_id ?? null,
       category: item.game_category_id ? categoryMap.get(item.game_category_id) : null
     }));
 

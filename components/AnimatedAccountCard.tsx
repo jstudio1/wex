@@ -160,10 +160,10 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
   return (
     <div
       ref={ref}
-      className={`group relative flex flex-col bg-white border rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+      className={`group relative flex flex-col rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 ${
         isOutOfStock 
-          ? 'border-gray-200 opacity-60 cursor-not-allowed' 
-          : 'border-gray-200 hover:border-red-400 hover:shadow-red-100'
+          ? 'border-slate-800 bg-slate-900/70 opacity-60 cursor-not-allowed'
+          : 'border-emerald-500/20 bg-slate-900/80 shadow-[0_20px_60px_rgba(16,185,129,0.15)] hover:border-emerald-400/60'
       } ${
         isVisible 
           ? 'opacity-100 translate-y-0' 
@@ -185,14 +185,14 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
     >
       {/* Gradient Overlay on Hover */}
       {!isOutOfStock && (
-        <div className="absolute inset-0 bg-gradient-to-br from-red-50/0 via-red-50/0 to-red-50/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/5 to-teal-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       )}
       
       {/* Badge ส่วนลด */}
       {!isOutOfStock && discountPercent !== null && discountPercent > 0 && (
         <div className="absolute top-2 right-2 z-20">
-          <Badge className="bg-gradient-to-r from-red-600 to-orange-500 text-white border-0 shadow-lg text-xs font-bold px-3 py-1.5">
-            🔥 ลด {discountPercent}%
+          <Badge className="bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-900 border-0 shadow-lg text-xs font-bold px-3 py-1.5">
+            ✦ ลด {discountPercent}%
           </Badge>
         </div>
       )}
@@ -200,11 +200,11 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
       {/* Badge สถานะ */}
       <div className="absolute top-2 left-2 z-20">
         {account.stock > 0 ? (
-          <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+          <Badge className="bg-emerald-500/15 text-emerald-200 border-emerald-400/30 text-xs backdrop-blur">
             พร้อมจำหน่าย
           </Badge>
         ) : (
-          <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 text-xs">
+          <Badge variant="destructive" className="bg-rose-500/10 text-rose-200 border-rose-400/30 text-xs backdrop-blur">
             ไม่พร้อมจำหน่าย
           </Badge>
         )}
@@ -231,7 +231,7 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
             }`}
           />
         ) : (
-          <div className={`w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 ${
+          <div className={`w-full aspect-square bg-gradient-to-br from-slate-800 to-slate-900 ${
             isOutOfStock ? 'grayscale opacity-30' : ''
           }`} />
         )}
@@ -242,8 +242,8 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
         {/* ชื่อสินค้า */}
         <h3 className={`text-sm font-semibold line-clamp-2 mb-3 ${
           isOutOfStock 
-            ? 'text-gray-400' 
-            : 'text-gray-900 group-hover:text-red-600 transition-colors'
+            ? 'text-slate-500' 
+            : 'text-white group-hover:text-emerald-200 transition-colors'
         }`}>
           {account.title}
         </h3>
@@ -253,7 +253,7 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
           {hasPermissionDiscount ? (
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+                <span className="text-xl font-bold text-emerald-300 group-hover:text-emerald-200 transition-colors">
                   {finalPrice.toFixed(0)} พอยต์
                 </span>
                 {(() => {
@@ -271,14 +271,14 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
                   }
                   
                   return priceToShow && priceToShow !== finalPrice ? (
-                    <span className="text-sm text-gray-400 line-through">
+                    <span className="text-sm text-slate-400 line-through">
                       {Number(priceToShow).toFixed(0)} พอยต์
                     </span>
                   ) : null;
                 })()}
               </div>
               {(permission || initialPermission) && (
-                <span className="text-xs text-green-600 font-medium">
+                <span className="text-xs text-emerald-300 font-medium">
                   {isCustomPriceFromServer || customPrice !== null 
                     ? `ราคาสิทธิ์ ${permissionName || initialPermission?.name || 'สิทธิ์ส่วนลด'}` 
                     : `ส่วนลดสิทธิ์: ${permissionName || initialPermission?.name || 'สิทธิ์ส่วนลด'}`}
@@ -287,27 +287,27 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
             </div>
           ) : discountPercent !== null && discountPercent > 0 && originalPrice !== null ? (
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+              <span className="text-xl font-bold text-emerald-300 group-hover:text-emerald-200 transition-colors">
                 {Number(account.price).toFixed(0)} พอยต์
               </span>
-              <span className="text-sm text-gray-400 line-through">
+              <span className="text-sm text-slate-400 line-through">
                 {originalPrice.toFixed(0)} พอยต์
               </span>
             </div>
           ) : (
-            <span className="text-xl font-bold text-red-600 group-hover:text-red-700 transition-colors">
+            <span className="text-xl font-bold text-emerald-300 group-hover:text-emerald-200 transition-colors">
               {Number(account.price).toFixed(0)} พอยต์
             </span>
           )}
         </div>
 
         {/* Divider */}
-        <div className="h-[1px] bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-4"></div>
+        <div className="h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent mb-4"></div>
 
         {/* ปุ่มซื้อ */}
         {isOutOfStock ? (
           <Button
-            className="w-full bg-gray-200 text-gray-500 font-medium gap-2 cursor-not-allowed mb-2"
+            className="w-full bg-slate-800 text-slate-500 font-medium gap-2 cursor-not-allowed mb-2 border border-slate-700"
             disabled
           >
             <ShoppingCart className="h-4 w-4" />
@@ -316,7 +316,7 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
         ) : (
           <>
             <Button
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-medium gap-2 mb-2"
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold gap-2 mb-2 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 onQuickBuy(account);
@@ -328,7 +328,7 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
             <Link href={`/accounts/${account.id}`} className="block">
               <Button
                 variant="outline"
-                className="w-full border-red-400 hover:bg-gray-50 hover:border-red-500 !text-red-600 hover:!text-red-700"
+                className="w-full border-emerald-400/70 hover:bg-emerald-500/10 hover:border-emerald-400 !text-emerald-200"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Info className="h-4 w-4 mr-2" />
@@ -340,7 +340,7 @@ export default function AnimatedAccountCard({ account, index, initialPermissionI
 
         {/* ข้อมูลสต็อก */}
         <div className={`flex items-center gap-1.5 text-xs mt-4 ${
-          isOutOfStock ? 'text-gray-400' : 'text-gray-600'
+          isOutOfStock ? 'text-slate-500' : 'text-slate-300'
         }`}>
           <Package className="h-3.5 w-3.5" />
           <span>เหลือทั้งหมด {account.stock} ชิ้น</span>
