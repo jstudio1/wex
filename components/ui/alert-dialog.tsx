@@ -30,11 +30,20 @@ export function AlertDialogTrigger({ asChild, children }: { asChild?: boolean; c
 export function AlertDialogContent({ className, children }: HTMLAttributes<HTMLDivElement>) {
   const ctx = useContext(Ctx)!;
   if (!ctx.open) return null;
+  
+  // Filter out bg-white and other conflicting background classes
+  const filteredClassName = className
+    ? className
+        .split(' ')
+        .filter((cls) => !cls.startsWith('bg-white') && !cls.startsWith('bg-gray-50') && !cls.startsWith('bg-gray-100'))
+        .join(' ')
+    : '';
+  
   return (
     <div className="fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bg-black/60" onClick={() => ctx.setOpen(false)} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => ctx.setOpen(false)} />
       <div 
-        className={clsx('absolute left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-800 bg-[#0a0a0a] p-4 shadow-xl z-[75]', className)}
+        className={clsx('absolute left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-emerald-500/30 bg-[#0a0a0a] p-4 shadow-xl shadow-emerald-500/20 z-[75]', filteredClassName)}
         onClick={(e) => {
           // Prevent closing dialog when clicking inside content
           e.stopPropagation();
@@ -69,7 +78,7 @@ export function AlertDialogCancel(props: ButtonHTMLAttributes<HTMLButtonElement>
     <button
       {...props}
       onClick={(e) => { props.onClick?.(e); ctx.setOpen(false); }}
-      className={clsx('inline-flex items-center justify-center rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800', props.className)}
+      className={clsx('inline-flex items-center justify-center rounded-md border border-slate-700 px-3 py-2 text-sm text-gray-300 hover:bg-slate-800 hover:border-slate-600', props.className)}
     />
   );
 }

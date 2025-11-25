@@ -44,10 +44,18 @@ export function DialogContent({ className, children }: { className?: string; chi
 
   if (!ctx.open || !mounted) return null;
 
+  // Filter out bg-white and other conflicting background classes
+  const filteredClassName = className
+    ? className
+        .split(' ')
+        .filter((cls) => !cls.startsWith('bg-white') && !cls.startsWith('bg-gray-50') && !cls.startsWith('bg-gray-100'))
+        .join(' ')
+    : '';
+
   const content = (
     <div className="fixed inset-0 z-[9999] grid place-items-center p-4" style={{ isolation: 'isolate' }}>
       <div className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm" onClick={() => ctx.setOpen(false)} />
-      <div className={`relative z-10 w-[92vw] max-w-md rounded-2xl border border-gray-800 bg-[#0a0a0a] p-4 shadow-xl ${className || ''}`}>{children}</div>
+      <div className={`relative z-10 w-[92vw] max-w-md rounded-2xl border border-emerald-500/30 bg-[#0a0a0a] p-4 shadow-xl shadow-emerald-500/20 ${filteredClassName}`}>{children}</div>
     </div>
   );
 

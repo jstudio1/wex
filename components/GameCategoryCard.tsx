@@ -65,13 +65,13 @@ export default function GameCategoryCard({
     <Link href={`/categories/${slug}`}>
       <div
         ref={cardRef}
-        className={`group relative w-full h-48 md:h-64 rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-red-500/30 hover:scale-[1.02] ${
+        className={`group relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-emerald-500/20 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] hover:border-emerald-500/50 ${
           isVisible 
             ? 'opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-8'
         }`}
         style={{
-          transition: 'opacity 0.6s ease-out, transform 0.6s ease-out'
+          transition: 'opacity 0.6s ease-out, transform 0.6s ease-out, box-shadow 0.3s ease-out'
         }}
       >
         {/* Background Image */}

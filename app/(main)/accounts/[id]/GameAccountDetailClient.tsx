@@ -110,13 +110,13 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
   const totalPrice = Number(account.price) * quantity;
 
   return (
-    <main className="min-h-screen bg-gray-50 relative">
+    <main className="min-h-screen bg-slate-950 relative">
       {/* Background Pattern */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
         <div 
           className="absolute inset-0" 
           style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(220, 38, 38) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
             backgroundSize: '40px 40px'
           }}
         />
@@ -124,9 +124,9 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
       
       {/* Decorative Shapes */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-red-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-red-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-pink-500/5 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 relative">
@@ -134,7 +134,7 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
         <Button 
           variant="ghost" 
           onClick={() => router.back()} 
-          className="mb-6 gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          className="mb-6 gap-2 text-gray-300 hover:text-white hover:bg-slate-800/50"
         >
           <ArrowLeft className="h-4 w-4" />
           กลับ
@@ -144,7 +144,7 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
           {/* Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-white shadow-sm group">
+            <div className="relative aspect-square rounded-xl overflow-hidden border border-emerald-500/30 bg-slate-900/60 shadow-lg shadow-emerald-500/10 group">
               {allImages.length > 0 ? (
                 <>
                   <Image
@@ -156,7 +156,7 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                     sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                   {!canBuy && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
                       <Badge variant="destructive" className="text-lg font-semibold px-6 py-3 bg-red-600">
                         สินค้าหมด
                       </Badge>
@@ -165,15 +165,15 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                   {/* Discount Badge */}
                   {canBuy && discountPercent !== null && discountPercent > 0 && (
                     <div className="absolute top-4 right-4 z-20">
-                      <Badge className="bg-gradient-to-r from-red-600 to-orange-500 text-white border-0 shadow-lg text-sm font-bold px-4 py-2">
+                      <Badge className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white border-0 shadow-lg text-sm font-bold px-4 py-2">
                         🔥 ลด {discountPercent}%
                       </Badge>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                  <Package className="h-16 w-16 text-gray-300" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                  <Package className="h-16 w-16 text-slate-600" />
                 </div>
               )}
             </div>
@@ -187,8 +187,8 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                     onClick={() => setCurrentImageIndex(index)}
                     className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                       index === currentImageIndex 
-                        ? 'border-red-600 ring-2 ring-red-100' 
-                        : 'border-gray-200 hover:border-red-300'
+                        ? 'border-emerald-500 ring-2 ring-emerald-500/30' 
+                        : 'border-slate-700 hover:border-emerald-500/50'
                     }`}
                   >
                     <Image
@@ -200,7 +200,7 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                       loading={index < 3 ? 'eager' : 'lazy'}
                     />
                     {index === currentImageIndex && (
-                      <div className="absolute inset-0 bg-red-600/10" />
+                      <div className="absolute inset-0 bg-emerald-500/20" />
                     )}
                   </button>
                 ))}
@@ -213,18 +213,18 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 backdrop-blur-sm border-gray-200 hover:bg-white lg:hidden"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-slate-900/90 backdrop-blur-sm border-emerald-500/30 hover:bg-slate-800 lg:hidden"
                   onClick={() => setCurrentImageIndex(i => (i - 1 + allImages.length) % allImages.length)}
                 >
-                  <ChevronLeft className="h-5 w-5 text-gray-700" />
+                  <ChevronLeft className="h-5 w-5 text-emerald-400" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 backdrop-blur-sm border-gray-200 hover:bg-white lg:hidden"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-slate-900/90 backdrop-blur-sm border-emerald-500/30 hover:bg-slate-800 lg:hidden"
                   onClick={() => setCurrentImageIndex(i => (i + 1) % allImages.length)}
                 >
-                  <ChevronRight className="h-5 w-5 text-gray-700" />
+                  <ChevronRight className="h-5 w-5 text-emerald-400" />
                 </Button>
               </>
             )}
@@ -236,23 +236,23 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
             <div className="space-y-4">
               <div>
                 <div className="flex items-start justify-between gap-4 mb-3">
-                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight">
                     {account.title}
                   </h1>
                 </div>
                 
                 <div className="flex items-center gap-3 flex-wrap">
                   {account.game_categories && (
-                    <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50">
+                    <Badge variant="outline" className="border-emerald-500/50 text-emerald-400 bg-emerald-500/10">
                       {account.game_categories.name}
                     </Badge>
                   )}
                   {canBuy ? (
-                    <Badge className="bg-green-100 text-green-700 border-green-300">
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                       พร้อมจำหน่าย
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300">
+                    <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
                       ขายหมด
                     </Badge>
                   )}
@@ -260,34 +260,34 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
               </div>
 
               {/* Price Section */}
-              <div className="space-y-2 p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="space-y-2 p-6 rounded-xl border border-emerald-500/30 bg-slate-900/60 shadow-lg shadow-emerald-500/10">
                 {discountPercent !== null && discountPercent > 0 && originalPrice !== null ? (
                   <div className="space-y-2">
                     <div className="flex items-baseline gap-3">
-                      <span className="text-4xl font-bold text-red-600">
+                      <span className="text-4xl font-bold text-emerald-400">
                         {Number(account.price).toFixed(2)}
                       </span>
-                      <span className="text-lg text-gray-600">พอยต์</span>
+                      <span className="text-lg text-gray-300">พอยต์</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg text-gray-400 line-through">
+                      <span className="text-lg text-gray-500 line-through">
                         {originalPrice.toFixed(2)} พอยต์
                       </span>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-bold text-red-600">
+                    <span className="text-4xl font-bold text-emerald-400">
                       {Number(account.price).toFixed(2)}
                     </span>
-                    <span className="text-lg text-gray-600">พอยต์</span>
+                    <span className="text-lg text-gray-300">พอยต์</span>
                   </div>
                 )}
                 
                 {account.stock > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 pt-2 border-t border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-300 pt-2 border-t border-emerald-500/20">
                     <Package className="h-4 w-4" />
-                    <span>สต็อกคงเหลือ: <span className="text-gray-900 font-semibold">{account.stock}</span> ชิ้น</span>
+                    <span>สต็อกคงเหลือ: <span className="text-white font-semibold">{account.stock}</span> ชิ้น</span>
                   </div>
                 )}
               </div>
@@ -295,16 +295,16 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
 
             {/* Quantity Selector */}
             {canBuy && (
-              <div className="p-6 rounded-xl border border-gray-200 bg-white shadow-sm space-y-4">
-                <Label htmlFor="quantity" className="text-base font-semibold text-gray-900">จำนวน</Label>
+              <div className="p-6 rounded-xl border border-emerald-500/30 bg-slate-900/60 shadow-lg shadow-emerald-500/10 space-y-4">
+                <Label htmlFor="quantity" className="text-base font-semibold text-white">จำนวน</Label>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-2 border border-emerald-500/30 rounded-lg overflow-hidden bg-slate-800/50">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       disabled={quantity <= 1}
-                      className="rounded-none h-12 w-12 hover:bg-gray-100 text-gray-700"
+                      className="rounded-none h-12 w-12 hover:bg-slate-700 text-gray-300 disabled:text-gray-600"
                     >
                       <span className="text-xl">−</span>
                     </Button>
@@ -326,22 +326,22 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                           setQuantity(account.stock);
                         }
                       }}
-                      className="w-20 text-center text-lg font-semibold border-0 focus-visible:ring-0 rounded-none h-12"
+                      className="w-20 text-center text-lg font-semibold border-0 bg-transparent text-white focus-visible:ring-emerald-500 rounded-none h-12"
                     />
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setQuantity(Math.min(account.stock, quantity + 1))}
                       disabled={quantity >= account.stock}
-                      className="rounded-none h-12 w-12 hover:bg-gray-100 text-gray-700"
+                      className="rounded-none h-12 w-12 hover:bg-slate-700 text-gray-300 disabled:text-gray-600"
                     >
                       <span className="text-xl">+</span>
                     </Button>
                   </div>
                   <div className="flex-1 text-right">
-                    <div className="text-sm text-gray-600 mb-1">ราคารวม</div>
-                    <div className="text-2xl font-bold text-red-600">
-                      {totalPrice.toFixed(2)} <span className="text-base text-gray-600 font-normal">พอยต์</span>
+                    <div className="text-sm text-gray-300 mb-1">ราคารวม</div>
+                    <div className="text-2xl font-bold text-emerald-400">
+                      {totalPrice.toFixed(2)} <span className="text-base text-gray-300 font-normal">พอยต์</span>
                     </div>
                   </div>
                 </div>
@@ -350,12 +350,12 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
 
             {/* Description */}
             {account.description && (
-              <div className="p-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="p-6 rounded-xl border border-emerald-500/30 bg-slate-900/60 shadow-lg shadow-emerald-500/10">
                 <div className="flex items-center gap-2 mb-4">
-                  <Info className="h-5 w-5 text-red-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">รายละเอียดสินค้า</h3>
+                  <Info className="h-5 w-5 text-emerald-400" />
+                  <h3 className="text-lg font-semibold text-white">รายละเอียดสินค้า</h3>
                 </div>
-                <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                <p className="text-gray-300 whitespace-pre-line leading-relaxed">
                   {account.description}
                 </p>
               </div>
@@ -366,7 +366,7 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
-                    className="w-full h-14 text-lg font-semibold bg-red-600 hover:bg-red-700 text-white shadow-lg" 
+                    className="w-full h-14 text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20" 
                     size="lg"
                     disabled={!canBuy || buying}
                   >
@@ -385,33 +385,33 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                     )}
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="max-w-md bg-white">
+                <AlertDialogContent className="max-w-md">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl text-gray-900">ยืนยันการซื้อไอดีเกม</AlertDialogTitle>
+                    <AlertDialogTitle className="text-xl text-white">ยืนยันการซื้อไอดีเกม</AlertDialogTitle>
                     <AlertDialogDescription className="pt-4">
-                      <div className="space-y-3 text-gray-700">
-                        <div className="flex justify-between py-2 border-b border-gray-200">
-                          <span className="text-gray-600">เกม:</span>
-                          <span className="font-medium text-gray-900">{account.game_name}</span>
+                      <div className="space-y-3 text-gray-300">
+                        <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                          <span className="text-gray-400">เกม:</span>
+                          <span className="font-medium text-white">{account.game_name}</span>
                         </div>
-                        <div className="flex justify-between py-2 border-b border-gray-200">
-                          <span className="text-gray-600">ไอดี:</span>
-                          <span className="font-medium text-gray-900">{account.title}</span>
+                        <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                          <span className="text-gray-400">ไอดี:</span>
+                          <span className="font-medium text-white">{account.title}</span>
                         </div>
-                        <div className="flex justify-between py-2 border-b border-gray-200">
-                          <span className="text-gray-600">จำนวน:</span>
-                          <span className="font-medium text-gray-900">{quantity} ชิ้น</span>
+                        <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                          <span className="text-gray-400">จำนวน:</span>
+                          <span className="font-medium text-white">{quantity} ชิ้น</span>
                         </div>
-                        <div className="flex justify-between py-2 border-b border-gray-200">
-                          <span className="text-gray-600">ราคาต่อชิ้น:</span>
-                          <span className="text-gray-900">{Number(account.price).toFixed(2)} พอยต์</span>
+                        <div className="flex justify-between py-2 border-b border-emerald-500/20">
+                          <span className="text-gray-400">ราคาต่อชิ้น:</span>
+                          <span className="text-white">{Number(account.price).toFixed(2)} พอยต์</span>
                         </div>
-                        <div className="flex justify-between items-center py-3 pt-4 border-t border-gray-200">
-                          <span className="text-lg font-semibold text-gray-900">ราคารวม:</span>
-                          <span className="text-2xl font-bold text-red-600">{totalPrice.toFixed(2)} พอยต์</span>
+                        <div className="flex justify-between items-center py-3 pt-4 border-t border-emerald-500/20">
+                          <span className="text-lg font-semibold text-white">ราคารวม:</span>
+                          <span className="text-2xl font-bold text-emerald-400">{totalPrice.toFixed(2)} พอยต์</span>
                         </div>
-                        <div className="mt-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                          <p className="text-sm text-blue-700">
+                        <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                          <p className="text-sm text-emerald-300">
                             หลังจากซื้อ คุณจะได้รับ username และ password ที่หน้าประวัติ
                           </p>
                         </div>
@@ -419,11 +419,11 @@ export default function GameAccountDetailClient({ account }: GameAccountDetailCl
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="gap-2">
-                    <AlertDialogCancel disabled={buying} className="mt-2 border-gray-200 text-gray-700 hover:bg-gray-50">ยกเลิก</AlertDialogCancel>
+                    <AlertDialogCancel disabled={buying} className="mt-2 border-slate-700 text-gray-300 hover:bg-slate-800">ยกเลิก</AlertDialogCancel>
                     <AlertDialogAction 
                       onClick={handleBuy} 
                       disabled={buying || !canBuy}
-                      className="bg-red-600 hover:bg-red-700 text-white"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
                       {buying ? (
                         <>

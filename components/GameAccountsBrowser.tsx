@@ -229,12 +229,12 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
     <div className="space-y-6">
       {/* Search Section */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <SearchIcon className="h-5 w-5 text-red-600" />
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <SearchIcon className="h-5 w-5 text-emerald-400" />
           ค้นหาไอดีเกม
         </h2>
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
       </div>
 
       {/* Top bar: search + divider + categories */}
@@ -245,7 +245,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
               variant="outline"
               role="combobox"
               aria-expanded={searchOpen}
-              className="w-full max-w-md justify-between border-gray-300 hover:bg-gray-50 hover:border-red-400 text-gray-900"
+              className="w-full max-w-md justify-between border-slate-700 hover:bg-slate-800 hover:border-emerald-500/50 text-white bg-slate-900/50"
             >
               {selectedAccount
                 ? accounts.find((account) => account.id === selectedAccount)?.title || 'ค้นหาไอดีเกม...'
@@ -253,16 +253,16 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-400" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full max-w-md p-0 bg-white border-gray-200">
+          <PopoverContent className="w-full max-w-md p-0 bg-slate-900 border-emerald-500/30">
             <Command className="bg-transparent">
               <CommandInput 
                 placeholder="ค้นหาไอดีเกม..." 
                 value={searchQuery}
                 onValueChange={setSearchQuery}
-                className="text-gray-900"
+                className="text-white"
               />
               <CommandList>
-                <CommandEmpty className="text-gray-600">ไม่พบไอดีเกมที่ค้นหา</CommandEmpty>
+                <CommandEmpty className="text-gray-400">ไม่พบไอดีเกมที่ค้นหา</CommandEmpty>
                 <CommandGroup>
                   {filtered.slice(0, 10).map((account) => (
                     <CommandItem
@@ -274,17 +274,17 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                         setSearchOpen(false);
                         router.push(`/accounts/${account.id}`);
                       }}
-                      className="text-gray-900 hover:bg-red-50"
+                      className="text-white hover:bg-emerald-500/10"
                     >
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          selectedAccount === account.id ? "opacity-100 text-red-600" : "opacity-0"
+                          selectedAccount === account.id ? "opacity-100 text-emerald-400" : "opacity-0"
                         )}
                       />
                       <div className="flex flex-col">
                         <span className="font-medium">{account.title}</span>
-                        <span className="text-xs text-gray-500">{account.game_name}</span>
+                        <span className="text-xs text-gray-400">{account.game_name}</span>
                       </div>
                     </CommandItem>
                   ))}
@@ -293,7 +293,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
             </Command>
           </PopoverContent>
         </Popover>
-        <div className="hidden h-6 w-px bg-gray-300 md:block" />
+        <div className="hidden h-6 w-px bg-slate-700 md:block" />
         {!hideCategoryPills && categories.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <CategoryPill 
@@ -323,12 +323,12 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
 
       {/* Accounts Grid Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Package className="h-5 w-5 text-red-600" />
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <Package className="h-5 w-5 text-emerald-400" />
           รายการไอดีเกม
         </h2>
-        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-red-300 to-transparent"></div>
+        <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
       </div>
 
       {/* Accounts Grid */}
@@ -393,28 +393,28 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                 setQuickBuyQuantity(1);
               }
             }}>
-              <DialogContent className="max-w-md bg-white">
+              <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-xl text-gray-900">ซื้อไอดีเกม</DialogTitle>
+                  <DialogTitle className="text-xl text-white">ซื้อไอดีเกม</DialogTitle>
                   <DialogDescription className="pt-4">
                     <div className="space-y-4">
                       {/* Product Info */}
-                      <div className="space-y-2 pb-3 border-b border-gray-200">
-                        <div className="font-semibold text-gray-900">{quickBuyAccount.title}</div>
-                        <div className="text-sm text-gray-600">{quickBuyAccount.game_name}</div>
+                      <div className="space-y-2 pb-3 border-b border-emerald-500/20">
+                        <div className="font-semibold text-white">{quickBuyAccount.title}</div>
+                        <div className="text-sm text-gray-300">{quickBuyAccount.game_name}</div>
                       </div>
 
                       {/* Quantity Selector */}
                       <div className="space-y-3">
-                        <Label htmlFor="quick-quantity" className="text-base text-gray-900">จำนวน</Label>
+                        <Label htmlFor="quick-quantity" className="text-base text-white">จำนวน</Label>
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 border-2 border-gray-300 rounded-lg overflow-hidden">
+                          <div className="flex items-center gap-2 border-2 border-emerald-500/30 rounded-lg overflow-hidden bg-slate-800/50">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setQuickBuyQuantity(Math.max(1, quickBuyQuantity - 1))}
                               disabled={quickBuyQuantity <= 1}
-                              className="rounded-none h-10 w-10 hover:bg-gray-100 text-[color:var(--text)] disabled:text-gray-300 disabled:opacity-100"
+                              className="rounded-none h-10 w-10 hover:bg-slate-700 text-gray-300 disabled:text-gray-600 disabled:opacity-100"
                             >
                               <span className="text-lg">−</span>
                             </Button>
@@ -436,14 +436,14 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                                   setQuickBuyQuantity(quickBuyAccount.stock);
                                 }
                               }}
-                              className="w-16 text-center text-base font-semibold border-0 focus-visible:ring-0 rounded-none h-10 bg-gray-100 text-gray-900"
+                              className="w-16 text-center text-base font-semibold border-0 focus-visible:ring-emerald-500 rounded-none h-10 bg-transparent text-white"
                             />
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setQuickBuyQuantity(Math.min(quickBuyAccount.stock, quickBuyQuantity + 1))}
                               disabled={quickBuyQuantity >= quickBuyAccount.stock}
-                              className="rounded-none h-10 w-10 hover:bg-gray-100 text-[color:var(--text)] disabled:text-gray-300 disabled:opacity-100"
+                              className="rounded-none h-10 w-10 hover:bg-slate-700 text-gray-300 disabled:text-gray-600 disabled:opacity-100"
                             >
                               <span className="text-lg">+</span>
                             </Button>
@@ -461,42 +461,42 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                           const totalBasePrice = Number(quickBuyAccount.price) * quickBuyQuantity;
                           
                           return (
-                        <div className="space-y-2 p-4 rounded-lg border border-red-200 bg-red-50">
+                        <div className="space-y-2 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">ราคาต่อชิ้น:</span>
+                            <span className="text-gray-300">ราคาต่อชิ้น:</span>
                                 {hasDiscount ? (
                                   <div className="flex items-center gap-2">
-                                    <span className="text-gray-900 font-semibold">{discountedPrice.toFixed(2)} พอยต์</span>
-                                    <span className="text-gray-400 line-through text-xs">{basePrice.toFixed(2)}</span>
+                                    <span className="text-white font-semibold">{discountedPrice.toFixed(2)} พอยต์</span>
+                                    <span className="text-gray-500 line-through text-xs">{basePrice.toFixed(2)}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-gray-900">{basePrice.toFixed(2)} พอยต์</span>
+                                  <span className="text-white">{basePrice.toFixed(2)} พอยต์</span>
                                 )}
                               </div>
                               {hasDiscount && permission && (
-                                <div className="text-xs text-green-600 font-medium">
+                                <div className="text-xs text-emerald-400 font-medium">
                                   ส่วนลดสิทธิ์: {permissionName || 'สิทธิ์ส่วนลด'}
                           </div>
                               )}
-                          <div className="flex justify-between items-center pt-2 border-t border-red-200">
-                            <span className="font-semibold text-gray-900">ราคารวม:</span>
+                          <div className="flex justify-between items-center pt-2 border-t border-emerald-500/20">
+                            <span className="font-semibold text-white">ราคารวม:</span>
                                 {hasDiscount ? (
                                   <div className="flex flex-col items-end gap-1">
-                            <span className="text-xl font-bold text-red-600">
+                            <span className="text-xl font-bold text-emerald-400">
                                       {totalPrice.toFixed(2)} พอยต์
                                     </span>
-                                    <span className="text-sm text-gray-400 line-through">
+                                    <span className="text-sm text-gray-500 line-through">
                                       {totalBasePrice.toFixed(2)} พอยต์
                             </span>
                                   </div>
                                 ) : (
-                                  <span className="text-xl font-bold text-red-600">
+                                  <span className="text-xl font-bold text-emerald-400">
                                     {totalPrice.toFixed(2)} พอยต์
                                   </span>
                                 )}
                           </div>
                           {quickBuyAccount.stock > 0 && (
-                            <div className="text-xs text-gray-600 pt-1">
+                            <div className="text-xs text-gray-300 pt-1">
                               สต็อกคงเหลือ: {quickBuyAccount.stock} ชิ้น
                             </div>
                           )}
@@ -515,7 +515,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                       setQuickBuyQuantity(1);
                     }}
                     disabled={quickBuyLoading}
-                    className="border-gray-200 hover:bg-gray-50 text-gray-700"
+                    className="border-slate-700 hover:bg-slate-800 text-gray-300"
                   >
                     ยกเลิก
                   </Button>
@@ -574,7 +574,7 @@ function GameAccountsBrowser({ accounts, categories, initialCategory, isLoading,
                       }
                     }}
                     disabled={quickBuyLoading}
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {quickBuyLoading ? (
                       <>
