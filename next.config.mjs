@@ -25,6 +25,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**',
       },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
     ],
   },
   // Enable prefetching for better navigation performance
@@ -32,8 +36,6 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000, // Keep pages in memory for 25 seconds
     pagesBufferLength: 5, // Increase buffer for better prefetching
   },
-  // Optimize compiler
-  swcMinify: true,
   // Production optimizations
   poweredByHeader: false,
 };

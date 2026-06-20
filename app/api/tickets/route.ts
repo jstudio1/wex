@@ -206,6 +206,17 @@ export async function POST(req: Request) {
         files,
       });
     }
+    
+    try {
+      const { sendTelegramNotification } = await import('@/lib/telegram');
+      const catName = Array.isArray(ticket.category) ? ticket.category[0]?.name : (ticket.category as any)?.name;
+      await sendTelegramNotification(
+        `🎫 <b>เปิด Ticket ใหม่:</b> #${ticket.id}\n<b>ผู้ใช้:</b> ${user.username} (ID: ${user.id})\n<b>หัวข้อ:</b> ${ticket.title}\n<b>หมวดหมู่:</b> ${catName || '-'}\n<b>ข้อความ:</b> ${ticket.last_message_preview}`,
+        'ticket'
+      );
+    } catch (e) {
+      console.error('Failed to send telegram ticket notification:', e);
+    }
 
     return NextResponse.json({ ticket });
   } catch (err) {

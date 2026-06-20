@@ -6,7 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { SearchIcon, ShoppingCart, RefreshCcw } from 'lucide-react';
+import { SearchIcon, ShoppingCart, RefreshCcw, Eye, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import {
   Empty,
   EmptyContent,
@@ -131,6 +132,8 @@ export default function OrdersContent() {
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -235,37 +238,18 @@ export default function OrdersContent() {
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
           <TableCell className="text-gray-300">
-            <div className="space-y-1">
-              {inputEntries.length > 0 ? (
-                inputEntries.map(([key, value]) => (
-                  <div key={key} className="text-xs">
-                    <span className="text-gray-400">{key}:</span>{' '}
-                    <span className="text-white font-medium">{String(value)}</span>
-                  </div>
-                ))
-              ) : (
-                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-gray-300">
-            <div className="space-y-1">
-              {productOrder.result_code && (
-                <div className="text-xs">
-                  <span className="text-gray-400">รหัส:</span>{' '}
-                  <span className="text-emerald-400 font-mono">{productOrder.result_code}</span>
-                </div>
-              )}
-              {productOrder.result_message && (
-                <div className="text-xs">
-                  <span className="text-gray-400">ข้อความ:</span>{' '}
-                  <span className="text-emerald-400">{productOrder.result_message}</span>
-                </div>
-              )}
-              {!productOrder.result_code && !productOrder.result_message && (
-                <span className="text-gray-500 text-xs">-</span>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedOrder(order);
+                setIsModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              ดูรายละเอียด
+            </Button>
           </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
@@ -281,7 +265,18 @@ export default function OrdersContent() {
     // App Premium orders
     if (order.type === 'app_premium') {
       const appOrder = order as AppPremiumOrder;
-      const productData = appOrder.product_data || {};
+      // Parse product_data from string to object
+      let productData: Record<string, any> = {};
+      try {
+        if (typeof appOrder.product_data === 'string') {
+          productData = JSON.parse(appOrder.product_data);
+        } else if (appOrder.product_data) {
+          productData = appOrder.product_data;
+        }
+      } catch (e) {
+        // If parsing fails, treat as empty object
+        productData = {};
+      }
       const inputEntries = Object.entries(productData).filter(([_, v]) => v != null && v !== '');
       const resultData = appOrder.raw_response || {};
       
@@ -303,44 +298,18 @@ export default function OrdersContent() {
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
           <TableCell className="text-gray-300">
-            <div className="space-y-1">
-              {inputEntries.length > 0 ? (
-                inputEntries.map(([key, value]) => (
-                  <div key={key} className="text-xs">
-                    <span className="text-gray-400">{key}:</span>{' '}
-                    <span className="text-white font-medium">{String(value)}</span>
-                  </div>
-                ))
-              ) : (
-                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-gray-300">
-            {resultData.prize || resultData.code || resultData.result ? (
-              <div className="text-xs space-y-1">
-                {resultData.prize && (
-                  <div>
-                    <span className="text-gray-400">รางวัล:</span>{' '}
-                    <span className="text-emerald-400 font-medium">{String(resultData.prize)}</span>
-                  </div>
-                )}
-                {resultData.code && (
-                  <div>
-                    <span className="text-gray-400">รหัส:</span>{' '}
-                    <span className="text-emerald-400 font-mono">{String(resultData.code)}</span>
-                  </div>
-                )}
-                {resultData.result && (
-                  <div>
-                    <span className="text-gray-400">ผลลัพธ์:</span>{' '}
-                    <span className="text-emerald-400">{String(resultData.result)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span className="text-gray-500 text-xs">-</span>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedOrder(order);
+                setIsModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              ดูรายละเอียด
+            </Button>
           </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
@@ -364,28 +333,18 @@ export default function OrdersContent() {
           </TableCell>
           <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
           <TableCell className="text-gray-300">
-            <div className="space-y-1">
-              {order.link && (
-                <div className="text-xs">
-                  <span className="text-gray-400">ลิงค์:</span>{' '}
-                  <a href={order.link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
-                    {order.link.length > 50 ? `${order.link.substring(0, 50)}...` : order.link}
-                  </a>
-                </div>
-              )}
-              {order.quantity && (
-                <div className="text-xs">
-                  <span className="text-gray-400">จำนวน:</span>{' '}
-                  <span className="text-white font-medium">{order.quantity}</span>
-                </div>
-              )}
-              {!order.link && !order.quantity && (
-                <span className="text-gray-500 text-xs">ไม่มีข้อมูล</span>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-gray-300">
-            <span className="text-gray-500 text-xs">-</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedOrder(order);
+                setIsModalOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              ดูรายละเอียด
+            </Button>
           </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
@@ -405,13 +364,13 @@ export default function OrdersContent() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-32" />
-        <div className="card p-4">
-          <div className="space-y-2">
+        <div className="card p-4 overflow-x-auto">
+          <div className="min-w-[600px] space-y-2">
             <Skeleton className="h-10 w-full" />
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-6 gap-2">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                <div key={i} className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <Skeleton key={j} className="h-8 w-full" />
                   ))}
                 </div>
@@ -442,37 +401,38 @@ export default function OrdersContent() {
       </div>
       
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as OrderType)}>
-        <TabsList>
-          <TabsTrigger value="all" active={activeTab === 'all'}>
-            ทั้งหมด ({orders.all.length})
-          </TabsTrigger>
-          <TabsTrigger value="app_premium" active={activeTab === 'app_premium'}>
-            แอพพรีเมี่ยม ({orders.app_premium.length})
-          </TabsTrigger>
-          <TabsTrigger value="social" active={activeTab === 'social'}>
-            ปั้มโซเชียล ({orders.social.length})
-          </TabsTrigger>
-          <TabsTrigger value="gtopup" active={activeTab === 'gtopup'}>
-            เติมเกม ({orders.gtopup.length})
-          </TabsTrigger>
-          <TabsTrigger value="mtopup" active={activeTab === 'mtopup'}>
-            เติมเงินมือถือ ({orders.mtopup.length})
-          </TabsTrigger>
-          <TabsTrigger value="cashcard" active={activeTab === 'cashcard'}>
-            บัตรเติมเงิน ({orders.cashcard.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="flex w-max min-w-full gap-1 h-auto p-1">
+            <TabsTrigger value="all" active={activeTab === 'all'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              ทั้งหมด ({orders.all.length})
+            </TabsTrigger>
+            <TabsTrigger value="app_premium" active={activeTab === 'app_premium'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              แอพพรีเมี่ยม ({orders.app_premium.length})
+            </TabsTrigger>
+            <TabsTrigger value="social" active={activeTab === 'social'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              ปั้มโซเชียล ({orders.social.length})
+            </TabsTrigger>
+            <TabsTrigger value="gtopup" active={activeTab === 'gtopup'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              เติมเกม ({orders.gtopup.length})
+            </TabsTrigger>
+            <TabsTrigger value="mtopup" active={activeTab === 'mtopup'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              เติมเงินมือถือ ({orders.mtopup.length})
+            </TabsTrigger>
+            <TabsTrigger value="cashcard" active={activeTab === 'cashcard'} className="whitespace-nowrap shrink-0 text-xs py-2 px-3">
+              บัตรเติมเงิน ({orders.cashcard.length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all" active={activeTab === 'all'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -481,7 +441,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -517,14 +477,13 @@ export default function OrdersContent() {
         
         <TabsContent value="app_premium" active={activeTab === 'app_premium'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -533,7 +492,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -569,14 +528,13 @@ export default function OrdersContent() {
 
         <TabsContent value="social" active={activeTab === 'social'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -585,7 +543,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -621,14 +579,13 @@ export default function OrdersContent() {
 
         <TabsContent value="gtopup" active={activeTab === 'gtopup'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -637,7 +594,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -673,14 +630,13 @@ export default function OrdersContent() {
 
         <TabsContent value="mtopup" active={activeTab === 'mtopup'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -689,7 +645,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -725,14 +681,13 @@ export default function OrdersContent() {
 
         <TabsContent value="cashcard" active={activeTab === 'cashcard'} className="mt-4">
           <div className="card p-4 overflow-x-auto">
-            <Table>
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>รหัสคำสั่งซื้อ</TableHead>
                   <TableHead>สินค้า/บริการ</TableHead>
                   <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>ข้อมูลที่ใส่</TableHead>
-                  <TableHead>ผลลัพธ์</TableHead>
+                  <TableHead>รายละเอียด</TableHead>
                   <TableHead>วันที่สั่งซื้อ</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead className="text-right">ราคา</TableHead>
@@ -741,7 +696,7 @@ export default function OrdersContent() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8">
+                    <TableCell colSpan={7} className="py-8">
                       <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -776,6 +731,247 @@ export default function OrdersContent() {
         </TabsContent>
 
       </Tabs>
+
+      {/* Order Detail Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
+              <span>รายละเอียดคำสั่งซื้อ</span>
+              <DialogClose asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogClose>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedOrder && (
+            <div className="space-y-6 mt-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-400">รหัสคำสั่งซื้อ</div>
+                  <div className="text-white font-medium">{selectedOrder.transaction_id || '-'}</div>
+    </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-400">สถานะ</div>
+                  <div>
+                    <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(selectedOrder.state)}`}>
+                      {translateState(selectedOrder.state)}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-400">ผู้ซื้อ</div>
+                  <div className="text-white">{selectedOrder.user?.username || '-'}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-400">ราคา</div>
+                  <div className="text-white font-semibold text-lg">{Number(selectedOrder.price ?? 0).toLocaleString('th-TH')} ฿</div>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <div className="text-sm text-gray-400">วันที่สั่งซื้อ</div>
+                  <div className="text-white">{new Date(selectedOrder.created_at).toLocaleString('th-TH')}</div>
+                </div>
+              </div>
+
+              {/* Product Info */}
+              {(selectedOrder.type === 'gtopup' || selectedOrder.type === 'mtopup' || selectedOrder.type === 'cashcard') && (
+                <>
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลสินค้า</h3>
+                    <div className="flex items-center gap-3 mb-4">
+                      {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product?.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product!.image_url!}
+                          alt={(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product!.name}
+                          className="h-16 w-16 rounded-lg object-cover"
+                        />
+                      )}
+                      <div>
+                        <div className="text-white font-medium text-lg">
+                          {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product?.name || 'ไม่พบข้อมูล'}
+                        </div>
+                        {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product?.key && (
+                          <div className="text-gray-400 text-sm">
+                            Key: {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).product!.key}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Input Data */}
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลที่ใส่</h3>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                      {Object.entries((selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).input_json || {}).filter(([_, v]) => v != null && v !== '').length > 0 ? (
+                        Object.entries((selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).input_json || {}).filter(([_, v]) => v != null && v !== '').map(([key, value]) => (
+                          <div key={key} className="flex justify-between items-start">
+                            <span className="text-gray-400 text-sm">{key}:</span>
+                            <span className="text-white font-medium text-sm text-right max-w-[70%] break-words">{String(value)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-gray-500 text-sm">ไม่มีข้อมูล</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Result */}
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ผลลัพธ์</h3>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                      {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_code && (
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-400 text-sm">รหัส:</span>
+                          <span className="text-emerald-400 font-mono text-sm">{(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_code}</span>
+                        </div>
+                      )}
+                      {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_message && (
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-400 text-sm">ข้อความ:</span>
+                          <span className="text-emerald-400 text-sm text-right max-w-[70%] break-words">{(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_message}</span>
+                        </div>
+                      )}
+                      {!(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_code && !(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).result_message && (
+                        <div className="text-gray-500 text-sm">ไม่มีข้อมูล</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* App Premium Order */}
+              {selectedOrder.type === 'app_premium' && (
+                <>
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลสินค้า</h3>
+                    <div className="flex items-center gap-3 mb-4">
+                      {((selectedOrder as AppPremiumOrder).product?.image_url || (selectedOrder as AppPremiumOrder).product?.icon_url) && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={(selectedOrder as AppPremiumOrder).product!.image_url || (selectedOrder as AppPremiumOrder).product!.icon_url || ''}
+                          alt={(selectedOrder as AppPremiumOrder).product?.display_name || (selectedOrder as AppPremiumOrder).product?.name}
+                          className="h-16 w-16 rounded-lg object-cover"
+                        />
+                      )}
+                      <div>
+                        <div className="text-white font-medium text-lg">
+                          {(selectedOrder as AppPremiumOrder).product?.display_name || (selectedOrder as AppPremiumOrder).product?.name || 'ไม่พบข้อมูล'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Input Data */}
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลที่ใส่</h3>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                      {(() => {
+                        let productData: Record<string, any> = {};
+                        try {
+                          if (typeof (selectedOrder as AppPremiumOrder).product_data === 'string') {
+                            productData = JSON.parse((selectedOrder as AppPremiumOrder).product_data);
+                          } else if ((selectedOrder as AppPremiumOrder).product_data) {
+                            productData = (selectedOrder as AppPremiumOrder).product_data;
+                          }
+                        } catch (e) {
+                          productData = {};
+                        }
+                        const entries = Object.entries(productData).filter(([_, v]) => v != null && v !== '');
+                        return entries.length > 0 ? (
+                          entries.map(([key, value]) => (
+                            <div key={key} className="flex justify-between items-start">
+                              <span className="text-gray-400 text-sm">{key}:</span>
+                              <span className="text-white font-medium text-sm text-right max-w-[70%] break-words" dangerouslySetInnerHTML={{ __html: String(value) }} />
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-500 text-sm">ไม่มีข้อมูล</div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Result */}
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ผลลัพธ์</h3>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                      {(() => {
+                        const resultData = (selectedOrder as AppPremiumOrder).raw_response || {};
+                        if (resultData.prize || resultData.code || resultData.result) {
+                          return (
+                            <>
+                              {resultData.prize && (
+                                <div className="flex justify-between items-start">
+                                  <span className="text-gray-400 text-sm">รางวัล:</span>
+                                  <span className="text-emerald-400 font-medium text-sm">{String(resultData.prize)}</span>
+                                </div>
+                              )}
+                              {resultData.code && (
+                                <div className="flex justify-between items-start">
+                                  <span className="text-gray-400 text-sm">รหัส:</span>
+                                  <span className="text-emerald-400 font-mono text-sm">{String(resultData.code)}</span>
+                                </div>
+                              )}
+                              {resultData.result && (
+                                <div className="flex justify-between items-start">
+                                  <span className="text-gray-400 text-sm">ผลลัพธ์:</span>
+                                  <span className="text-emerald-400 text-sm text-right max-w-[70%] break-words">{String(resultData.result)}</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
+                        return <div className="text-gray-500 text-sm">ไม่มีข้อมูล</div>;
+                      })()}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Social Order */}
+              {selectedOrder.type === 'social' && (
+                <>
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลบริการ</h3>
+                    <div className="text-white font-medium text-lg mb-4">
+                      {(selectedOrder as SocialOrder).social_service?.display_name || (selectedOrder as SocialOrder).social_service?.name || 'ไม่พบข้อมูล'}
+                    </div>
+                  </div>
+
+                  {/* Input Data */}
+                  <div className="border-t border-gray-800 pt-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">ข้อมูลที่ใส่</h3>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                      {(selectedOrder as SocialOrder).link && (
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-400 text-sm">ลิงค์:</span>
+                          <a href={(selectedOrder as SocialOrder).link} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm text-right max-w-[70%] break-all">
+                            {(selectedOrder as SocialOrder).link}
+                          </a>
+                        </div>
+                      )}
+                      {(selectedOrder as SocialOrder).quantity && (
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-400 text-sm">จำนวน:</span>
+                          <span className="text-white font-medium text-sm">{(selectedOrder as SocialOrder).quantity}</span>
+                        </div>
+                      )}
+                      {!(selectedOrder as SocialOrder).link && !(selectedOrder as SocialOrder).quantity && (
+                        <div className="text-gray-500 text-sm">ไม่มีข้อมูล</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

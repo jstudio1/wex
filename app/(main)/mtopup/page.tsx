@@ -34,18 +34,14 @@ type ProductCard = {
 
 const fetchProducts = cache(async (): Promise<ProductCard[]> => {
   const base = getBaseUrl();
-  const p = await fetch(`${base}/api/mtopup`, { cache: 'no-store' });
+  const p = await fetch(`${base}/api/mtopup`, {
+    next: { revalidate: 60, tags: ['mtopup-products'] },
+  });
   const products = p.ok ? (await p.json()).data : [];
   return products;
 });
 
-const fetchSite = cache(async () => {
-  const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { cache: 'no-store' });
-  return res.ok ? res.json() : { flashStart: null, flashEnd: null };
-});
-
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'เติมเงินมือถือ - ราคาถูก เติมเร็ว ปลอดภัย',
@@ -62,7 +58,6 @@ export const metadata: Metadata = {
 
 export default async function MtopupPage() {
   const products = await fetchProducts();
-  const site = await fetchSite();
   return (
     <>
       {/* Hero Banner */}

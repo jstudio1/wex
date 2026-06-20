@@ -175,20 +175,25 @@ export default function GameCategoriesContent() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="card p-4 overflow-x-auto">
-          <div className="w-full space-y-2">
-            <div className="grid grid-cols-5 gap-2 pb-2 border-b border-border">
-              {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+          ))}
+        </div>
+        <div className="hidden lg:block card p-4 overflow-x-auto">
+          <div className="min-w-[760px] space-y-2">
+            <div className="grid grid-cols-6 gap-2 pb-2 border-b border-border">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-6 w-full" />
               ))}
             </div>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-5 gap-2 py-2 border-b border-border/50">
-                {Array.from({ length: 5 }).map((_, j) => (
+              <div key={i} className="grid grid-cols-6 gap-2 py-2 border-b border-border/50">
+                {Array.from({ length: 6 }).map((_, j) => (
                   <Skeleton key={j} className="h-6 w-full" />
                 ))}
               </div>
@@ -201,15 +206,15 @@ export default function GameCategoriesContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-2">จัดการหมวดหมู่สินค้าอื่นๆ</h2>
-          <p className="text-sm text-[color:var(--text)]/60">เพิ่ม แก้ไข และลบหมวดหมู่สินค้าอื่นๆ</p>
+          <h2 className="text-xl font-bold mb-1 sm:text-2xl sm:mb-2">จัดการหมวดหมู่สินค้าอื่นๆ</h2>
+          <p className="text-xs sm:text-sm text-[color:var(--text)]/60">เพิ่ม แก้ไข และลบหมวดหมู่สินค้าอื่นๆ</p>
         </div>
         <Dialog open={openDialog !== null} onOpenChange={(open) => {
           if (!open) closeDialog();
         }}>
-          <Button onClick={() => openCreateDialog()} className="gap-2">
+          <Button onClick={() => openCreateDialog()} className="gap-2 self-start sm:self-auto">
             <Plus className="size-4" />
             เพิ่มหมวดหมู่
           </Button>
@@ -254,13 +259,13 @@ export default function GameCategoriesContent() {
                   />
                   <p className="text-xs text-[color:var(--text)]/60">รูปภาพที่จะใช้แสดงในปุ่มหมวดหมู่ (ถ้าไม่ระบุจะใช้รูป default)</p>
                   {formData.image_url && (
-                    <div className="mt-2 rounded-lg border border-border overflow-hidden bg-muted/50">
+                    <div className="mt-2 rounded-lg border border-emerald-500/20 overflow-hidden bg-black/30">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={formData.image_url} alt="Preview" className="w-full h-auto max-h-32 object-contain" />
+                      <img src={formData.image_url} alt="Preview" className="w-full h-auto max-h-40 object-contain" />
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-emerald-500/20 bg-emerald-900/10">
                   <div className="flex-1">
                     <Label htmlFor="is_published" className="cursor-pointer text-sm font-medium">
                       เผยแพร่
@@ -301,115 +306,192 @@ export default function GameCategoriesContent() {
         </Dialog>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-muted/50">
-              <TableHead>รูปภาพ</TableHead>
-              <TableHead>ชื่อหมวดหมู่</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead className="w-[120px]">สถานะ</TableHead>
-              <TableHead className="w-[180px]">สร้างเมื่อ</TableHead>
-              <TableHead className="w-[150px] text-right">จัดการ</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-[color:var(--text)]/60">
-                  ไม่มีหมวดหมู่
-                </TableCell>
-              </TableRow>
-            ) : (
-              categories.map((category) => (
-                <TableRow key={category.id} className="border-border hover:bg-muted/50">
-                  <TableCell>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-border">
-                      {category.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img 
-                          src={category.image_url} 
-                          alt={category.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted/50 flex items-center justify-center">
-                          <Grid3x3 className="size-6 text-[color:var(--text)]/30" />
-                        </div>
-                      )}
+      {categories.length === 0 ? (
+        <div className="rounded-xl border border-emerald-500/20 bg-card py-12 text-center text-[color:var(--text)]/60">
+          ไม่มีหมวดหมู่
+        </div>
+      ) : (
+        <>
+          {/* Mobile / Tablet: card list */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                className="flex gap-3 rounded-xl border border-emerald-500/20 bg-card p-4"
+              >
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-emerald-500/20 bg-black/30">
+                  {category.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={category.image_url} alt={category.name} className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted/50">
+                      <Grid3x3 className="size-6 text-[color:var(--text)]/30" />
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-semibold text-[color:var(--text)]">{category.name}</div>
-                  </TableCell>
-                  <TableCell>
-                    <code className="text-sm text-[color:var(--text)]/60">{category.slug}</code>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={category.is_published}
-                        onCheckedChange={async (checked) => {
-                          try {
-                            const res = await fetch('/api/admin/game-categories', {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ id: category.id, is_published: checked })
-                            });
-                            if (!res.ok) throw new Error('อัพเดทไม่สำเร็จ');
-                            toast.show({ 
-                              title: 'สำเร็จ', 
-                              description: checked ? 'เปิดเผยแพร่แล้ว' : 'ปิดเผยแพร่แล้ว' 
-                            });
-                            await fetchData();
-                          } catch (err) {
-                            toast.show({
-                              title: 'เกิดข้อผิดพลาด',
-                              description: (err as Error).message,
-                              variant: 'destructive'
-                            });
-                          }
-                        }}
-                      />
-                      <span className="text-xs text-[color:var(--text)]/60">
-                        {category.is_published ? 'แสดงใน /categories' : 'ซ่อนจาก /categories'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-[color:var(--text)]/60">
-                      {new Date(category.created_at).toLocaleDateString('th-TH')}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(category)}
-                        className="gap-2"
-                      >
-                        <Edit className="size-4" />
-                        แก้ไข
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(category.id)}
-                        className="gap-2 text-red-300 hover:text-red-200"
-                      >
-                        <Trash2 className="size-4" />
-                        ลบ
-                      </Button>
-                    </div>
-                  </TableCell>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="truncate font-semibold text-[color:var(--text)]">{category.name}</div>
+                  <code className="block truncate text-xs text-[color:var(--text)]/60">{category.slug}</code>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={category.is_published}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          const res = await fetch('/api/admin/game-categories', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: category.id, is_published: checked })
+                          });
+                          if (!res.ok) throw new Error('อัพเดทไม่สำเร็จ');
+                          toast.show({
+                            title: 'สำเร็จ',
+                            description: checked ? 'เปิดเผยแพร่แล้ว' : 'ปิดเผยแพร่แล้ว'
+                          });
+                          await fetchData();
+                        } catch (err) {
+                          toast.show({
+                            title: 'เกิดข้อผิดพลาด',
+                            description: (err as Error).message,
+                            variant: 'destructive'
+                          });
+                        }
+                      }}
+                    />
+                    <span className="text-xs text-[color:var(--text)]/60">
+                      {category.is_published ? 'แสดง' : 'ซ่อน'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-[color:var(--text)]/40">
+                    {new Date(category.created_at).toLocaleDateString('th-TH')}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(category)}
+                      className="flex-1 gap-1.5"
+                    >
+                      <Edit className="size-3.5" />
+                      แก้ไข
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(category.id)}
+                      className="flex-1 gap-1.5 text-red-300 hover:text-red-200"
+                    >
+                      <Trash2 className="size-3.5" />
+                      ลบ
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden rounded-xl border border-emerald-500/20 bg-card overflow-x-auto lg:block">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow className="border-emerald-500/15 hover:bg-emerald-900/15">
+                  <TableHead>รูปภาพ</TableHead>
+                  <TableHead>ชื่อหมวดหมู่</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead className="w-[160px]">สถานะ</TableHead>
+                  <TableHead className="w-[140px]">สร้างเมื่อ</TableHead>
+                  <TableHead className="w-[170px] text-right">จัดการ</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {categories.map((category) => (
+                  <TableRow key={category.id} className="border-border hover:bg-muted/50">
+                    <TableCell>
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border border-emerald-500/20 bg-black/30">
+                        {category.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={category.image_url}
+                            alt={category.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+                            <Grid3x3 className="size-6 text-[color:var(--text)]/30" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-[color:var(--text)]">{category.name}</div>
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-sm text-[color:var(--text)]/60">{category.slug}</code>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={category.is_published}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              const res = await fetch('/api/admin/game-categories', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: category.id, is_published: checked })
+                              });
+                              if (!res.ok) throw new Error('อัพเดทไม่สำเร็จ');
+                              toast.show({
+                                title: 'สำเร็จ',
+                                description: checked ? 'เปิดเผยแพร่แล้ว' : 'ปิดเผยแพร่แล้ว'
+                              });
+                              await fetchData();
+                            } catch (err) {
+                              toast.show({
+                                title: 'เกิดข้อผิดพลาด',
+                                description: (err as Error).message,
+                                variant: 'destructive'
+                              });
+                            }
+                          }}
+                        />
+                        <span className="text-xs text-[color:var(--text)]/60">
+                          {category.is_published ? 'แสดงใน /categories' : 'ซ่อนจาก /categories'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-[color:var(--text)]/60">
+                        {new Date(category.created_at).toLocaleDateString('th-TH')}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(category)}
+                          className="gap-2"
+                        >
+                          <Edit className="size-4" />
+                          แก้ไข
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(category.id)}
+                          className="gap-2 text-red-300 hover:text-red-200"
+                        >
+                          <Trash2 className="size-4" />
+                          ลบ
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

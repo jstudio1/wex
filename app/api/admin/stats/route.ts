@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// dashboard admin ไม่ต้อง real-time ทุกวินาที ใช้ cache ระยะสั้นช่วยลดโหลดได้
+export const revalidate = 15;
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -357,20 +357,13 @@ export async function GET() {
       monthlyRevenue,
     }, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cache-Control': 'private, max-age=0, s-maxage=15, stale-while-revalidate=30',
       },
     });
   } catch (err) {
     console.error('Stats API error:', err);
     return NextResponse.json({ error: 'unexpected' }, { 
       status: 500,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
     });
   }
 }

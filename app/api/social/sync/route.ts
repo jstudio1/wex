@@ -155,12 +155,14 @@ export async function POST(req: Request) {
     if (uniqueCategories.length) {
       const { data: existingCategories } = await sb
         .from('social_categories')
-        .select('id, slug, name');
+        .select('id, slug, name, display_order');
 
       const existingBySlug = new Map<string, { id: number; name: string }>();
       for (const cat of existingCategories || []) {
         existingBySlug.set(cat.slug, { id: cat.id, name: cat.name });
       }
+
+      let nextDisplayOrder = Math.max(0, ...(existingCategories || []).map((cat) => Number(cat.display_order || 0))) + 1;
 
       for (const categoryName of uniqueCategories) {
         const slug = slugify(categoryName);
@@ -172,7 +174,7 @@ export async function POST(req: Request) {
 
         const { data: inserted } = await sb
           .from('social_categories')
-          .insert({ name: categoryName, slug })
+          .insert({ name: categoryName, slug, display_order: nextDisplayOrder++ })
           .select('id, slug')
           .single();
 
@@ -292,8 +294,6 @@ export async function POST(req: Request) {
           .in('id', missing);
       }
     }
-
-    try { revalidateTag('social-services'); revalidateTag('social-categories'); } catch {}
     return NextResponse.json({ 
       ok: true, 
       counts: { services: upserted, categories: categoriesMap.size }, 
@@ -315,4 +315,3 @@ export async function POST(req: Request) {
     }, { status: 500 });
   }
 }
-

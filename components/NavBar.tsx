@@ -6,10 +6,10 @@ import { createServiceClient } from '@/lib/supabase';
 import { NAVBAR_STORAGE_KEYS, extractStorageNavbarOrder } from '@/lib/navbar';
 import dynamic from 'next/dynamic';
 
-const NavLinks = dynamic(() => import('@/components/NavLinks'), { ssr: false });
-const MobileMenu = dynamic(() => import('@/components/MobileMenu'), { ssr: false });
-const UserProfileMenu = dynamic(() => import('@/components/UserProfileMenu'), { ssr: false });
-const NavAuthButtons = dynamic(() => import('@/components/NavAuthButtons'), { ssr: false });
+const NavLinks = dynamic(() => import('@/components/NavLinks'));
+const MobileMenu = dynamic(() => import('@/components/MobileMenu'));
+const UserProfileMenu = dynamic(() => import('@/components/UserProfileMenu'));
+const NavAuthButtons = dynamic(() => import('@/components/NavAuthButtons'));
 
 const NAVBAR_MENU_KEYS = [
   'NAVBAR_MENU_HOME',
@@ -36,13 +36,12 @@ async function getNavbarMenus() {
     ]);
     const map: Record<string, string> = {};
     for (const row of data || []) map[row.key as string] = row.value as string;
-    
+
     const getNavbarSetting = (key: string, defaultValue: boolean = true) => {
       const value = map[key];
       return value === 'false' ? false : (value === 'true' ? true : defaultValue);
     };
 
-    // Get navbar menu order
     let menuOrder: string[] = [...NAVBAR_STORAGE_KEYS];
     try {
       const orderValue = map.NAVBAR_MENU_ORDER;
@@ -101,8 +100,7 @@ export default async function NavBar() {
   const adminUser = await requireAdmin();
   const navbarMenus = await getNavbarMenus();
   const sb = createServiceClient();
-  
-  // ดึง avatar_url สำหรับ user
+
   let userAvatarUrl: string | null = null;
   if (user) {
     try {
@@ -116,72 +114,52 @@ export default async function NavBar() {
       // ignore error
     }
   }
-  
-  // Check maintenance mode
+
   const { data: maintenanceData } = await sb
     .from('settings')
     .select('value')
     .eq('key', 'MAINTENANCE_MODE')
     .maybeSingle();
-  
+
   const isMaintenanceMode = maintenanceData?.value === 'true';
-  
-  // Hide navbar if maintenance mode is on (unless user is admin)
+
   if (isMaintenanceMode && !adminUser) {
     return null;
   }
-  
+
   const isLoggedIn = !!user;
 
   return (
-    <header className="sticky top-0 z-50 relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 shadow-2xl border-b border-emerald-800/50 backdrop-blur-xl">
-      {/* Animated Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/50 via-emerald-800/30 to-emerald-900/50 animate-gradient-x"></div>
-      
-      {/* Decorative Background Patterns */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-0 left-10 h-32 w-32 rounded-full bg-emerald-400 blur-3xl animate-pulse" />
-        <div className="absolute top-0 right-20 h-24 w-24 rounded-full bg-emerald-300 blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-0 left-1/4 h-20 w-20 rounded-full bg-emerald-500 blur-2xl animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-0 right-1/3 h-16 w-16 rounded-full bg-emerald-400 blur-xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-      </div>
-      
-      {/* Geometric Pattern Overlay */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-full" style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-          backgroundSize: '32px 32px'
-        }} />
-      </div>
+    <header className="sticky top-0 z-50 border-b border-emerald-400/25 bg-black/70 backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.18),transparent_40%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:28px_28px]" />
 
-      {/* Shine Effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-shine"></div>
-      
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between gap-6">
-          <div className="flex flex-1 items-center gap-6">
-            {/* Logo */}
-            <div className="flex flex-shrink-0 items-center">
-              <Link
-                href="/"
-                className="group flex items-center transition-all duration-300 hover:scale-105"
-                prefetch
-                aria-label="หน้าแรก"
-              >
-                <Image
-                  src="https://img2.pic.in.th/pic/Holographic-Chatbot-Icon-over-Laptop-_8_.webp"
-                  alt="WeXPlus"
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 object-contain drop-shadow-lg"
-                  priority
-                />
-                <span className="sr-only">WeXPlus</span>
-              </Link>
+      <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
+        <div className="flex h-20 items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="group flex min-w-0 items-center gap-3"
+            prefetch
+            aria-label="Home"
+          >
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-emerald-300/40 bg-gradient-to-br from-emerald-500/25 via-black to-cyan-500/20 shadow-lg shadow-emerald-900/45 transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="https://img2.pic.in.th/pic/Holographic-Chatbot-Icon-over-Laptop-_8_.webp"
+                alt="WeXPlus"
+                width={36}
+                height={36}
+                className="h-9 w-9 object-contain"
+                priority
+              />
             </div>
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold tracking-[0.08em] text-white">WEXPLUS</p>
+              <p className="text-[11px] text-white/65">Top-up | Apps | Digital Services</p>
+            </div>
+          </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden flex-1 items-center lg:flex min-w-0">
+          <div className="hidden flex-1 px-5 lg:block">
+            <div className="mx-auto max-w-5xl rounded-full border border-white/15 bg-black/35 p-1.5 shadow-[0_16px_35px_rgba(0,0,0,0.35)]">
               <NavLinks
                 isAdmin={!!adminUser}
                 navbarMenus={navbarMenus}
@@ -192,8 +170,7 @@ export default async function NavBar() {
             </div>
           </div>
 
-          {/* Right Side Actions */}
-          <div className="flex flex-shrink-0 items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isLoggedIn ? (
               <div className="hidden lg:flex">
                 <UserProfileMenu username={user.username} isAdmin={!!adminUser} avatarUrl={userAvatarUrl} />
@@ -215,9 +192,20 @@ export default async function NavBar() {
             </div>
           </div>
         </div>
+
+        <div className="hidden h-10 items-center justify-between border-t border-white/10 text-xs lg:flex">
+          <div className="flex items-center gap-2 text-white/70">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/35 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+              Fast auto delivery
+            </span>
+            <span className="text-white/50">Trusted digital marketplace</span>
+          </div>
+          <Link href="/contact" className="font-medium text-white/70 transition-colors hover:text-white">
+            Need support? Contact team
+          </Link>
+        </div>
       </div>
     </header>
   );
 }
-
-

@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { unstable_noStore as noStore } from 'next/cache';
 
-// Force dynamic rendering - no cache
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
+export const revalidate = 300;
 
 export async function GET(req: Request) {
-  noStore();
   try {
     const sb = createServiceClient();
     const { data: categories, error } = await sb
@@ -22,13 +17,14 @@ export async function GET(req: Request) {
     }
     
     if (!categories || categories.length === 0) {
-      return NextResponse.json({ ok: true, data: [] }, {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      });
+      return NextResponse.json(
+        { ok: true, data: [] },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+          },
+        }
+      );
     }
 
     const categoriesWithStats = await Promise.all(
@@ -62,9 +58,7 @@ export async function GET(req: Request) {
       { ok: true, data: categoriesWithStats },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
         },
       }
     );

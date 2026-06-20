@@ -19,7 +19,6 @@ const ProductsHeroBanner = dynamicImport(() => import('@/components/ProductsHero
   loading: () => <div className="h-64 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
   ssr: true,
 });
-import { cache } from 'react';
 import type { Metadata } from 'next';
 import { CreditCard } from 'lucide-react';
 
@@ -32,20 +31,17 @@ type ProductCard = {
   badge?: { text?: string | null; percent?: number | null } | null;
 };
 
-const fetchProducts = cache(async (): Promise<ProductCard[]> => {
+const fetchProducts = async (): Promise<ProductCard[]> => {
   const base = getBaseUrl();
-  const p = await fetch(`${base}/api/cashcard/wepay`, { cache: 'no-store' });
+  const p = await fetch(`${base}/api/cashcard/wepay`, {
+    next: { revalidate: 60, tags: ['cashcard-products'] },
+  });
   const products = p.ok ? (await p.json()).data : [];
   return products;
-});
+};
 
-const fetchSite = cache(async () => {
-  const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { cache: 'no-store' });
-  return res.ok ? res.json() : { flashStart: null, flashEnd: null };
-});
-
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
+export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
   title: 'บัตรเติมเงิน - ราคาถูก ซื้อเร็ว ปลอดภัย',
@@ -62,7 +58,6 @@ export const metadata: Metadata = {
 
 export default async function CashcardPage() {
   const products = await fetchProducts();
-  const site = await fetchSite();
   return (
     <>
       {/* Hero Banner */}

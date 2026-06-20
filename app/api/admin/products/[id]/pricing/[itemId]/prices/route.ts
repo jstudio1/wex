@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -9,14 +10,15 @@ const createPriceSchema = z.object({
 });
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string; itemId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productItemId = parseInt(params.itemId);
+    const { itemId } = await params;
+    const productItemId = parseInt(itemId);
     if (isNaN(productItemId)) {
       return NextResponse.json({ error: 'invalid_item_id' }, { status: 400 });
     }
@@ -45,14 +47,15 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string; itemId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productItemId = parseInt(params.itemId);
+    const { itemId } = await params;
+    const productItemId = parseInt(itemId);
     if (isNaN(productItemId)) {
       return NextResponse.json({ error: 'invalid_item_id' }, { status: 400 });
     }

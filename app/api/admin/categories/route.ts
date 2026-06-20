@@ -72,8 +72,6 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: 'db_error' }, { status: 500 });
     }
-
-    try { revalidateTag('categories'); } catch {}
     return NextResponse.json({ data });
   } catch (err) {
     if (err instanceof z.ZodError) {

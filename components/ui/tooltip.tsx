@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, type HTMLAttributes } from 'react';
+import { createContext, useContext, useState, type HTMLAttributes, cloneElement } from 'react';
 import clsx from 'clsx';
 
 const Ctx = createContext<{ open: boolean; setOpen: (v: boolean) => void } | null>(null);
@@ -22,7 +22,7 @@ export function TooltipTrigger({ asChild, children }: { asChild?: boolean; child
     onFocus: () => ctx.setOpen(true),
     onBlur: () => ctx.setOpen(false)
   };
-  if (asChild) return children && { ...children, props: { ...children.props, ...props } } as any;
+  if (asChild) return cloneElement(children, { ...(children.props || {}), ...props });
   return <span {...props}>{children}</span>;
 }
 

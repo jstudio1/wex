@@ -20,13 +20,17 @@ const config: Config = {
           DEFAULT: '#ffffff',
           light: '#ffffff'
         },
-        accent: '#dc2626'
+        accent: '#10b981'
       },
       spacing: {
         compact: '0.625rem' // 10px
       },
       borderRadius: {
         lg: '0.6rem'
+      },
+      animation: {
+        marquee: 'marquee var(--duration) infinite linear',
+        'marquee-vertical': 'marquee-vertical var(--duration) linear infinite',
       }
     }
   },

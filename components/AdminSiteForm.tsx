@@ -11,11 +11,13 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as React from 'react';
 import { type DateRange } from 'react-day-picker';
-import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText, Shield, KeyRound, Copy } from 'lucide-react';
+import { ArrowUp, ArrowDown, GripVertical, Home, Menu, CreditCard, Bell, Webhook, Gamepad2, Wallet, Smartphone, Share2, User, Trophy, Coins, Plus, Trash2, Settings, Wrench, FileText, Shield, KeyRound, Copy, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PolicyContent from '@/components/backoffice/PolicyContent';
+import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
 import { normalizePremiumAppDisplayMode } from '@/lib/premium-app';
 import { NAVBAR_ORDER_WITH_HOME, NAVBAR_STORAGE_KEYS, normalizeNavbarOrder, extractStorageNavbarOrder } from '@/lib/navbar';
+import { cn } from '@/lib/utils';
 
 type AdminSiteTab =
   | 'homepage'
@@ -106,6 +108,17 @@ type SiteData = {
     workingHours?: string;
     copyright?: string;
   };
+  telegramConfig?: {
+    botToken?: string;           // Global fallback bot token
+    botTokenRegistration?: string;
+    botTokenOrder?: string;
+    botTokenTopup?: string;
+    botTokenTicket?: string;
+    chatIdRegistration?: string;
+    chatIdOrder?: string;
+    chatIdTopup?: string;
+    chatIdTicket?: string;
+  };
 };
 type AnnouncementData = { text: string; enabled: boolean };
 type QrConfigState = {
@@ -186,6 +199,17 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
       email: '',
       workingHours: '',
       copyright: ''
+    },
+    telegramConfig: {
+      botToken: '',
+      botTokenRegistration: '',
+      botTokenOrder: '',
+      botTokenTopup: '',
+      botTokenTicket: '',
+      chatIdRegistration: '',
+      chatIdOrder: '',
+      chatIdTopup: '',
+      chatIdTicket: ''
     }
   });
   const [postersText, setPostersText] = useState<string>('');
@@ -218,6 +242,7 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     '';
   const hasEnvBaseUrl = Boolean(baseUrlFromEnv);
   const [clientOriginWebhook, setClientOriginWebhook] = useState<string | null>(null);
+  const [testingTelegram, setTestingTelegram] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasEnvBaseUrl && typeof window !== 'undefined') {
@@ -332,6 +357,17 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
             email: '',
             workingHours: '',
             copyright: ''
+          },
+          telegramConfig: json.telegramConfig || {
+            botToken: '',
+            botTokenRegistration: '',
+            botTokenOrder: '',
+            botTokenTopup: '',
+            botTokenTicket: '',
+            chatIdRegistration: '',
+            chatIdOrder: '',
+            chatIdTopup: '',
+            chatIdTicket: ''
           }
         });
         setPostersText((json.posters || []).join('\n'));
@@ -471,6 +507,17 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
             email: '',
             workingHours: '',
             copyright: ''
+          },
+          telegramConfig: form.telegramConfig || {
+            botToken: '',
+            botTokenRegistration: '',
+            botTokenOrder: '',
+            botTokenTopup: '',
+            botTokenTicket: '',
+            chatIdRegistration: '',
+            chatIdOrder: '',
+            chatIdTopup: '',
+            chatIdTicket: ''
           }
         })
       });
@@ -585,6 +632,32 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     }
   };
 
+  const handleTestTelegram = async (type: string) => {
+    setTestingTelegram(type);
+    try {
+      const res = await fetch('/api/admin/telegram-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'ส่งทดสอบไม่สำเร็จ');
+      toast.show({
+        title: 'ส่งทดสอบสำเร็จ',
+        description: 'กรุณาเช็คข้อความใน Telegram ของคุณ',
+        variant: 'default'
+      });
+    } catch (err: any) {
+      toast.show({
+        title: 'ส่งทดสอบไม่สำเร็จ',
+        description: err.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setTestingTelegram(null);
+    }
+  };
+
   if (loading) return <SpinnerCustom className="py-10" />;
 
   return (
@@ -604,44 +677,46 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
     )}
 
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as AdminSiteTab)} className="w-full">
-      <TabsList className="w-full mb-6 grid grid-cols-2 sm:grid-cols-6 gap-2 h-auto">
-        <TabsTrigger value="homepage" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
-          <Home className="size-4 shrink-0" />
-          <span className="hidden sm:inline">หน้าแรก</span>
-        </TabsTrigger>
-        <TabsTrigger value="navigation" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
-          <Menu className="size-4 shrink-0" />
-          <span className="hidden sm:inline">เมนู</span>
-        </TabsTrigger>
-        <TabsTrigger value="payment" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
-          <CreditCard className="size-4 shrink-0" />
-          <span className="hidden sm:inline">การชำระเงิน</span>
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm">
-          <Bell className="size-4 shrink-0" />
-          <span className="hidden sm:inline">การแจ้งเตือน</span>
-        </TabsTrigger>
-        <TabsTrigger value="integrations" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
-          <Webhook className="size-4 shrink-0" />
-          <span className="hidden sm:inline">แจ้งเตือน</span>
-        </TabsTrigger>
-        <TabsTrigger value="contact" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
-          <Share2 className="size-4 shrink-0" />
-          <span className="hidden sm:inline">ติดต่อ</span>
-        </TabsTrigger>
-        <TabsTrigger value="site-settings" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
-          <Wrench className="size-4 shrink-0" />
-          <span className="hidden sm:inline">ตั้งค่าเว็บ</span>
-        </TabsTrigger>
-        <TabsTrigger value="policy" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
-          <FileText className="size-4 shrink-0" />
-          <span className="hidden sm:inline">ตั้งค่า Policy</span>
-        </TabsTrigger>
-        <TabsTrigger value="footer" className="flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 text-xs sm:text-sm col-span-2 sm:col-span-1">
-          <Settings className="size-4 shrink-0" />
-          <span className="hidden sm:inline">Footer</span>
-        </TabsTrigger>
-      </TabsList>
+      <div className="w-full mb-6 overflow-x-auto pb-1">
+        <TabsList className="flex w-max min-w-full gap-1 h-auto p-1">
+          <TabsTrigger value="homepage" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Home className="size-3.5 shrink-0" />
+            หน้าแรก
+          </TabsTrigger>
+          <TabsTrigger value="navigation" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Menu className="size-3.5 shrink-0" />
+            เมนู
+          </TabsTrigger>
+          <TabsTrigger value="payment" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <CreditCard className="size-3.5 shrink-0" />
+            การชำระเงิน
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Bell className="size-3.5 shrink-0" />
+            การแจ้งเตือน
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Webhook className="size-3.5 shrink-0" />
+            Webhook
+          </TabsTrigger>
+          <TabsTrigger value="contact" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Share2 className="size-3.5 shrink-0" />
+            ติดต่อ
+          </TabsTrigger>
+          <TabsTrigger value="site-settings" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Wrench className="size-3.5 shrink-0" />
+            ตั้งค่าเว็บ
+          </TabsTrigger>
+          <TabsTrigger value="policy" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <FileText className="size-3.5 shrink-0" />
+            Policy
+          </TabsTrigger>
+          <TabsTrigger value="footer" className="flex items-center gap-1.5 py-2 px-3 text-xs whitespace-nowrap shrink-0">
+            <Settings className="size-3.5 shrink-0" />
+            Footer
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       {/* หน้าแรก */}
       <TabsContent value="homepage" className="space-y-4">
@@ -951,339 +1026,81 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
       </TabsContent>
 
       {/* การชำระเงิน */}
-      <TabsContent value="payment" className="space-y-4">
+      <TabsContent value="payment" className="space-y-6">
+        {/* ── ส่วนที่ 1: เปิด/ปิดช่องทาง ── */}
         <form onSubmit={onSubmit} className="card p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold mb-1">การตั้งค่าช่องทางการชำระเงินเติมพอยต์</h2>
-            <p className="text-sm text-[color:var(--text)]/60">เปิด/ปิดช่องทางการเติมพอยต์แต่ละวิธี</p>
+            <h2 className="text-lg font-semibold mb-1">เปิด/ปิดช่องทางการชำระเงิน</h2>
+            <p className="text-sm text-[color:var(--text)]/60">เลือกช่องทางการเติมพอยต์ที่ต้องการเปิดใช้งาน</p>
           </div>
-          <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>ช่องทาง &quot;ใช้โค้ด&quot;</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยโค้ด</p>
-          </div>
-          <Switch
-            checked={form.paymentMethods?.code !== false}
-            onCheckedChange={(checked) => setForm({
-              ...form,
-              paymentMethods: {
-                code: checked,
-                qr: form.paymentMethods?.qr ?? true,
-                slip: form.paymentMethods?.slip ?? true,
-                truewallet: form.paymentMethods?.truewallet ?? true,
-              }
-            })}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>ช่องทาง &quot;QR Payment&quot;</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วย QR Payment</p>
-          </div>
-          <Switch
-            checked={form.paymentMethods?.qr !== false}
-            onCheckedChange={(checked) => setForm({
-              ...form,
-              paymentMethods: {
-                code: form.paymentMethods?.code ?? true,
-                qr: checked,
-                slip: form.paymentMethods?.slip ?? true,
-                truewallet: form.paymentMethods?.truewallet ?? true,
-              }
-            })}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>ช่องทาง &quot;สลิปโอนเงิน&quot;</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยสลิปโอนเงิน (ตรวจสอบอัตโนมัติ)</p>
-          </div>
-          <Switch
-            checked={form.paymentMethods?.slip !== false}
-            onCheckedChange={(checked) => setForm({
-              ...form,
-              paymentMethods: {
-                code: form.paymentMethods?.code ?? true,
-                qr: form.paymentMethods?.qr ?? true,
-                slip: checked,
-                truewallet: form.paymentMethods?.truewallet ?? true,
-              }
-            })}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <Label>ช่องทาง &quot;ซองอั่งเปา TrueWallet&quot;</Label>
-            <p className="text-xs text-[color:var(--text)]/50 mt-1">เปิด/ปิดช่องทางเติมพอยต์ด้วยซองอั่งเปา TrueWallet</p>
-          </div>
-          <Switch
-            checked={form.paymentMethods?.truewallet !== false}
-            onCheckedChange={(checked) => setForm({
-              ...form,
-              paymentMethods: {
-                code: form.paymentMethods?.code ?? true,
-                qr: form.paymentMethods?.qr ?? true,
-                slip: form.paymentMethods?.slip ?? true,
-                truewallet: checked,
-              }
-            })}
-          />
-        </div>
-          </div>
-          <div className="pt-6 border-t border-white/10 space-y-4">
-            <div>
-              <h3 className="text-md font-semibold">บัญชีธนาคารสำหรับโอนเงิน</h3>
-              <p className="text-sm text-[color:var(--text)]/60">ตั้งค่าบัญชีธนาคารที่จะแสดงให้ลูกค้าเมื่อเลือกชำระเงินด้วยการโอน</p>
-              <p className="text-xs text-[color:var(--text)]/50 mt-1">
-                💡 <strong>หมายเหตุ:</strong> เลขที่บัญชีที่ตั้งค่าไว้จะถูกใช้เป็น &quot;บัญชีผู้รับที่คาดหวัง&quot; สำหรับตรวจสอบสลิปโอนเงินอัตโนมัติ
-              </p>
-            </div>
-            {(form.bankAccounts || []).length === 0 && (
-              <div className="rounded-lg border border-dashed border-white/20 bg-white/5 p-4 text-sm text-[color:var(--text)]/60">
-                ยังไม่มีบัญชีธนาคาร กรุณาเพิ่มบัญชีใหม่
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+              <div>
+                <Label className="font-medium">ใช้โค้ด</Label>
+                <p className="text-xs text-[color:var(--text)]/50 mt-0.5">เติมพอยต์ด้วยโค้ด</p>
               </div>
-            )}
-            {(form.bankAccounts || []).map((account, index) => (
-              <div key={index} className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text)]">
-                    <CreditCard className="size-4" />
-                    บัญชีที่ {index + 1}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                    onClick={() => removeBankAccount(index)}
-                  >
-                    <Trash2 className="size-4" />
-                    ลบ
-                  </Button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label className="text-xs text-[color:var(--text)]/70">ธนาคาร</Label>
-                    <Input
-                      className="mt-1"
-                      value={account.bankName}
-                      onChange={(e) => updateBankAccount(index, 'bankName', e.target.value)}
-                      placeholder="เช่น กสิกรไทย"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-[color:var(--text)]/70">ชื่อบัญชี</Label>
-                    <Input
-                      className="mt-1"
-                      value={account.accountName}
-                      onChange={(e) => updateBankAccount(index, 'accountName', e.target.value)}
-                      placeholder="เช่น บริษัท ตัวอย่าง จำกัด"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-[color:var(--text)]/70">เลขที่บัญชี</Label>
-                    <Input
-                      className="mt-1"
-                      value={account.accountNumber}
-                      onChange={(e) => updateBankAccount(index, 'accountNumber', e.target.value)}
-                      placeholder="เช่น 123-4-56789-0"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-[color:var(--text)]/70">สาขา (ถ้ามี)</Label>
-                    <Input
-                      className="mt-1"
-                      value={account.branch || ''}
-                      onChange={(e) => updateBankAccount(index, 'branch', e.target.value)}
-                      placeholder="เช่น สาขาสยามพารากอน"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto border-white/30 text-[color:var(--text)] hover:bg-white/10"
-              onClick={addBankAccount}
-            >
-              <Plus className="size-4 mr-2" />
-              เพิ่มบัญชีธนาคาร
-            </Button>
-          </div>
-          
-          {/* ตั้งค่าเบอร์ TrueWallet */}
-          <div className="pt-6 border-t border-white/10 space-y-4">
-            <div>
-              <h3 className="text-md font-semibold">ตั้งค่าซองอั่งเปา TrueWallet</h3>
-              <p className="text-sm text-[color:var(--text)]/60">ระบุเบอร์โทรศัพท์ TrueWallet สำหรับรับเงินจากซองอั่งเปา</p>
-            </div>
-            <div>
-              <Label className="text-xs text-[color:var(--text)]/70">เบอร์โทรศัพท์ TrueWallet (10 หลัก)</Label>
-              <Input
-                className="mt-1"
-                type="tel"
-                maxLength={10}
-                value={form.truewalletPhone || ''}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
-                  setForm({ ...form, truewalletPhone: value });
-                }}
-                placeholder="เช่น 0812345678"
+              <Switch
+                checked={form.paymentMethods?.code !== false}
+                onCheckedChange={(checked) => setForm({ ...form, paymentMethods: { code: checked, qr: form.paymentMethods?.qr ?? true, slip: form.paymentMethods?.slip ?? true, truewallet: form.paymentMethods?.truewallet ?? true } })}
               />
-              <p className="text-xs text-[color:var(--text)]/50 mt-1">
-                เบอร์นี้จะใช้สำหรับรับเงินจากซองอั่งเปา TrueWallet ที่ลูกค้าแลก
-              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+              <div>
+                <Label className="font-medium">QR Payment</Label>
+                <p className="text-xs text-[color:var(--text)]/50 mt-0.5">เติมพอยต์ผ่าน QR PromptPay</p>
+              </div>
+              <Switch
+                checked={form.paymentMethods?.qr !== false}
+                onCheckedChange={(checked) => setForm({ ...form, paymentMethods: { code: form.paymentMethods?.code ?? true, qr: checked, slip: form.paymentMethods?.slip ?? true, truewallet: form.paymentMethods?.truewallet ?? true } })}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+              <div>
+                <Label className="font-medium">สลิปโอนเงิน</Label>
+                <p className="text-xs text-[color:var(--text)]/50 mt-0.5">ตรวจสอบสลิปอัตโนมัติ</p>
+              </div>
+              <Switch
+                checked={form.paymentMethods?.slip !== false}
+                onCheckedChange={(checked) => setForm({ ...form, paymentMethods: { code: form.paymentMethods?.code ?? true, qr: form.paymentMethods?.qr ?? true, slip: checked, truewallet: form.paymentMethods?.truewallet ?? true } })}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+              <div>
+                <Label className="font-medium">ซองอั่งเปา TrueWallet</Label>
+                <p className="text-xs text-[color:var(--text)]/50 mt-0.5">รับซองอั่งเปา TrueWallet</p>
+              </div>
+              <Switch
+                checked={form.paymentMethods?.truewallet !== false}
+                onCheckedChange={(checked) => setForm({ ...form, paymentMethods: { code: form.paymentMethods?.code ?? true, qr: form.paymentMethods?.qr ?? true, slip: form.paymentMethods?.slip ?? true, truewallet: checked } })}
+              />
             </div>
           </div>
-          
           <Button disabled={saving} type="submit" className="w-full sm:w-auto">
             {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
           </Button>
         </form>
 
-      <form onSubmit={onQrSubmit} className="card p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-full bg-emerald-900/40 border border-emerald-600">
-            <Shield className="size-5 text-emerald-300" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold mb-1">ตั้งค่า QR PromptPay API</h2>
-            <p className="text-sm text-[color:var(--text)]/60">
-              จัดการ Credential สำหรับสร้าง QR Payment และรับ webhook จาก TMweasy/TMwallet
-            </p>
-          </div>
-        </div>
-
-        {qrStatus === 'ok' && (
-          <Alert>
-            <AlertTitle>บันทึกสำเร็จ</AlertTitle>
-            <AlertDescription>อัปเดตการตั้งค่า QR PromptPay เรียบร้อย</AlertDescription>
-          </Alert>
-        )}
-        {qrStatus === 'error' && (
-          <Alert variant="destructive">
-            <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
-            <AlertDescription>โหลดหรือบันทึกการตั้งค่าไม่สำเร็จ โปรดลองใหม่</AlertDescription>
-          </Alert>
-        )}
-
-        {qrLoading ? (
-          <div className="flex items-center gap-2 text-sm text-[color:var(--text)]/60">
-            <Spinner className="size-4" />
-            กำลังโหลดการตั้งค่า...
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Username</Label>
-                <Input
-                  value={qrConfig.username}
-                  onChange={(e) => setQrConfig({ ...qrConfig, username: e.target.value })}
-                  placeholder="username จาก TMwallet"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>รหัสผ่าน</Label>
-                <Input
-                  type="password"
-                  value={qrConfig.password}
-                  onChange={(e) => setQrConfig({ ...qrConfig, password: e.target.value })}
-                  placeholder="password API"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CON ID</Label>
-                <Input
-                  value={qrConfig.conId}
-                  onChange={(e) => setQrConfig({ ...qrConfig, conId: e.target.value })}
-                  placeholder="เช่น 106233"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>PromptPay ID</Label>
-                <Input
-                  value={qrConfig.promptpayId}
-                  onChange={(e) => setQrConfig({ ...qrConfig, promptpayId: e.target.value })}
-                  placeholder="เลข PromptPay 10 หรือ 13 หลัก"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>PromptPay Type</Label>
-                <select
-                  className="input w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
-                  value={qrConfig.promptpayType}
-                  onChange={(e) =>
-                    setQrConfig({
-                      ...qrConfig,
-                      promptpayType: e.target.value === '01' ? '01' : '02',
-                    })
-                  }
-                >
-                  <option value="01">01 - เบอร์โทรศัพท์</option>
-                  <option value="02">02 - เลขบัตรประชาชน</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Webhook Secret (API Key)</Label>
-                <Input
-                  type="password"
-                  value={qrConfig.webhookKey}
-                  onChange={(e) => setQrConfig({ ...qrConfig, webhookKey: e.target.value })}
-                  placeholder="API Key สำหรับตรวจสอบ webhook"
-                />
-                <p className="text-[11px] text-[color:var(--text)]/60">
-                  ต้องตรงกับค่าใน TMweasy เพื่อยืนยัน webhook
-                </p>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>
-                  Webhook URL (ล็อกจาก `{hasEnvBaseUrl ? 'NEXT_PUBLIC_BASE_URL' : 'โดเมนปัจจุบัน'}`)
-                </Label>
-                <div className="flex flex-col gap-2 sm:flex-row items-center">
-                  <Input
-                    value={resolvedWebhookUrl}
-                    readOnly
-                    disabled
-                    className="flex-1 bg-black/40 text-white"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0 w-full sm:w-auto"
-                    onClick={() => handleCopyWebhook('คัดลอกสำเร็จ')}
-                  >
-                    <Copy className="mr-2 size-4" />
-                    คัดลอก
-                  </Button>
-                </div>
-                <p className="text-[11px] text-[color:var(--text)]/60">
-                  ระบบจะเติม `{WEBHOOK_PATH}` ต่อท้ายโดเมนหลักจากไฟล์ `.env` (เช่น{' '}
-                  {hasEnvBaseUrl ? baseUrlFromEnv : 'http://localhost:3000'}) และล็อกไม่ให้แก้ไข
-                </p>
-              </div>
-            </div>
-            <div className="rounded-lg border border-amber-500/30 bg-amber-900/10 p-3 text-xs text-amber-200">
-              ตั้งค่า Webhook URL ใน TMweasy ให้ชี้ไปที่ <code className="text-amber-100">{resolvedWebhookUrl}</code>
-            </div>
-            <Button disabled={qrSaving} type="submit" className="w-full sm:w-auto">
-              {qrSaving ? (
-                <>
-                  <Spinner className="mr-2 size-4" />
-                  กำลังบันทึก...
-                </>
-              ) : (
-                <>
-                  <KeyRound className="mr-2 size-4" />
-                  บันทึกการตั้งค่า QR PromptPay
-                </>
-              )}
-            </Button>
-          </>
-        )}
-      </form>
+        {/* ── ส่วนที่ 2: ตั้งค่าแต่ละช่องทาง (dropdown) ── */}
+        <PaymentChannelSettings
+          form={form}
+          setForm={setForm}
+          saving={saving}
+          onSubmit={onSubmit}
+          qrConfig={qrConfig}
+          setQrConfig={setQrConfig}
+          qrLoading={qrLoading}
+          qrSaving={qrSaving}
+          qrStatus={qrStatus}
+          onQrSubmit={onQrSubmit}
+          resolvedWebhookUrl={resolvedWebhookUrl}
+          hasEnvBaseUrl={hasEnvBaseUrl}
+          baseUrlFromEnv={baseUrlFromEnv}
+          WEBHOOK_PATH={WEBHOOK_PATH}
+          handleCopyWebhook={handleCopyWebhook}
+          addBankAccount={addBankAccount}
+          updateBankAccount={updateBankAccount}
+          removeBankAccount={removeBankAccount}
+        />
       </TabsContent>
 
       {/* การแจ้งเตือน */}
@@ -1338,7 +1155,171 @@ export default function AdminSiteForm({ initialTab = 'homepage' }: AdminSiteForm
       <TabsContent value="integrations" className="space-y-4">
         <form onSubmit={onSubmit} className="card p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold mb-1">แจ้งเตือนซื้อสินค้าและบริการ</h2>
+            <h2 className="text-lg font-semibold mb-1">การแจ้งเตือน Telegram</h2>
+            <p className="text-sm text-[color:var(--text)]/60">ตั้งค่าการแจ้งเตือนผ่าน Telegram Bot</p>
+          </div>
+
+          <div className="space-y-6 pb-6 border-b border-white/10">
+
+            {/* Global Bot Token */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-[color:var(--text)]">Global Bot Token (ค่าเริ่มต้น)</p>
+                <p className="text-xs text-[color:var(--text)]/50 mt-0.5">ถ้าประเภทไหนไม่ได้ตั้ง Bot Token ของตัวเอง จะใช้อันนี้แทน</p>
+              </div>
+              <div>
+                <Label htmlFor="telegram_bot_token">Telegram Bot Token (Shared)</Label>
+                <Input
+                  id="telegram_bot_token"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.botToken || ''}
+                  onChange={(e) => setForm({ 
+                    ...form, 
+                    telegramConfig: { ...form.telegramConfig, botToken: e.target.value }
+                  })}
+                  placeholder="123456789:ABCdefGHIjklmNOPqrstUVWxyz"
+                />
+                <p className="text-xs text-[color:var(--text)]/50 mt-1">Bot Token จาก BotFather — ใช้ร่วมกันได้หลายประเภท</p>
+              </div>
+            </div>
+
+            {/* Registration */}
+            <div className="rounded-xl border border-white/10 p-4 space-y-3">
+              <p className="text-sm font-semibold text-[color:var(--text)]">🙋 การสมัครสมาชิก</p>
+              <div>
+                <Label htmlFor="telegram_bot_token_registration">Bot Token (เฉพาะ)</Label>
+                <Input
+                  id="telegram_bot_token_registration"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.botTokenRegistration || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, botTokenRegistration: e.target.value } })}
+                  placeholder="เว้นว่างเพื่อใช้ Global Bot Token"
+                />
+              </div>
+              <div>
+                <Label htmlFor="telegram_chat_id_registration">Chat ID</Label>
+                <Input
+                  id="telegram_chat_id_registration"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.chatIdRegistration || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, chatIdRegistration: e.target.value } })}
+                  placeholder="-1001234567890"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[color:var(--text)]/50">แจ้งเตือนเมื่อมีผู้ใช้สมัครสมาชิกใหม่</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleTestTelegram('registration')} disabled={testingTelegram !== null || (!form.telegramConfig?.botTokenRegistration && !form.telegramConfig?.botToken) || !form.telegramConfig?.chatIdRegistration}>
+                  {testingTelegram === 'registration' ? <><Spinner className="mr-2" /> กำลังส่งทดสอบ...</> : 'ทดสอบส่งข้อความ'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Order */}
+            <div className="rounded-xl border border-white/10 p-4 space-y-3">
+              <p className="text-sm font-semibold text-[color:var(--text)]"><ShoppingCart className="size-3.5 inline mr-1" />สั่งซื้อทุกบริการ</p>
+              <div>
+                <Label htmlFor="telegram_bot_token_order">Bot Token (เฉพาะ)</Label>
+                <Input
+                  id="telegram_bot_token_order"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.botTokenOrder || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, botTokenOrder: e.target.value } })}
+                  placeholder="เว้นว่างเพื่อใช้ Global Bot Token"
+                />
+              </div>
+              <div>
+                <Label htmlFor="telegram_chat_id_order">Chat ID</Label>
+                <Input
+                  id="telegram_chat_id_order"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.chatIdOrder || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, chatIdOrder: e.target.value } })}
+                  placeholder="-1001234567890"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[color:var(--text)]/50">แจ้งเตือนเมื่อมีการสั่งซื้อบริการทุกประเภท</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleTestTelegram('order')} disabled={testingTelegram !== null || (!form.telegramConfig?.botTokenOrder && !form.telegramConfig?.botToken) || !form.telegramConfig?.chatIdOrder}>
+                  {testingTelegram === 'order' ? <><Spinner className="mr-2" /> กำลังส่งทดสอบ...</> : 'ทดสอบส่งข้อความ'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Topup */}
+            <div className="rounded-xl border border-white/10 p-4 space-y-3">
+              <p className="text-sm font-semibold text-[color:var(--text)]"><Coins className="size-3.5 inline mr-1" />เติมเงิน</p>
+              <div>
+                <Label htmlFor="telegram_bot_token_topup">Bot Token (เฉพาะ)</Label>
+                <Input
+                  id="telegram_bot_token_topup"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.botTokenTopup || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, botTokenTopup: e.target.value } })}
+                  placeholder="เว้นว่างเพื่อใช้ Global Bot Token"
+                />
+              </div>
+              <div>
+                <Label htmlFor="telegram_chat_id_topup">Chat ID</Label>
+                <Input
+                  id="telegram_chat_id_topup"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.chatIdTopup || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, chatIdTopup: e.target.value } })}
+                  placeholder="-1001234567890"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[color:var(--text)]/50">แจ้งเตือนเมื่อมีการเติมเงิน</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleTestTelegram('topup')} disabled={testingTelegram !== null || (!form.telegramConfig?.botTokenTopup && !form.telegramConfig?.botToken) || !form.telegramConfig?.chatIdTopup}>
+                  {testingTelegram === 'topup' ? <><Spinner className="mr-2" /> กำลังส่งทดสอบ...</> : 'ทดสอบส่งข้อความ'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Ticket */}
+            <div className="rounded-xl border border-white/10 p-4 space-y-3">
+              <p className="text-sm font-semibold text-[color:var(--text)]"><FileText className="size-3.5 inline mr-1" />Ticket ขอความช่วยเหลือ</p>
+              <div>
+                <Label htmlFor="telegram_bot_token_ticket">Bot Token (เฉพาะ)</Label>
+                <Input
+                  id="telegram_bot_token_ticket"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.botTokenTicket || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, botTokenTicket: e.target.value } })}
+                  placeholder="เว้นว่างเพื่อใช้ Global Bot Token"
+                />
+              </div>
+              <div>
+                <Label htmlFor="telegram_chat_id_ticket">Chat ID</Label>
+                <Input
+                  id="telegram_chat_id_ticket"
+                  className="mt-1"
+                  type="text"
+                  value={form.telegramConfig?.chatIdTicket || ''}
+                  onChange={(e) => setForm({ ...form, telegramConfig: { ...form.telegramConfig, chatIdTicket: e.target.value } })}
+                  placeholder="-1001234567890"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[color:var(--text)]/50">แจ้งเตือนเมื่อมีการเปิด Ticket</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleTestTelegram('ticket')} disabled={testingTelegram !== null || (!form.telegramConfig?.botTokenTicket && !form.telegramConfig?.botToken) || !form.telegramConfig?.chatIdTicket}>
+                  {testingTelegram === 'ticket' ? <><Spinner className="mr-2" /> กำลังส่งทดสอบ...</> : 'ทดสอบส่งข้อความ'}
+                </Button>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="pt-4">
+            <h2 className="text-lg font-semibold mb-1">แจ้งเตือนซื้อสินค้าและบริการ (Discord Webhooks)</h2>
             <p className="text-sm text-[color:var(--text)]/60">ตั้งค่า Discord Webhook แยกตามแต่ละบริการ (เว้นว่างเพื่อปิดการแจ้งเตือนของบริการนั้น)</p>
           </div>
           
@@ -2001,6 +1982,249 @@ function AdminPopupForm() {
       </Button>
       <p className="text-xs text-[color:var(--text)]/50">หมายเหตุ: เมื่อบันทึกรูปใหม่ popup จะเด้งทันทีแม้ว่าผู้ใช้จะกด &quot;ไม่แสดงอีกใน 3 วัน&quot; ไปแล้ว</p>
     </form>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PaymentChannelSettings — tab selector เลือกช่องทาง แล้วแสดงฟอร์มตั้งค่าของช่องนั้น
+// ─────────────────────────────────────────────────────────────────────────────
+type PaymentChannel = 'bank' | 'truewallet' | 'qr' | 'slip';
+
+const PAYMENT_CHANNELS: { value: PaymentChannel; label: string; description: string }[] = [
+  { value: 'bank',       label: 'โอนเงินผ่านธนาคาร',     description: 'ตั้งค่าบัญชีธนาคารที่แสดงให้ลูกค้าเมื่อเลือกโอนเงิน' },
+  { value: 'truewallet', label: 'TrueWallet',             description: 'ตั้งค่าเบอร์สำหรับรับซองอั่งเปา TrueWallet' },
+  { value: 'qr',         label: 'QR PromptPay',           description: 'ตั้งค่า API Credential สำหรับสร้าง QR Payment และรับ webhook' },
+  { value: 'slip',       label: 'ตรวจสลิปโอนเงิน',       description: 'ตั้งค่าระบบตรวจสอบสลิปโอนเงินอัตโนมัติ' },
+];
+
+function PaymentChannelSettings({
+  form, setForm, saving, onSubmit,
+  qrConfig, setQrConfig, qrLoading, qrSaving, qrStatus, onQrSubmit,
+  resolvedWebhookUrl, hasEnvBaseUrl, baseUrlFromEnv, WEBHOOK_PATH, handleCopyWebhook,
+  addBankAccount, updateBankAccount, removeBankAccount,
+}: {
+  form: SiteData;
+  setForm: React.Dispatch<React.SetStateAction<SiteData>>;
+  saving: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  qrConfig: QrConfigState;
+  setQrConfig: React.Dispatch<React.SetStateAction<QrConfigState>>;
+  qrLoading: boolean;
+  qrSaving: boolean;
+  qrStatus: 'idle' | 'ok' | 'error';
+  onQrSubmit: (e: React.FormEvent) => void;
+  resolvedWebhookUrl: string;
+  hasEnvBaseUrl: boolean;
+  baseUrlFromEnv: string;
+  WEBHOOK_PATH: string;
+  handleCopyWebhook: (msg?: string) => void;
+  addBankAccount: () => void;
+  updateBankAccount: (index: number, field: 'bankName' | 'accountName' | 'accountNumber' | 'branch', value: string) => void;
+  removeBankAccount: (index: number) => void;
+}) {
+  const [selectedChannel, setSelectedChannel] = React.useState<PaymentChannel>('bank');
+  const active = PAYMENT_CHANNELS.find(c => c.value === selectedChannel)!;
+
+  return (
+    <div className="card p-6 space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-lg font-semibold mb-1">ตั้งค่าแต่ละช่องทางชำระเงิน</h2>
+        <p className="text-sm text-[color:var(--text)]/60">เลือกช่องทางที่ต้องการตั้งค่า แล้วกรอกข้อมูลด้านล่าง</p>
+      </div>
+
+      {/* Tab Selector */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_CHANNELS.map(ch => {
+            const isActive = selectedChannel === ch.value;
+            return (
+              <button
+                key={ch.value}
+                type="button"
+                onClick={() => setSelectedChannel(ch.value)}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 border',
+                  isActive
+                    ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-900/40'
+                    : 'bg-black/20 border-white/10 text-gray-400 hover:border-emerald-600/50 hover:text-gray-200 hover:bg-emerald-900/20'
+                )}
+              >
+                {ch.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500">{active.description}</p>
+      </div>
+
+      <div className="border-t border-gray-800 pt-5">
+        {/* ── ธนาคาร ── */}
+        {selectedChannel === 'bank' && (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-white mb-0.5">บัญชีธนาคารสำหรับโอนเงิน</h3>
+              <p className="text-sm text-gray-400">ตั้งค่าบัญชีธนาคารที่จะแสดงให้ลูกค้าเมื่อเลือกชำระเงินด้วยการโอน</p>
+              <p className="text-xs text-gray-500 mt-1">
+                <strong className="text-gray-400">หมายเหตุ:</strong> เลขที่บัญชีจะถูกใช้เป็น &quot;บัญชีผู้รับที่คาดหวัง&quot; สำหรับตรวจสอบสลิปโอนเงินอัตโนมัติ
+              </p>
+            </div>
+            {(form.bankAccounts || []).length === 0 && (
+              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/40 p-4 text-sm text-gray-500 text-center">
+                ยังไม่มีบัญชีธนาคาร กรุณาเพิ่มบัญชีใหม่
+              </div>
+            )}
+            {(form.bankAccounts || []).map((account, index) => (
+              <div key={index} className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+                    <CreditCard className="size-4 text-emerald-400" />
+                    บัญชีที่ {index + 1}
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => removeBankAccount(index)}>
+                    <Trash2 className="size-4" /> ลบ
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs text-gray-400">ธนาคาร</Label>
+                    <Input className="mt-1" value={account.bankName} onChange={(e) => updateBankAccount(index, 'bankName', e.target.value)} placeholder="เช่น กสิกรไทย" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400">ชื่อบัญชี</Label>
+                    <Input className="mt-1" value={account.accountName} onChange={(e) => updateBankAccount(index, 'accountName', e.target.value)} placeholder="เช่น บริษัท ตัวอย่าง จำกัด" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400">เลขที่บัญชี</Label>
+                    <Input className="mt-1" value={account.accountNumber} onChange={(e) => updateBankAccount(index, 'accountNumber', e.target.value)} placeholder="เช่น 123-4-56789-0" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-400">สาขา (ถ้ามี)</Label>
+                    <Input className="mt-1" value={account.branch || ''} onChange={(e) => updateBankAccount(index, 'branch', e.target.value)} placeholder="เช่น สาขาสยามพารากอน" />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" className="w-full sm:w-auto border-gray-700 text-gray-300 hover:bg-emerald-900/20 hover:border-emerald-700" onClick={addBankAccount}>
+              <Plus className="size-4 mr-2" /> เพิ่มบัญชีธนาคาร
+            </Button>
+            <Button disabled={saving} type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
+              {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+            </Button>
+          </form>
+        )}
+
+        {/* ── TrueWallet ── */}
+        {selectedChannel === 'truewallet' && (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-white mb-0.5">ตั้งค่าซองอั่งเปา TrueWallet</h3>
+              <p className="text-sm text-gray-400">ระบุเบอร์โทรศัพท์ TrueWallet สำหรับรับเงินจากซองอั่งเปา</p>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-400">เบอร์โทรศัพท์ TrueWallet (10 หลัก)</Label>
+              <Input
+                className="mt-1"
+                type="tel"
+                maxLength={10}
+                value={form.truewalletPhone || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setForm({ ...form, truewalletPhone: value });
+                }}
+                placeholder="เช่น 0812345678"
+              />
+              <p className="text-xs text-gray-500 mt-1">เบอร์นี้จะใช้สำหรับรับเงินจากซองอั่งเปา TrueWallet ที่ลูกค้าแลก</p>
+            </div>
+            <Button disabled={saving} type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
+              {saving ? (<><Spinner />กำลังบันทึก...</>) : 'บันทึกการตั้งค่า'}
+            </Button>
+          </form>
+        )}
+
+        {/* ── QR PromptPay ── */}
+        {selectedChannel === 'qr' && (
+          <form onSubmit={onQrSubmit} className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-900/30 border border-emerald-700/50">
+                <Shield className="size-5 text-emerald-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white mb-0.5">ตั้งค่า QR PromptPay API</h3>
+                <p className="text-sm text-gray-400">จัดการ Credential สำหรับสร้าง QR Payment และรับ webhook จาก TMweasy/TMwallet</p>
+              </div>
+            </div>
+            {qrStatus === 'ok' && (<Alert><AlertTitle>บันทึกสำเร็จ</AlertTitle><AlertDescription>อัปเดตการตั้งค่า QR PromptPay เรียบร้อย</AlertDescription></Alert>)}
+            {qrStatus === 'error' && (<Alert variant="destructive"><AlertTitle>เกิดข้อผิดพลาด</AlertTitle><AlertDescription>โหลดหรือบันทึกการตั้งค่าไม่สำเร็จ โปรดลองใหม่</AlertDescription></Alert>)}
+            {qrLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400"><Spinner className="size-4" />กำลังโหลดการตั้งค่า...</div>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Username</Label>
+                    <Input value={qrConfig.username} onChange={(e) => setQrConfig({ ...qrConfig, username: e.target.value })} placeholder="username จาก TMwallet" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>รหัสผ่าน</Label>
+                    <Input type="password" value={qrConfig.password} onChange={(e) => setQrConfig({ ...qrConfig, password: e.target.value })} placeholder="password API" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CON ID</Label>
+                    <Input value={qrConfig.conId} onChange={(e) => setQrConfig({ ...qrConfig, conId: e.target.value })} placeholder="เช่น 106233" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PromptPay ID</Label>
+                    <Input value={qrConfig.promptpayId} onChange={(e) => setQrConfig({ ...qrConfig, promptpayId: e.target.value })} placeholder="เลข PromptPay 10 หรือ 13 หลัก" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>PromptPay Type</Label>
+                    <select className="input w-full rounded-md border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-gray-200" value={qrConfig.promptpayType} onChange={(e) => setQrConfig({ ...qrConfig, promptpayType: e.target.value === '01' ? '01' : '02' })}>
+                      <option value="01">01 - เบอร์โทรศัพท์</option>
+                      <option value="02">02 - เลขบัตรประชาชน</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Webhook Secret (API Key)</Label>
+                    <Input type="password" value={qrConfig.webhookKey} onChange={(e) => setQrConfig({ ...qrConfig, webhookKey: e.target.value })} placeholder="API Key สำหรับตรวจสอบ webhook" />
+                    <p className="text-[11px] text-gray-500">ต้องตรงกับค่าใน TMweasy เพื่อยืนยัน webhook</p>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Webhook URL (ล็อกจาก `{hasEnvBaseUrl ? 'NEXT_PUBLIC_BASE_URL' : 'โดเมนปัจจุบัน'}`)</Label>
+                    <div className="flex flex-col gap-2 sm:flex-row items-center">
+                      <Input value={resolvedWebhookUrl} readOnly disabled className="flex-1 bg-gray-900/60 text-gray-300" />
+                      <Button type="button" variant="outline" className="shrink-0 w-full sm:w-auto border-gray-700 hover:bg-emerald-900/20 hover:border-emerald-700" onClick={() => handleCopyWebhook('คัดลอกสำเร็จ')}>
+                        <Copy className="mr-2 size-4" />คัดลอก
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      ระบบจะเติม `{WEBHOOK_PATH}` ต่อท้ายโดเมนหลักจากไฟล์ `.env` (เช่น {hasEnvBaseUrl ? baseUrlFromEnv : 'http://localhost:3000'}) และล็อกไม่ให้แก้ไข
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-emerald-800/50 bg-emerald-900/10 p-3 text-xs text-emerald-300">
+                  ตั้งค่า Webhook URL ใน TMweasy ให้ชี้ไปที่ <code className="text-emerald-200">{resolvedWebhookUrl}</code>
+                </div>
+                <Button disabled={qrSaving} type="submit" className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
+                  {qrSaving ? (<><Spinner className="mr-2 size-4" />กำลังบันทึก...</>) : (<><KeyRound className="mr-2 size-4" />บันทึกการตั้งค่า QR PromptPay</>)}
+                </Button>
+              </>
+            )}
+          </form>
+        )}
+
+        {/* ── สลิปโอนเงิน ── */}
+        {selectedChannel === 'slip' && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-white mb-0.5">ตรวจสอบสลิปโอนเงินอัตโนมัติ</h3>
+              <p className="text-sm text-gray-400">ตั้งค่าระบบตรวจสอบสลิปก่อนเติมพอยต์ให้ลูกค้า</p>
+            </div>
+            <SlipVerificationSettingsContent />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

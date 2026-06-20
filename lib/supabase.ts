@@ -27,9 +27,6 @@ export function createServiceClient() {
   if (!supabaseUrl) {
     throw new Error('SUPABASE_URL is not set');
   }
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[supabase] createServiceClient using URL', supabaseUrl);
-  }
   return createClient(supabaseUrl as string, serviceKey, { auth: { persistSession: false } });
 }
 

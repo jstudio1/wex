@@ -15,8 +15,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { SpinnerCustom } from '@/components/ui/spinner-custom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Star, Coins, Gem, Sparkles, Gamepad2, Home, ShoppingCart, CheckCircle2, Flame } from 'lucide-react';
+import { Zap, Star, Coins, Gem, Gamepad2, Home, ShoppingCart, CheckCircle2, Flame } from 'lucide-react';
 import dynamic from 'next/dynamic';
+
+const HeroVideoDialog = dynamic(() => import('@/components/ui/hero-video-dialog').then(mod => ({ default: mod.HeroVideoDialog })), { 
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-800 rounded-md animate-pulse" />
+});
 const FlashSaleCountdown = dynamic(() => import('@/components/FlashSaleCountdown'), { ssr: false });
 import ElectricBorder from '@/components/ElectricBorder';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +33,8 @@ type Detail = {
   image_url?: string | null;
   banner_url?: string | null;
   icon_url?: string | null;
+  tutorial_video_url?: string | null;
+  tutorial_video_thumbnail_url?: string | null;
   items: { id: number; name: string; sku: string; price: string; originalPrice: string; original_price_for_permission?: string | null; is_recommended?: boolean; icon_url?: string | null; is_flashsale?: boolean; flashsale_price?: string | null; quantity_remaining?: number | null; max_quantity?: number | null }[];
   inputs: { key: string; title: string; regex: string; type: string; placeholder: string; options: { label: string; value: string }[] }[];
   badge?: { text?: string | null; percent?: number | null } | null;
@@ -69,8 +76,6 @@ export default function ProductDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [openConfirm, setOpenConfirm] = useState(false);
-  const [flashStart, setFlashStart] = useState<string | null>(null);
-  const [flashEnd, setFlashEnd] = useState<string | null>(null);
   const [qrData, setQrData] = useState<{ base64: string; amount: number; idPay: string; timeout: number } | null>(null);
   const [qrLeft, setQrLeft] = useState<number>(0);
   const [couponCode, setCouponCode] = useState('');
@@ -95,6 +100,7 @@ export default function ProductDetailPage() {
   const isInitialMount = useRef(true);
 
   const [iconErrors, setIconErrors] = useState<Set<string>>(new Set());
+  const [bannerError, setBannerError] = useState(false);
 
   const iconUrl = useMemo(() => {
     return data?.icon_url?.trim() || null;
@@ -111,7 +117,7 @@ export default function ProductDetailPage() {
       return <Gem className={`${iconSize} text-blue-400`} />;
     }
     if (name.includes('diamond') || name.includes('crystal')) {
-      return <Sparkles className={`${iconSize} text-cyan-400`} />;
+      return <Flame className={`${iconSize} text-cyan-400`} />;
     }
     return <Coins className={`${iconSize} text-yellow-400`} />;
   }, []);
@@ -165,10 +171,10 @@ export default function ProductDetailPage() {
         setCouponCode('');
         setCouponData(null);
         setIconErrors(new Set());
+        setBannerError(false);
         
         const timestamp = Date.now();
-        const [detailRes, siteRes] = await Promise.all([
-          fetch(`/api/products/${currentKey ?? ''}?t=${timestamp}`, { 
+        const detailRes = await fetch(`/api/products/${currentKey ?? ''}?t=${timestamp}`, { 
             cache: 'no-store',
             headers: { 
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -176,17 +182,7 @@ export default function ProductDetailPage() {
               'Expires': '0',
             },
             signal: controller.signal 
-          }),
-          fetch(`/api/site?t=${timestamp}`, { 
-            cache: 'no-store',
-            headers: { 
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-            },
-            signal: controller.signal 
-          })
-        ]);
+          });
         if (!detailRes.ok) throw new Error('ไม่พบบริการนี้');
         const detailJson = await detailRes.json();
 
@@ -214,11 +210,6 @@ export default function ProductDetailPage() {
         merged.items = sortItems(merged.items);
         setData(merged);
         setSku(merged.items?.[0]?.sku || '');
-        if (siteRes.ok) {
-          const sj = await siteRes.json();
-          setFlashStart(sj.flashStart || null);
-          setFlashEnd(sj.flashEnd || null);
-        }
       } catch (e: unknown) {
         if ((e as any)?.name !== 'AbortError') setError((e as Error).message);
       } finally {
@@ -445,7 +436,7 @@ export default function ProductDetailPage() {
   
   if (loading || !data) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen">
         <div className="relative h-48 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950">
           <Skeleton className="h-full w-full" />
         </div>
@@ -466,37 +457,17 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
-        <div 
-          className="absolute inset-0" 
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
-      
-      {/* Decorative Shapes */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-emerald-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
-      </div>
-      
+    <div className="min-h-screen">
       {/* Hero Banner */}
       <div className="relative overflow-hidden py-12 md:py-16 shadow-lg">
         {/* Background Image */}
         <div className="absolute inset-0">
-          {data.banner_url ? (
-            <Image 
+          {data.banner_url && !bannerError ? (
+            <img 
               src={data.banner_url}
               alt="Product Banner Background"
-              fill
-              className="object-cover"
-              priority
-              sizes="100vw"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={() => setBannerError(true)}
             />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950" />
@@ -558,6 +529,35 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Tutorial Video Section */}
+      {data.tutorial_video_url && (
+        <div className="bg-[#0a0a0a] border-b border-gray-800">
+          <div className="mx-auto max-w-6xl px-4 py-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Zap className="h-5 w-5 text-emerald-500" />
+                วิธีการเติม
+              </h2>
+              <p className="text-sm text-gray-400 mt-1">ดูวิดีโอวิธีการเติม {data.name}</p>
+            </div>
+            <HeroVideoDialog
+              animationStyle="from-center"
+              videoSrc={(() => {
+                // ถ้าเป็น iframe code ให้ดึง src ออกมา
+                if (data.tutorial_video_url && typeof data.tutorial_video_url === 'string' && data.tutorial_video_url.includes('<iframe')) {
+                  const match = data.tutorial_video_url.match(/src=["']([^"']+)["']/);
+                  return match?.[1] || data.tutorial_video_url;
+                }
+                return data.tutorial_video_url || '';
+              })()}
+              thumbnailSrc={data.tutorial_video_thumbnail_url || data.banner_url || data.image_url || 'https://via.placeholder.com/1280x720/0a0a0a/ffffff?text=วิดีโอวิธีการเติม'}
+              thumbnailAlt={`วิดีโอวิธีการเติม ${data.name}`}
+              className="w-full"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="mx-auto max-w-6xl px-4 py-6">

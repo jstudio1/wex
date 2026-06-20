@@ -30,7 +30,6 @@ export async function POST(req: Request) {
     .upsert({ key: KEY, value: String(value) }, { onConflict: 'key' });
 
   if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
-  try { revalidateTag('social-services'); } catch {}
   return NextResponse.json({ ok: true, exchangeRate: value });
 }
 

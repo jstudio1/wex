@@ -448,9 +448,12 @@ export default function NewsContent() {
             {/* Cover Image */}
             <div>
               <Label>รูปภาพปก</Label>
+              <p className="text-xs text-gray-500 mt-1">
+                ขนาดที่แนะนำ: 1600 × 900 px (อัตราส่วน 16:9) ไฟล์ไม่เกิน 5MB
+              </p>
               <div className="mt-2 space-y-2">
                 {formData.cover_image_url && (
-                  <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-700">
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-gray-700">
                     <Image
                       src={formData.cover_image_url}
                       alt="Cover"
@@ -480,16 +483,16 @@ export default function NewsContent() {
             <div>
               <Label htmlFor="category">หมวดหมู่</Label>
               <Select
-                value={formData.category_id?.toString() || ''}
+                value={formData.category_id?.toString() || 'none'}
                 onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, category_id: value ? parseInt(value) : null }))
+                  setFormData((prev) => ({ ...prev, category_id: value && value !== 'none' ? parseInt(value) : null }))
                 }
               >
                 <SelectTrigger className="bg-[#1a1a1a] border-gray-700 text-white mt-1">
                   <SelectValue placeholder="เลือกหมวดหมู่" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">ไม่มีหมวดหมู่</SelectItem>
+                  <SelectItem value="none">ไม่มีหมวดหมู่</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id.toString()}>
                       {cat.name}

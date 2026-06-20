@@ -30,13 +30,19 @@ export function Popover({ open, onOpenChange, children }: { open?: boolean; onOp
   return <PopCtx.Provider value={{ open: isOpen, setOpen, triggerRef }}>{children}</PopCtx.Provider>;
 }
 
+type TriggerProps = {
+  onClick?: (e: React.MouseEvent) => void;
+  ref?: React.Ref<any>;
+  [key: string]: any;
+};
+
 export function PopoverTrigger({ asChild, children, onClickOverride }: { asChild?: boolean; children: React.ReactElement; onClickOverride?: (e: React.MouseEvent) => void }) {
   const ctx = React.useContext(PopCtx)!;
   const onClick = onClickOverride || (() => ctx.setOpen(!ctx.open));
   
   if (asChild) {
     // Clone element and preserve existing props, but override onClick if provided
-    const existingProps = children.props || {};
+    const existingProps = (children.props || {}) as TriggerProps;
     const mergedProps = {
       ...existingProps,
       onClick: onClickOverride ? (e: React.MouseEvent) => {

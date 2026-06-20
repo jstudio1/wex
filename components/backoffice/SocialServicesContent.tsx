@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
-import { RefreshCw, Save, Search, Globe, Package, Settings, CheckSquare, Square, Edit2, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Save, Search, Globe, Package, Settings, CheckSquare, Square, Edit2, Eye, EyeOff, Trash2, AlertTriangle, Plus, GripVertical } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -39,6 +39,7 @@ interface SocialCategory {
   name: string;
   slug: string;
   is_published: boolean;
+  display_order: number;
 }
 
 interface SocialService {
@@ -91,6 +92,10 @@ export default function SocialServicesContent() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<SocialCategory | null>(null);
   const [savingCategoryId, setSavingCategoryId] = useState<number | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [draggingCategoryId, setDraggingCategoryId] = useState<number | null>(null);
+  const [savingCategoryOrder, setSavingCategoryOrder] = useState(false);
   const itemsPerPage = 100;
 
   const initialServicesRef = useRef<SocialServiceSnapshot[]>([]);
@@ -160,7 +165,10 @@ export default function SocialServicesContent() {
       const categoriesJson = await categoriesRes.json();
 
       const servicesData = (servicesJson.data || []) as SocialService[];
-      const categoriesData = (categoriesJson.data || []) as SocialCategory[];
+      const categoriesData = ((categoriesJson.data || []) as SocialCategory[]).map((category, index) => ({
+        ...category,
+        display_order: category.display_order ?? index + 1
+      }));
 
       initialServicesRef.current = servicesData.map((svc) => ({
         id: svc.id,
@@ -195,7 +203,8 @@ export default function SocialServicesContent() {
         body: JSON.stringify({
           id: category.id,
           name: category.name.trim(),
-          is_published: category.is_published
+          is_published: category.is_published,
+          display_order: category.display_order
         })
       });
       const json = await res.json();
@@ -213,6 +222,122 @@ export default function SocialServicesContent() {
       toast.show({ title: 'บันทึกไม่สำเร็จ', description: 'โปรดลองใหม่', variant: 'destructive' });
     } finally {
       setSavingCategoryId(null);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      toast.show({ title: 'เกิดข้อผิดพลาด', description: 'กรุณากรอกชื่อหมวดหมู่', variant: 'destructive' });
+      return;
+    }
+
+    setAddingCategory(true);
+    try {
+      const res = await fetch('/api/admin/social/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, is_published: true })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || json.error || 'สร้างไม่สำเร็จ');
+
+      setCategories((prev) => [...prev, json.data as SocialCategory]);
+      setNewCategoryName('');
+      toast.show({ title: 'สร้างหมวดหมู่สำเร็จ' });
+    } catch (error) {
+      console.error(error);
+      toast.show({
+        title: 'สร้างไม่สำเร็จ',
+        description: error instanceof Error ? error.message : 'โปรดลองใหม่',
+        variant: 'destructive'
+      });
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (category: SocialCategory, serviceCount: number) => {
+    const serviceWarning = serviceCount > 0 ? `\n\nบริการ ${serviceCount} รายการจะถูกย้ายไปยัง "ยังไม่จัดหมวด"` : '';
+    if (!confirm(`ต้องการลบหมวดหมู่ "${category.name}" หรือไม่?${serviceWarning}`)) {
+      return;
+    }
+
+    setSavingCategoryId(category.id);
+    try {
+      const res = await fetch(`/api/admin/social/categories?id=${category.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || json.error || 'ลบไม่สำเร็จ');
+
+      setCategories((prev) => prev.filter((cat) => cat.id !== category.id));
+      setServices((prev) => prev.map((svc) => (
+        svc.category_id === category.id
+          ? { ...svc, category_id: null, social_categories: null, __dirty: false }
+          : svc
+      )));
+      initialServicesRef.current = initialServicesRef.current.map((svc) => (
+        svc.category_id === category.id ? { ...svc, category_id: null } : svc
+      ));
+      toast.show({ title: 'ลบหมวดหมู่สำเร็จ' });
+    } catch (error) {
+      console.error(error);
+      toast.show({
+        title: 'ลบไม่สำเร็จ',
+        description: error instanceof Error ? error.message : 'โปรดลองใหม่',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingCategoryId(null);
+    }
+  };
+
+  const saveCategoryOrder = async (orderedCategories: SocialCategory[]) => {
+    setSavingCategoryOrder(true);
+    try {
+      const res = await fetch('/api/admin/social/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categories: orderedCategories.map((category, index) => ({
+            id: category.id,
+            display_order: index + 1
+          }))
+        })
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail || json.error || 'บันทึกลำดับไม่สำเร็จ');
+      toast.show({ title: 'บันทึกลำดับหมวดหมู่สำเร็จ' });
+    } catch (error) {
+      console.error(error);
+      toast.show({
+        title: 'บันทึกลำดับไม่สำเร็จ',
+        description: 'โปรดรีเฟรชและลองใหม่',
+        variant: 'destructive'
+      });
+      await fetchData();
+    } finally {
+      setSavingCategoryOrder(false);
+    }
+  };
+
+  const moveCategory = (fromId: number, toId: number) => {
+    if (fromId === toId) return;
+
+    let nextCategories: SocialCategory[] = [];
+    setCategories((prev) => {
+      const fromIndex = prev.findIndex((cat) => cat.id === fromId);
+      const toIndex = prev.findIndex((cat) => cat.id === toId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+
+      const reordered = [...prev];
+      const [moved] = reordered.splice(fromIndex, 1);
+      reordered.splice(toIndex, 0, moved);
+      nextCategories = reordered.map((cat, index) => ({ ...cat, display_order: index + 1 }));
+      return nextCategories;
+    });
+
+    if (nextCategories.length) {
+      void saveCategoryOrder(nextCategories);
     }
   };
 
@@ -914,7 +1039,7 @@ export default function SocialServicesContent() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-sm text-gray-400">
-                  ทั้งหมด {categories.length} หมวดหมู่
+                  {savingCategoryOrder ? 'กำลังบันทึกลำดับ...' : `ทั้งหมด ${categories.length} หมวดหมู่`}
                 </div>
                 {categories.length > 0 && (
                   <Button
@@ -930,10 +1055,38 @@ export default function SocialServicesContent() {
                 )}
               </div>
             </div>
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border p-3 md:flex-row md:items-end">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="new-social-category">เพิ่มหมวดหมู่</Label>
+                <Input
+                  id="new-social-category"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleAddCategory();
+                    }
+                  }}
+                  placeholder="ชื่อหมวดหมู่"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleAddCategory}
+                disabled={addingCategory}
+                className="gap-2"
+              >
+                {addingCategory ? <Spinner className="size-4" /> : <Plus className="size-4" />}
+                เพิ่ม
+              </Button>
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-white"></TableHead>
+                    <TableHead className="text-white text-center">ลำดับ</TableHead>
                     <TableHead className="text-white">ชื่อ</TableHead>
                     <TableHead className="text-white">Slug</TableHead>
                     <TableHead className="text-white text-center">สถานะ</TableHead>
@@ -944,18 +1097,36 @@ export default function SocialServicesContent() {
                 <TableBody>
                   {categories.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                      <TableCell colSpan={7} className="text-center text-gray-400 py-8">
                         ยังไม่มีหมวดหมู่
                       </TableCell>
                     </TableRow>
                   ) : (
-                    categories.map((cat) => {
+                    categories.map((cat, index) => {
                       const serviceCount = services.filter((s) => s.category_id === cat.id).length;
                       const isEditing = editingCategory?.id === cat.id;
                       const categoryToShow = isEditing ? editingCategory : cat;
                       
                       return (
-                        <TableRow key={cat.id}>
+                        <TableRow
+                          key={cat.id}
+                          draggable={!isEditing && !savingCategoryOrder}
+                          onDragStart={() => setDraggingCategoryId(cat.id)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (draggingCategoryId) moveCategory(draggingCategoryId, cat.id);
+                            setDraggingCategoryId(null);
+                          }}
+                          onDragEnd={() => setDraggingCategoryId(null)}
+                          className={draggingCategoryId === cat.id ? 'opacity-50' : undefined}
+                        >
+                          <TableCell className="text-center">
+                            <GripVertical className="mx-auto size-4 cursor-grab text-gray-400" />
+                          </TableCell>
+                          <TableCell className="text-center text-gray-400">
+                            {index + 1}
+                          </TableCell>
                           <TableCell>
                             {isEditing ? (
                               <Input
@@ -1022,15 +1193,27 @@ export default function SocialServicesContent() {
                                 </Button>
                               </div>
                             ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingCategory({ ...cat })}
-                                className="gap-1"
-                              >
-                                <Edit2 className="size-3" />
-                                แก้ไข
-                              </Button>
+                              <div className="flex items-center justify-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingCategory({ ...cat })}
+                                  className="gap-1"
+                                >
+                                  <Edit2 className="size-3" />
+                                  แก้ไข
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteCategory(cat, serviceCount)}
+                                  disabled={savingCategoryId === cat.id}
+                                  className="gap-1 text-red-400 hover:text-red-300"
+                                >
+                                  {savingCategoryId === cat.id ? <Spinner className="size-3" /> : <Trash2 className="size-3" />}
+                                  ลบ
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>

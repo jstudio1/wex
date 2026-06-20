@@ -4,9 +4,12 @@ import { createServiceClient } from '@/lib/supabase';
 import { z } from 'zod';
 
 const updateSettingsSchema = z.object({
+  provider: z.enum(['rdcw', 'slipok']).optional(),
   rdcw_client_id: z.string().optional(),
   rdcw_client_secret: z.string().optional(),
   rdcw_endpoint: z.string().url().optional(),
+  slipok_branch_id: z.string().optional(),
+  slipok_api_key: z.string().optional(),
   minimum_topup_amount: z.number().min(0).optional(),
 });
 
@@ -44,9 +47,12 @@ export async function GET(req: Request) {
         ok: true, 
         data: {
           id: null,
+          provider: 'rdcw',
           rdcw_client_id: null,
           rdcw_client_secret: null,
           rdcw_endpoint: 'https://suba.rdcw.co.th/v2/inquiry',
+          slipok_branch_id: null,
+          slipok_api_key: null,
           minimum_topup_amount: 49,
           created_at: null,
           updated_at: null,
@@ -91,6 +97,9 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    if (parsed.data.provider !== undefined) {
+      updateData.provider = parsed.data.provider;
+    }
     if (parsed.data.rdcw_client_id !== undefined) {
       updateData.rdcw_client_id = parsed.data.rdcw_client_id || null;
     }
@@ -99,6 +108,12 @@ export async function POST(req: Request) {
     }
     if (parsed.data.rdcw_endpoint !== undefined) {
       updateData.rdcw_endpoint = parsed.data.rdcw_endpoint || 'https://suba.rdcw.co.th/v2/inquiry';
+    }
+    if (parsed.data.slipok_branch_id !== undefined) {
+      updateData.slipok_branch_id = parsed.data.slipok_branch_id || null;
+    }
+    if (parsed.data.slipok_api_key !== undefined) {
+      updateData.slipok_api_key = parsed.data.slipok_api_key || null;
     }
     if (parsed.data.minimum_topup_amount !== undefined) {
       updateData.minimum_topup_amount = Number(parsed.data.minimum_topup_amount);

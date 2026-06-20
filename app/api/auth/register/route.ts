@@ -83,13 +83,23 @@ export async function POST(req: Request) {
         email: email,
         phone: phone || null
       })
-      .select('id, username, email, first_name, last_name')
+      .select('id, username, email, first_name, last_name, phone')
       .single();
     if (error) {
       return NextResponse.json({ 
         error: 'db_error',
         message: getErrorMessage('db_error')
       }, { status: 500 });
+    }
+
+    try {
+      const { sendTelegramNotification } = await import('@/lib/telegram');
+      await sendTelegramNotification(
+        `👤 <b>ผู้ใช้ใหม่สมัครสมาชิก</b>\n\n<b>Username:</b> ${data.username}\n<b>ชื่อ:</b> ${data.first_name} ${data.last_name}\n<b>อีเมล:</b> ${data.email}${data.phone ? `\n<b>เบอร์โทร:</b> ${data.phone}` : ''}`,
+        'registration'
+      );
+    } catch (e) {
+      console.error('Failed to send registration telegram notification:', e);
     }
 
     return NextResponse.json({ user: data });

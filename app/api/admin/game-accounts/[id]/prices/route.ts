@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -14,15 +15,16 @@ const updatePriceSchema = z.object({
 
 // GET - ดึงราคาทั้งหมดของ game account
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -30,7 +32,7 @@ export async function GET(
     const { data, error } = await sb
       .from('game_account_prices')
       .select('*, permission:permissions(id, name)')
-      .eq('game_account_id', id)
+      .eq('game_account_id', numericId)
       .order('permission_id', { ascending: true });
 
     if (error) {
@@ -46,15 +48,16 @@ export async function GET(
 
 // POST - เพิ่มราคาใหม่
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -67,7 +70,7 @@ export async function POST(
     const { data: account, error: accountError } = await sb
       .from('game_accounts')
       .select('id')
-      .eq('id', id)
+      .eq('id', numericId)
       .single();
 
     if (accountError || !account) {
@@ -78,7 +81,7 @@ export async function POST(
     const { data: existing } = await sb
       .from('game_account_prices')
       .select('id')
-      .eq('game_account_id', id)
+      .eq('game_account_id', numericId)
       .eq('permission_id', validated.permission_id)
       .maybeSingle();
 
@@ -92,7 +95,7 @@ export async function POST(
     const { data, error } = await sb
       .from('game_account_prices')
       .insert({
-        game_account_id: id,
+        game_account_id: numericId,
         permission_id: validated.permission_id,
         price: validated.price,
       })

@@ -21,8 +21,6 @@ export async function POST(req: Request) {
       console.error('Publish all error:', error);
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
     }
-
-    try { revalidateTag('products'); } catch {}
     return NextResponse.json({ 
       ok: true, 
       count: data?.length || 0,

@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { getAuthUser } from '@/lib/auth';
@@ -11,8 +12,8 @@ const topupSchema = z.object({
 });
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin();
@@ -25,7 +26,8 @@ export async function POST(
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    const userId = Number(params.id);
+    const { id } = await params;
+    const userId = Number(id);
     const body = await req.json();
     const parsed = topupSchema.parse(body);
 

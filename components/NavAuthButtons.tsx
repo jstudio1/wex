@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
-import ReCaptcha from '@/components/ReCaptcha';
 import { useAuthDialog } from '@/contexts/AuthDialogContext';
 
 export default function NavAuthButtons() {
@@ -29,42 +28,23 @@ export default function NavAuthButtons() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // reCaptcha states
-  const [recaptchaEnabled, setRecaptchaEnabled] = useState(false);
-  const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
-  const [loginRecaptchaToken, setLoginRecaptchaToken] = useState<string | null>(null);
-  const [registerRecaptchaToken, setRegisterRecaptchaToken] = useState<string | null>(null);
-  const [loginRecaptchaKey, setLoginRecaptchaKey] = useState(0);
-  const [registerRecaptchaKey, setRegisterRecaptchaKey] = useState(0);
-  
   // Register enabled state
   const [registerEnabled, setRegisterEnabled] = useState(true);
   const toast = useToast();
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/recaptcha/config', { cache: 'no-store' }).then((res) => res.json()),
-      fetch('/api/site', { cache: 'no-store' }).then((res) => res.json())
-    ])
-      .then(([recaptchaData, siteData]) => {
-        setRecaptchaEnabled(recaptchaData.enabled === true);
-        setRecaptchaSiteKey(recaptchaData.siteKey || '');
+    fetch('/api/site', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((siteData) => {
         setRegisterEnabled(siteData.registerEnabled !== false); // default true
       })
       .catch(() => {
-        setRecaptchaEnabled(false);
         setRegisterEnabled(true);
       });
   }, []);
 
   async function onLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
-    // Check reCaptcha if enabled
-    if (recaptchaEnabled && !loginRecaptchaToken) {
-      setError('กรุณายืนยัน reCaptcha');
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -74,8 +54,7 @@ export default function NavAuthButtons() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           usernameOrEmail, 
-          password,
-          ...(loginRecaptchaToken && { recaptchaToken: loginRecaptchaToken })
+          password
         })
       });
       const json = await res.json().catch(() => ({}));
@@ -103,11 +82,6 @@ export default function NavAuthButtons() {
       window.location.reload();
     } catch (err: unknown) {
       setError((err as Error).message);
-      // Reset reCaptcha on error
-      if (recaptchaEnabled) {
-        setLoginRecaptchaToken(null);
-        setLoginRecaptchaKey((prev) => prev + 1);
-      }
     } finally {
       setLoading(false);
     }
@@ -125,12 +99,6 @@ export default function NavAuthButtons() {
       return;
     }
 
-    // Check reCaptcha if enabled
-    if (recaptchaEnabled && !registerRecaptchaToken) {
-      setError('กรุณายืนยัน reCaptcha');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -143,8 +111,7 @@ export default function NavAuthButtons() {
           firstName,
           lastName,
           email,
-          phone: phone || undefined,
-          ...(registerRecaptchaToken && { recaptchaToken: registerRecaptchaToken })
+          phone: phone || undefined
         })
       });
       const json = await res.json().catch(() => ({}));
@@ -178,11 +145,6 @@ export default function NavAuthButtons() {
       setError('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
     } catch (err: unknown) {
       setError((err as Error).message);
-      // Reset reCaptcha on error
-      if (recaptchaEnabled) {
-        setRegisterRecaptchaToken(null);
-        setRegisterRecaptchaKey((prev) => prev + 1);
-      }
     } finally {
       setLoading(false);
     }
@@ -193,8 +155,6 @@ export default function NavAuthButtons() {
     setPassword(''); 
     setError(null); 
     setLoading(false); 
-    setLoginRecaptchaToken(null);
-    setLoginRecaptchaKey((prev) => prev + 1);
   };
 
   const resetRegisterState = () => { 
@@ -208,8 +168,6 @@ export default function NavAuthButtons() {
     setAcceptedTerms(false);
     setError(null); 
     setLoading(false); 
-    setRegisterRecaptchaToken(null);
-    setRegisterRecaptchaKey((prev) => prev + 1);
   };
 
   return (
@@ -298,21 +256,6 @@ export default function NavAuthButtons() {
                   <span className="text-sm text-gray-300">จดจำการเข้าสู่ระบบ</span>
                 </label>
               </div>
-              {recaptchaEnabled && recaptchaSiteKey && loginOpen && (
-                <div className="flex justify-center" key={`login-recaptcha-${loginRecaptchaKey}`}>
-                  <ReCaptcha
-                    key={loginRecaptchaKey}
-                    siteKey={recaptchaSiteKey}
-                    onVerify={(token) => setLoginRecaptchaToken(token)}
-                    onExpire={() => setLoginRecaptchaToken(null)}
-                    onError={() => {
-                      setLoginRecaptchaToken(null);
-                      setError('เกิดข้อผิดพลาดกับ reCaptcha');
-                    }}
-                    disabled={loading}
-                  />
-                </div>
-              )}
               {error && (
                 <div className="bg-red-900/30 border border-red-800 text-red-400 px-4 py-3 rounded-lg text-sm font-medium">
                   {error}
@@ -375,8 +318,8 @@ export default function NavAuthButtons() {
         setRegisterOpen(open);
         if (!open) resetRegisterState();
       }}>
-        <DialogContent className="sm:max-w-[680px] bg-transparent border-0 shadow-none p-0 overflow-visible max-h-[90vh]">
-          <div className="overflow-hidden rounded-2xl border border-gray-800 bg-[#0a0a0a] text-white shadow-2xl flex flex-col max-h-[90vh]">
+        <DialogContent className="sm:max-w-[680px] bg-transparent border-0 shadow-none p-0 overflow-hidden max-h-[88dvh]">
+          <div className="rounded-2xl border border-gray-800 bg-[#0a0a0a] text-white shadow-2xl flex flex-col max-h-[88dvh] overflow-hidden">
             {/* Header with gradient */}
             <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-700 px-6 py-4 relative overflow-hidden flex-shrink-0">
               {/* Decorative circles */}
@@ -398,7 +341,7 @@ export default function NavAuthButtons() {
             <form onSubmit={onRegisterSubmit} className="px-6 py-5 bg-[#0a0a0a] overflow-y-auto flex-1">
               <div className="space-y-4">
                 {/* Row 1: ชื่อ + นามสกุล */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="reg-firstName" className="text-gray-300 font-medium text-xs">ชื่อ</Label>
                     <Input 
@@ -424,7 +367,7 @@ export default function NavAuthButtons() {
                 </div>
 
                 {/* Row 2: ชื่อผู้ใช้ + อีเมล */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                     <Label htmlFor="reg-username" className="text-gray-300 font-medium text-xs">ชื่อผู้ใช้</Label>
                 <Input 
@@ -466,7 +409,7 @@ export default function NavAuthButtons() {
                 </div>
 
                 {/* Row 4: รหัสผ่าน + ยืนยันรหัสผ่าน */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="reg-password" className="text-gray-300 font-medium text-xs">รหัสผ่าน</Label>
                 <Input 
@@ -480,7 +423,7 @@ export default function NavAuthButtons() {
                 />
               </div>
               <div className="space-y-2">
-                    <Label htmlFor="reg-repassword" className="text-gray-300 font-medium text-xs">ยืนยันรหัสผ่าน</Label>
+                <Label htmlFor="reg-repassword" className="text-gray-300 font-medium text-xs">ยืนยันรหัสผ่าน</Label>
                 <Input 
                   id="reg-repassword" 
                   type="password" 
@@ -488,27 +431,10 @@ export default function NavAuthButtons() {
                   onChange={(e) => setRepassword(e.target.value)} 
                   placeholder="กรอกรหัสผ่านอีกครั้ง" 
                   required 
-                      className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/30 h-10 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* reCaptcha */}
-                {recaptchaEnabled && recaptchaSiteKey && registerOpen && (
-                  <div className="flex justify-center pt-2" key={`register-recaptcha-${registerRecaptchaKey}`}>
-                    <ReCaptcha
-                      key={registerRecaptchaKey}
-                      siteKey={recaptchaSiteKey}
-                      onVerify={(token) => setRegisterRecaptchaToken(token)}
-                      onExpire={() => setRegisterRecaptchaToken(null)}
-                      onError={() => {
-                        setRegisterRecaptchaToken(null);
-                        setError('เกิดข้อผิดพลาดกับ reCaptcha');
-                      }}
-                      disabled={loading}
+                  className="bg-[#1a1a1a] border-gray-700 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/30 h-10 rounded-lg text-sm"
                 />
               </div>
-                )}
+            </div>
 
                 {/* Terms and Privacy Checkbox */}
                 <div className="flex items-start gap-3 pt-2">

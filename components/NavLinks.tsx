@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import { Gamepad2, Share2, Smartphone, Home, Mail, FileText, ChevronDown, MessageSquare, BookOpen, Phone, CreditCard, Grid3x3 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,13 +25,13 @@ type NavbarMenus = {
   blog: boolean;
 };
 
-export default function NavLinks({ 
-  isAdmin,
+export default function NavLinks({
+  isAdmin: _isAdmin,
   navbarMenus,
   navbarMenuOrder,
   navbarMenuLabels,
-  isLoggedIn
-}: { 
+  isLoggedIn,
+}: {
   isAdmin: boolean;
   navbarMenus: NavbarMenus;
   navbarMenuOrder?: string[];
@@ -44,8 +44,22 @@ export default function NavLinks({
   isLoggedIn?: boolean;
 }) {
   const pathname = usePathname() || '/';
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Clear pending state when pathname changes (navigation completed)
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  const handleClick = useCallback((href: string) => {
+    setPendingHref(href);
+  }, []);
+
+  // Use pending href for optimistic active state
+  const activePathname = pendingHref || pathname;
+
   const allItemsMap: Record<string, { href: string; label: string; icon: typeof Home; key: keyof NavbarMenus; requireAuth?: boolean }> = {
-    home: { href: '/', label: 'หน้าหลัก', icon: Home, key: 'home' },
+    home: { href: '/', label: 'หน้าแรก', icon: Home, key: 'home' },
     products: { href: '/products', label: navbarMenuLabels?.products || 'เติมเกม', icon: Gamepad2, key: 'products' },
     mtopup: { href: '/mtopup', label: 'เติมเงินมือถือ', icon: Phone, key: 'mtopup' },
     cashcard: { href: '/cashcard', label: 'บัตรเติมเงิน', icon: CreditCard, key: 'cashcard' },
@@ -56,31 +70,31 @@ export default function NavLinks({
   };
 
   const orderedKeys = normalizeNavbarOrder(navbarMenuOrder);
+  const isContactActive = activePathname === '/contact' || activePathname === '/terms' || activePathname === '/privacy' || activePathname === '/account/tickets';
 
-  const isContactActive = pathname === '/contact' || pathname === '/terms' || pathname === '/privacy' || pathname === '/account/tickets';
-  // Build menu items in order
-  const menuItems: Array<{ type: 'link' | 'contact'; data?: any; index: number }> = [];
-  
-  orderedKeys.forEach((key, idx) => {
+  const menuItems: Array<{ type: 'link' | 'contact'; data?: (typeof allItemsMap)[string] }> = [];
+
+  orderedKeys.forEach((key) => {
     if (key === 'contact') {
       if (isLoggedIn && navbarMenus.contact !== false) {
-        menuItems.push({ type: 'contact', index: idx });
+        menuItems.push({ type: 'contact' });
       }
-    } else {
-      const item = allItemsMap[key];
-      if (item && navbarMenus[item.key] !== false) {
-        if (!item.requireAuth || isLoggedIn) {
-          menuItems.push({ type: 'link', data: item, index: idx });
-        }
-      }
+      return;
     }
+
+    const item = allItemsMap[key];
+    if (!item) return;
+    if (navbarMenus[item.key] === false) return;
+    if (item.requireAuth && !isLoggedIn) return;
+
+    menuItems.push({ type: 'link', data: item });
   });
 
-  const baseClasses = 'group relative inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-all duration-300 !text-white overflow-hidden focus:outline-none focus-visible:outline-none';
+  const baseClasses = 'group relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold tracking-wide text-white/75 transition-all duration-250 hover:text-white focus-visible:outline-none focus-visible:ring-0';
 
   return (
     <nav
-      className="flex items-center gap-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="flex items-center gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       aria-label="เมนูหลัก"
     >
       {menuItems.map((menuItem) => {
@@ -91,64 +105,59 @@ export default function NavLinks({
                 <button
                   className={`${baseClasses} ${
                     isContactActive
-                      ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-600/30 shadow-lg shadow-emerald-500/20 border border-emerald-400/30'
-                      : 'hover:bg-white/10 hover:border-white/20 border border-transparent'
-                  } focus:outline-none focus-visible:outline-none`}
+                      ? 'border border-emerald-300/65 bg-gradient-to-r from-emerald-500/30 to-cyan-500/20 text-white shadow-[0_8px_20px_rgba(16,185,129,0.25)]'
+                      : 'border border-transparent bg-white/5 hover:border-white/25 hover:bg-white/10'
+                  }`}
                 >
-                  {isContactActive && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                      <Mail className={`relative z-10 h-4 w-4 text-white transition-all duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                      <span className="relative z-10 leading-none text-white drop-shadow-sm hidden sm:inline">{navbarMenuLabels?.contact || 'ติดต่อเรา'}</span>
-                  <ChevronDown className={`relative z-10 h-3 w-3 text-white transition-transform duration-300 ${isContactActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                  {isContactActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
-                  )}
+                  <Mail className="h-4 w-4" />
+                  <span>{navbarMenuLabels?.contact || 'ติดต่อเรา'}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-80" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="bg-[#0a0a0a] border-gray-800 text-white min-w-[200px]">
+              <DropdownMenuContent
+                align="start"
+                className="min-w-[220px] rounded-xl border border-white/15 bg-[#080b12]/95 p-1.5 text-white shadow-2xl backdrop-blur"
+              >
                 <DropdownMenuItem asChild>
-                  <Link 
-                    href="/contact" 
-                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
-                      pathname === '/contact' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
-                    }`}
+                  <Link
+                    href="/contact"
+                    onClick={() => handleClick('/contact')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${activePathname === '/contact' ? 'bg-emerald-500/20 text-emerald-300' : 'hover:bg-white/10'}`}
                   >
                     <Mail className="h-4 w-4" />
                     <span>ติดต่อเรา</span>
                   </Link>
                 </DropdownMenuItem>
+
                 {isLoggedIn && (
                   <DropdownMenuItem asChild>
-                    <Link 
-                      href="/account/tickets" 
-                      className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
-                        pathname === '/account/tickets' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
-                      }`}
+                    <Link
+                      href="/account/tickets"
+                      onClick={() => handleClick('/account/tickets')}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${activePathname === '/account/tickets' ? 'bg-emerald-500/20 text-emerald-300' : 'hover:bg-white/10'}`}
                     >
                       <MessageSquare className="h-4 w-4" />
                       <span>Ticket Support</span>
                     </Link>
                   </DropdownMenuItem>
                 )}
+
                 <DropdownMenuItem asChild>
-                  <Link 
-                    href="/terms" 
-                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
-                      pathname === '/terms' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
-                    }`}
+                  <Link
+                    href="/terms"
+                    onClick={() => handleClick('/terms')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${activePathname === '/terms' ? 'bg-emerald-500/20 text-emerald-300' : 'hover:bg-white/10'}`}
                   >
                     <FileText className="h-4 w-4" />
-                    <span>ข้อกำหนดการใช้งาน</span>
+                    <span>เงื่อนไขการใช้งาน</span>
                   </Link>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem asChild>
-                  <Link 
-                    href="/privacy" 
-                    className={`flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:outline-none ${
-                      pathname === '/privacy' ? 'text-emerald-400' : 'text-white hover:text-emerald-400'
-                    }`}
+                  <Link
+                    href="/privacy"
+                    onClick={() => handleClick('/privacy')}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${activePathname === '/privacy' ? 'bg-emerald-500/20 text-emerald-300' : 'hover:bg-white/10'}`}
                   >
                     <FileText className="h-4 w-4" />
                     <span>นโยบายความเป็นส่วนตัว</span>
@@ -160,35 +169,28 @@ export default function NavLinks({
         }
 
         const it = menuItem.data;
-        // Special handling for social menu to be active on both /social and /social/order/add
-        let active: boolean;
-        if (it.href === '/social/order/add') {
-          active = pathname === '/social' || pathname === '/social/order/add' || pathname.startsWith('/social/');
-        } else {
-          active = pathname === it.href || (it.href !== '/' && pathname.startsWith(it.href));
-        }
+        if (!it) return null;
+
+        const active =
+          it.href === '/social/order/add'
+            ? activePathname === '/social' || activePathname === '/social/order/add' || activePathname.startsWith('/social/')
+            : activePathname === it.href || (it.href !== '/' && activePathname.startsWith(it.href));
+
         const Icon = it.icon;
-        const stateClasses = active
-          ? 'bg-gradient-to-r from-emerald-500/30 to-emerald-600/30 shadow-lg shadow-emerald-500/20 border border-emerald-400/30'
-          : 'hover:bg-white/10 hover:border-white/20 border border-transparent';
-        
+
         return (
           <Link
             key={it.href}
             href={it.href}
-            className={`${baseClasses} ${stateClasses}`}
+            onClick={() => handleClick(it.href)}
+            className={`${baseClasses} ${
+              active
+                ? 'border border-emerald-300/65 bg-gradient-to-r from-emerald-500/30 to-cyan-500/20 text-white shadow-[0_8px_20px_rgba(16,185,129,0.25)]'
+                : 'border border-transparent bg-white/5 hover:border-white/25 hover:bg-white/10'
+            }`}
           >
-            {active && (
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-emerald-500/20 animate-pulse"></div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-            <Icon
-              className={`relative z-10 h-4 w-4 text-white transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
-            />
-            <span className="relative z-10 leading-none text-white drop-shadow-sm hidden sm:inline">{it.label}</span>
-            {active && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
-            )}
+            <Icon className="h-4 w-4" />
+            <span>{it.label}</span>
           </Link>
         );
       })}

@@ -1,13 +1,14 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { getAuthUser } from '@/lib/auth';
 
-type Params = { params: { key: string } };
+type Params = { params: Promise<{ key: string }> };
 
-export async function GET(req: Request, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   try {
-    const { key } = params;
+    const { key } = await params;
     const sb = createServiceClient();
     const { data: product, error: perr } = await sb
       .from('products')

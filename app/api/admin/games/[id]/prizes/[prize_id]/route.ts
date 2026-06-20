@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -16,15 +17,16 @@ const prizeUpdateSchema = z.object({
 });
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string; prize_id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; prize_id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const gameId = parseInt(params.id);
-    const prizeId = parseInt(params.prize_id);
+    const { id, prize_id } = await params;
+    const gameId = parseInt(id);
+    const prizeId = parseInt(prize_id);
     
     if (isNaN(gameId) || isNaN(prizeId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
@@ -108,15 +110,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string; prize_id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; prize_id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const gameId = parseInt(params.id);
-    const prizeId = parseInt(params.prize_id);
+    const { id, prize_id } = await params;
+    const gameId = parseInt(id);
+    const prizeId = parseInt(prize_id);
     
     if (isNaN(gameId) || isNaN(prizeId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });

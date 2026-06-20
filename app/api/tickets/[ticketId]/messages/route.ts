@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth';
@@ -18,7 +19,7 @@ const messageSchema = z.object({
   message: z.string().min(1).max(4000),
 });
 
-export async function GET(req: Request, context: { params: { ticketId: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -29,7 +30,8 @@ export async function GET(req: Request, context: { params: { ticketId: string } 
       page: url.searchParams.get('page') || undefined,
       limit: url.searchParams.get('limit') || undefined,
     });
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
 
     const { data: ticket, error: ticketError } = await sb
@@ -101,13 +103,14 @@ export async function GET(req: Request, context: { params: { ticketId: string } 
   }
 }
 
-export async function POST(req: Request, context: { params: { ticketId: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
     const formData = await req.formData();
     const payload: Record<string, string> = {};
@@ -179,6 +182,16 @@ export async function POST(req: Request, context: { params: { ticketId: string }
       .eq('id', ticket.id);
     if (updateError) {
       console.error('[tickets][messages][POST] update ticket error', updateError);
+    }
+    
+    try {
+      const { sendTelegramNotification } = await import('@/lib/telegram');
+      await sendTelegramNotification(
+        `💬 <b>มีข้อความใหม่ใน Ticket:</b> #${ticket.id}\n<b>ผู้ใช้:</b> ${user.username} (ID: ${user.id})\n<b>ข้อความ:</b> ${summarizeMessageBody(validated.data.message.trim())}`,
+        'ticket'
+      );
+    } catch (e) {
+      console.error('Failed to send telegram ticket message notification:', e);
     }
 
     return NextResponse.json({ message });

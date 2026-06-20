@@ -7,8 +7,15 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import { Spinner } from '@/components/ui/spinner';
-import { InfoIcon, AlertTriangle, FileText, Sparkles, Search, Check, ChevronsUpDown } from 'lucide-react';
-// Removed: import { Facebook, Youtube, Instagram } from 'lucide-react';
+import { InfoIcon, AlertTriangle, FileText, Flame, Search, Check, ChevronsUpDown, Facebook, Youtube, Instagram, LayoutGrid } from 'lucide-react';
+// TikTok inline SVG (lucide-react does not ship a TikTok icon).
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.66a8.16 8.16 0 0 0 4.77 1.52V6.69h-1.84z" />
+    </svg>
+  );
+}
 import { ChevronRight } from 'lucide-react';
 import SocialOrdersList from '@/components/SocialOrdersList';
 import {
@@ -65,44 +72,16 @@ function computeOrderPrice(service: SocialService, quantity: number, globalMarku
 function getCategoryIcon(slug: string) {
   const s = slug.toLowerCase();
   if (s.includes('facebook') || s.includes('fb')) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img 
-        src="https://img2.pic.in.th/pic/facebook76c1bf98409d9c0b.webp" 
-        alt="Facebook" 
-        className="size-4 object-contain"
-      />
-    );
+    return <Facebook className="size-4 text-[#1877F2]" />;
   }
   if (s.includes('tiktok') || s.includes('tt')) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img 
-        src="https://img5.pic.in.th/file/secure-sv1/tiktokd8024daf13b9c1e8.webp" 
-        alt="TikTok" 
-        className="size-4 object-contain"
-      />
-    );
+    return <TikTokIcon className="size-4" />;
   }
   if (s.includes('youtube') || s.includes('yt')) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img 
-        src="https://img2.pic.in.th/pic/youtube.webp" 
-        alt="YouTube" 
-        className="size-4 object-contain"
-      />
-    );
+    return <Youtube className="size-4 text-[#FF0000]" />;
   }
   if (s.includes('instagram') || s.includes('ig')) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img 
-        src="https://img5.pic.in.th/file/secure-sv1/instagram.webp" 
-        alt="Instagram" 
-        className="size-4 object-contain"
-      />
-    );
+    return <Instagram className="size-4 text-[#E4405F]" />;
   }
   return null;
 }
@@ -308,12 +287,7 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
                   : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/5'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src="https://img2.pic.in.th/pic/facebook76c1bf98409d9c0b.webp" 
-                alt="Facebook" 
-                className="size-4 object-contain"
-              />
+              <Facebook className="size-4 text-[#1877F2]" />
               <span>Facebook</span>
             </button>
             <button
@@ -328,12 +302,7 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
                   : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/5'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src="https://img5.pic.in.th/file/secure-sv1/tiktokd8024daf13b9c1e8.webp" 
-                alt="TikTok" 
-                className="size-4 object-contain"
-              />
+              <TikTokIcon className="size-4" />
               <span>TikTok</span>
             </button>
             <button
@@ -348,12 +317,7 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
                   : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/5'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src="https://img2.pic.in.th/pic/youtube.webp" 
-                alt="YouTube" 
-                className="size-4 object-contain"
-              />
+              <Youtube className="size-4 text-[#FF0000]" />
               <span>YouTube</span>
             </button>
             <button
@@ -368,12 +332,7 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
                   : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/5'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src="https://img5.pic.in.th/file/secure-sv1/instagram.webp" 
-                alt="Instagram" 
-                className="size-4 object-contain"
-              />
+              <Instagram className="size-4 text-[#E4405F]" />
               <span>Instagram</span>
             </button>
             <button
@@ -388,12 +347,7 @@ export default function SocialOrderForm({ services, categories, globalMarkup, in
                   : 'border-white/15 text-[color:var(--text)]/70 hover:bg-white/5'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src="https://img5.pic.in.th/file/secure-sv1/social-media.webp" 
-                alt="ทั้งหมด" 
-                className="size-4 object-contain"
-              />
+              <LayoutGrid className="size-4 text-blue-300" />
               <span>ทั้งหมด</span>
             </button>
           </div>

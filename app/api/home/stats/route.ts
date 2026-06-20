@@ -8,6 +8,9 @@ const DEFAULT_STATS = {
   totalOrders: 0,
   totalTopup: 0,
   premiumStock: 0,
+  totalGames: 0,
+  totalProducts: 0,
+  totalSocialServices: 0,
 };
 
 export async function GET() {
@@ -23,6 +26,9 @@ export async function GET() {
       slipData,
       redeemData,
       premiumStockData,
+      gtopupProductsRes,
+      gameAccountsRes,
+      socialServicesRes,
     ] = await Promise.all([
       sb.from('users').select('id', { count: 'exact', head: true }),
       sb.from('orders').select('id', { count: 'exact', head: true }),
@@ -33,6 +39,9 @@ export async function GET() {
       sb.from('slip_history').select('amount').in('status', ['success', 'completed']),
       sb.from('redeem_code_usage').select('points'),
       sb.from('app_premium_products').select('stock').eq('is_published', true),
+      sb.from('products').select('id', { count: 'exact', head: true }).eq('is_published', true).eq('product_type', 'gtopup'),
+      sb.from('game_accounts').select('id', { count: 'exact', head: true }).eq('is_published', true).not('game_category_id', 'is', null),
+      sb.from('social_services').select('id', { count: 'exact', head: true }).eq('is_published', true),
     ]);
 
     const totalUsers = usersRes?.count ?? 0;
@@ -67,12 +76,23 @@ export async function GET() {
       )
     );
 
+    // จำนวนเกม = products ที่เป็น gtopup (เกมที่เปิดให้เติม)
+    const totalGames = gtopupProductsRes?.count ?? 0;
+    
+    // สินค้าอื่นๆ = game_accounts ที่ is_published = true
+    const totalProducts = gameAccountsRes?.count ?? 0;
+    
+    const totalSocialServices = socialServicesRes?.count ?? 0;
+
     return NextResponse.json(
       {
         totalUsers,
         totalOrders,
         totalTopup: Number.isFinite(totalTopup) ? totalTopup : 0,
         premiumStock,
+        totalGames,
+        totalProducts,
+        totalSocialServices,
       },
       {
         headers: {
@@ -82,6 +102,7 @@ export async function GET() {
     );
   } catch (error) {
     console.error('home stats api error:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(DEFAULT_STATS, {
       status: 500,
       headers: {

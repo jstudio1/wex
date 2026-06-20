@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell, RefreshCw } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell, RefreshCw, Smartphone } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -21,9 +21,7 @@ import ApiKeysContent from '@/components/backoffice/ApiKeysContent';
 import GameAccountsContent from '@/components/backoffice/GameAccountsContent';
 import GameCategoriesContent from '@/components/backoffice/GameCategoriesContent';
 import GamesContent from '@/components/backoffice/GamesContent';
-import GamePrizesContent from '@/components/backoffice/GamePrizesContent';
 import AppPremiumContent from '@/components/backoffice/AppPremiumContent';
-import SlipVerificationSettingsContent from '@/components/backoffice/SlipVerificationSettingsContent';
 import TopupHistoryContent from '@/components/backoffice/TopupHistoryContent';
 import AdminLoginForm from '@/components/backoffice/AdminLoginForm';
 import TicketsContent from '@/components/backoffice/TicketsContent';
@@ -32,6 +30,7 @@ import BlogCategoriesContent from '@/components/backoffice/BlogCategoriesContent
 import NewsContent from '@/components/backoffice/NewsContent';
 import PolicyContent from '@/components/backoffice/PolicyContent';
 import PrivacyContent from '@/components/backoffice/PrivacyContent';
+import OTPAppsManager from './otp-apps/otp-apps-manager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -68,6 +67,7 @@ type MenuItem = {
   icon: typeof Package;
   href?: string;
   subItems?: { id: string; label: string }[];
+  badge?: number;
 };
 
 type MenuSection = {
@@ -128,17 +128,9 @@ const menuSections: MenuSection[] = [
     label: 'สินค้าอื่นๆ',
     items: [
       { id: 'game-accounts', label: 'จัดการไอดีเกม', icon: Gamepad2 },
-      { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
-      { 
-        id: 'games', 
-        label: 'มินิเกมและรางวัล',
-        icon: Trophy,
-        subItems: [
-          { id: 'games', label: 'จัดการเกม' },
-          { id: 'game-prizes', label: 'จัดการรางวัล' },
-        ],
-      },
-    ],
+        { id: 'game-categories', label: 'จัดการหมวดหมู่สินค้าอื่นๆ', icon: Grid3x3 },
+        { id: 'games', label: 'มินิเกมและรางวัล', icon: Trophy },
+      ],
   },
   {
     label: 'บทความ',
@@ -178,6 +170,7 @@ const menuSections: MenuSection[] = [
     items: [
       { id: 'site', label: 'ตั้งค่าเว็บ', icon: Globe },
       { id: 'api-keys', label: 'ตั้งค่า API Key', icon: Key },
+      { id: 'otp-apps', label: 'จัดการแอพ OTP', icon: Smartphone },
       { 
         id: 'legal', 
         label: 'ข้อกำหนดและนโยบาย', 
@@ -192,8 +185,7 @@ const menuSections: MenuSection[] = [
   {
     label: 'ตั้งค่าบัญชีการเงิน',
     items: [
-      { id: 'payment-settings', label: 'การชำระเงิน', icon: DollarSign },
-      { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: Receipt },
+      { id: 'payment-settings', label: 'ตั้งค่าชำระเงิน', icon: DollarSign },
     ],
   },
 ];
@@ -211,6 +203,24 @@ const VALID_MENU_IDS = (() => {
 
 function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; setSelectedMenu: (id: string) => void }) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social', 'blog']));
+  const [unreadTickets, setUnreadTickets] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/admin/tickets/unread-count');
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadTickets(data.count || 0);
+        }
+      } catch {
+        // silently ignore
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {
@@ -240,11 +250,11 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-gray-800 bg-gradient-to-r from-purple-900/30 to-blue-900/30">
+    <Sidebar collapsible="offcanvas">
+      <SidebarHeader className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-900/20 to-cyan-900/20">
         <div className="flex items-center gap-2 px-4 py-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-purple-600 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg shadow-[0_4px_12px_rgba(16,185,129,0.35)]">
               <LayoutDashboard className="size-5 text-white" />
             </div>
             <h2 className="text-lg font-bold text-white group-data-[collapsible=icon]:hidden">ระบบหลังบ้าน</h2>
@@ -262,6 +272,7 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
                   const isExpanded = expandedItems.has(item.id);
                   const hasSubItems = item.subItems && item.subItems.length > 0;
                   const isActive = selectedMenu === item.id || (hasSubItems && item.subItems?.some(sub => selectedMenu === sub.id));
+                  const badgeCount = item.id === 'tickets' ? unreadTickets : (item.badge ?? 0);
 
                   return (
                     <SidebarMenuItem key={item.id}>
@@ -269,12 +280,17 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
                         onClick={() => handleMenuClick(item)}
                         isActive={isActive}
                         className={cn(
-                          "relative text-gray-300 hover:bg-purple-900/30 hover:text-purple-400 transition-colors",
-                          isActive && "bg-purple-900/40 text-purple-400 font-semibold border-l-4 border-purple-600"
+                          "relative text-gray-300 hover:bg-emerald-900/25 hover:text-emerald-400 transition-colors",
+                          isActive && "bg-emerald-900/35 text-emerald-400 font-semibold border-l-4 border-emerald-500"
                         )}
                       >
-                        <Icon className={cn("size-4", isActive && "text-purple-400")} />
+                        <Icon className={cn("size-4", isActive && "text-emerald-400")} />
                         <span className="flex-1">{item.label}</span>
+                        {badgeCount > 0 && (
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center animate-pulse">
+                            {badgeCount > 99 ? '99+' : badgeCount}
+                          </span>
+                        )}
                         {hasSubItems ? (
                           isExpanded ? (
                             <ChevronDown className="ml-auto size-4" />
@@ -286,15 +302,15 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
                         )}
                       </SidebarMenuButton>
                       {hasSubItems && isExpanded && (
-                        <SidebarMenuSub className="border-l-2 border-purple-800">
+                        <SidebarMenuSub className="border-l-2 border-emerald-700/50">
                           {item.subItems?.map((subItem) => (
                             <SidebarMenuSubItem key={subItem.id}>
                               <SidebarMenuSubButton
                                 onClick={() => handleMenuClick(item, subItem.id)}
                                 isActive={selectedMenu === subItem.id}
                                 className={cn(
-                                  "text-gray-400 hover:bg-purple-900/30 hover:text-purple-400",
-                                  selectedMenu === subItem.id && "bg-purple-900/30 text-purple-400 font-medium"
+                                  "text-gray-400 hover:bg-emerald-900/25 hover:text-emerald-400",
+                                  selectedMenu === subItem.id && "bg-emerald-900/25 text-emerald-400 font-medium"
                                 )}
                               >
                                 <span>{subItem.label}</span>
@@ -314,9 +330,9 @@ function AppSidebar({ selectedMenu, setSelectedMenu }: { selectedMenu: string; s
       <SidebarFooter className="border-t border-gray-800 bg-gray-900/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="hover:bg-purple-900/30 hover:text-purple-400 transition-colors text-gray-300">
+            <SidebarMenuButton asChild className="hover:bg-emerald-900/25 hover:text-emerald-400 transition-colors text-gray-300">
               <Link href="/">
-                <Home className="text-purple-400" />
+                <Home className="text-emerald-400" />
                 <span className="font-medium">กลับหน้าเว็บ</span>
               </Link>
             </SidebarMenuButton>
@@ -377,11 +393,9 @@ function BackofficePageInner() {
   // Reset loading when menu changes - ต้องอยู่ก่อน conditional returns
   useEffect(() => {
     setIsLoading(true);
-    // เพิ่ม delay ให้ skeleton แสดงนานขึ้นเพื่อรอให้ content component โหลดเสร็จ
-    // ใช้เวลานานพอที่จะครอบคลุมการ fetch data ของ content components ส่วนใหญ่
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1200); // เพิ่ม delay เพื่อให้ content component มีเวลาโหลดเสร็จ
+    }, 500);
     
     return () => clearTimeout(timer);
   }, [selectedMenu]);
@@ -437,16 +451,16 @@ function BackofficePageInner() {
       />
       <SidebarInset className="flex flex-col h-screen max-h-screen overflow-hidden bg-black">
         <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-800 bg-[#0a0a0a] px-6 shadow-sm sticky top-0 z-10">
-          <SidebarTrigger className="-ml-1 hover:bg-purple-900/30 rounded-md p-2 transition-colors text-gray-300" />
+          <SidebarTrigger className="-ml-1 hover:bg-emerald-900/25 rounded-md p-2 transition-colors text-gray-300" />
           <div className="flex items-center gap-3 flex-1">
             {currentItem ? (
-              <div className="flex items-center gap-3 bg-gradient-to-r from-purple-900/30 to-blue-900/30 px-4 py-2 rounded-lg border border-purple-800 shadow-sm">
-                <currentItem.icon className="size-5 text-purple-400" />
+              <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-900/25 to-cyan-900/20 px-4 py-2 rounded-lg border border-emerald-500/30 shadow-sm">
+                <currentItem.icon className="size-5 text-emerald-400" />
                 <h1 className="text-lg font-semibold text-white">{currentItem.label}</h1>
               </div>
             ) : (
-              <div className="flex items-center gap-3 bg-gradient-to-r from-purple-900/30 to-blue-900/30 px-4 py-2 rounded-lg border border-purple-800 shadow-sm">
-                <LayoutDashboard className="size-5 text-purple-400" />
+              <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-900/25 to-cyan-900/20 px-4 py-2 rounded-lg border border-emerald-500/30 shadow-sm">
+                <LayoutDashboard className="size-5 text-emerald-400" />
                 <h1 className="text-lg font-semibold text-white">หลังบ้าน</h1>
               </div>
             )}
@@ -555,7 +569,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
     case 'api-keys':
       return <ApiKeysContent />;
     case 'slip-settings':
-      return <SlipVerificationSettingsContent />;
+      // alias เก่า ชี้ไปหน้าเดียวกับการตั้งค่าชำระเงิน
+      return <PaymentSettingsContentWrapper />;
     case 'game-categories':
       return <GameCategoriesContent />;
     case 'game-accounts':
@@ -563,7 +578,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
     case 'games':
       return <GamesContent />;
     case 'game-prizes':
-      return <GamePrizesContent />;
+      // Legacy alias — รวมเข้ากับหน้าเกมแล้ว
+      return <GamesContent />;
     case 'app-premium':
       return <AppPremiumContent />;
     case 'mtopup':
@@ -582,6 +598,8 @@ function BackofficeContent({ menuId }: { menuId: string }) {
       return <PolicyContent />;
     case 'privacy':
       return <PrivacyContent />;
+    case 'otp-apps':
+      return <OTPAppsContentWrapper />;
     default:
       return (
         <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
@@ -989,4 +1007,142 @@ function PaymentSettingsContentWrapper() {
 
 function ProductsContentWrapper({ productType }: { productType?: string }) {
   return <ProductsContent productType={productType} />;
+}
+
+function OTPAppsContentWrapper() {
+  return <OTPAppsContent />;
+}
+
+function OTPAppsContent() {
+  const [apps, setApps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showManager, setShowManager] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/otp-apps')
+      .then(res => res.json())
+      .then(data => {
+        setApps(data.data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-bold mb-1 text-white sm:text-2xl sm:mb-2">Select OTP App</h2>
+          <p className="text-white/70 text-xs sm:text-sm">Choose an app to receive OTP code</p>
+        </div>
+        <Button onClick={() => setShowManager(!showManager)} variant="outline" className="self-start sm:self-auto">
+          {showManager ? 'Hide Manager' : 'Manage Apps'}
+        </Button>
+      </div>
+
+      {showManager && (
+        <div className="mb-6">
+          <OTPAppsManager 
+            initialApps={apps} 
+            onAppsChange={(updatedApps) => setApps(updatedApps)}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {apps.map((app) => {
+          const defaultColor = 'from-emerald-600 to-emerald-800';
+          const gradientColor = app.color || defaultColor;
+
+          return (
+            <div
+              key={app.id}
+              className="group relative block"
+            >
+              <div className={cn(
+                "card p-3 sm:p-6 h-full flex flex-col items-center text-center space-y-2 sm:space-y-4 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-1 bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border-white/10",
+                !app.is_published && "opacity-50"
+              )}>
+                {/* Icon Section */}
+                <div className="relative">
+                  {app.image_url ? (
+                    <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-gradient-to-br ${gradientColor} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105 border-2 border-white/10`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={app.image_url}
+                        alt={app.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const parent = target.parentElement;
+                          if (parent) {
+                            target.style.display = 'none';
+                            parent.innerHTML = '<div class="w-full h-full bg-gray-600/50 flex items-center justify-center"><span class="text-xs text-gray-400">No Image</span></div>';
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : app.icon_url ? (
+                    <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-gradient-to-br ${gradientColor} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105 border-2 border-white/10`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={app.icon_url}
+                        alt={app.name}
+                        className="w-8 h-8 sm:w-12 sm:h-12 object-contain"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const parent = target.parentElement;
+                          if (parent) {
+                            target.style.display = 'none';
+                            parent.innerHTML = '<div class="w-full h-full bg-gray-600/50 flex items-center justify-center"><span class="text-xs text-gray-400">No Icon</span></div>';
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-gray-600/50 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105 border-2 border-gray-500/30">
+                      <span className="text-[10px] sm:text-xs text-gray-400">No Image</span>
+                    </div>
+                  )}
+                  {/* Decorative ring */}
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+                </div>
+
+                {/* Content Section */}
+                <div className="flex-1 space-y-1 sm:space-y-2">
+                  <h3 className="text-sm sm:text-lg font-bold text-white group-hover:text-emerald-400 transition-colors duration-300 truncate">
+                    {app.name}
+                  </h3>
+                  {app.description && (
+                    <p className="hidden sm:block text-xs text-white/60 group-hover:text-white/80 transition-colors">
+                      {app.description}
+                    </p>
+                  )}
+                  {!app.is_published && (
+                    <div className="text-xs text-red-400 font-medium">
+                      (Hidden)
+                    </div>
+                  )}
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-emerald-500/0 via-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

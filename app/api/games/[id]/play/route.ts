@@ -1,17 +1,19 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 import { logGamePlayToDiscord } from '@/lib/discord';
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const gameId = parseInt(params.id);
+    const { id } = await params;
+    const gameId = parseInt(id);
     if (isNaN(gameId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }

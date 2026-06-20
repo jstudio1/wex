@@ -1,20 +1,22 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string; itemId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productId = parseInt(params.id, 10);
-    const itemId = parseInt(params.itemId, 10);
+    const { id, itemId } = await params;
+    const productId = parseInt(id, 10);
+    const numericItemId = parseInt(itemId, 10);
 
-    if (isNaN(productId) || isNaN(itemId)) {
+    if (isNaN(productId) || isNaN(numericItemId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -24,7 +26,7 @@ export async function DELETE(
     const { data: existing, error: existingError } = await sb
       .from('product_items')
       .select('id')
-      .eq('id', itemId)
+      .eq('id', numericItemId)
       .eq('product_id', productId)
       .single();
 
@@ -35,17 +37,12 @@ export async function DELETE(
     const { error: deleteError } = await sb
       .from('product_items')
       .delete()
-      .eq('id', itemId)
+      .eq('id', numericItemId)
       .eq('product_id', productId);
 
     if (deleteError) {
       return NextResponse.json({ error: 'db_error', detail: deleteError.message }, { status: 500 });
     }
-
-    try {
-      revalidateTag('products');
-      revalidateTag(`product-${productId}`);
-    } catch {}
 
     return NextResponse.json({ ok: true });
   } catch (err) {

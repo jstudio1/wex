@@ -154,11 +154,7 @@ export default function TwoFactorAuthClient() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">เครื่องมือ 2FA</h1>
-        <p className="text-white/70">สร้างรหัส OTP สำหรับการยืนยันตัวตนแบบ 2FA</p>
-      </div>
+    <div className="space-y-6">
 
       <Card className="bg-black/30 border-white/10">
         <CardHeader>

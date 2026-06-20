@@ -23,7 +23,10 @@ export async function GET() {
     'RECAPTCHA_SITE_KEY','RECAPTCHA_SECRET_KEY','RECAPTCHA_ENABLED',
     'TERMS_POLICY',
     'FOOTER_LOGO_URL','FOOTER_DESCRIPTION','FOOTER_OPENING_HOURS','FOOTER_FACEBOOK_URL','FOOTER_LINE_URL','FOOTER_INSTAGRAM_URL','FOOTER_PHONE','FOOTER_EMAIL','FOOTER_WORKING_HOURS','FOOTER_COPYRIGHT',
-    'PREMIUM_APP_DISPLAY_MODE'
+    'PREMIUM_APP_DISPLAY_MODE',
+    'TELEGRAM_BOT_TOKEN',
+    'TELEGRAM_BOT_TOKEN_REGISTRATION', 'TELEGRAM_BOT_TOKEN_ORDER', 'TELEGRAM_BOT_TOKEN_TOPUP', 'TELEGRAM_BOT_TOKEN_TICKET',
+    'TELEGRAM_CHAT_ID_REGISTRATION', 'TELEGRAM_CHAT_ID_ORDER', 'TELEGRAM_CHAT_ID_TOPUP', 'TELEGRAM_CHAT_ID_TICKET'
   ]);
   const map: Record<string, string> = {};
   for (const row of data || []) map[row.key as string] = row.value as string;
@@ -141,11 +144,22 @@ export async function GET() {
       workingHours: map.FOOTER_WORKING_HOURS || '',
       copyright: map.FOOTER_COPYRIGHT || ''
     },
-    premiumAppDisplayMode: normalizePremiumAppDisplayMode(map.PREMIUM_APP_DISPLAY_MODE)
+    premiumAppDisplayMode: normalizePremiumAppDisplayMode(map.PREMIUM_APP_DISPLAY_MODE),
+    telegramConfig: {
+      botToken: map.TELEGRAM_BOT_TOKEN || '',
+      botTokenRegistration: map.TELEGRAM_BOT_TOKEN_REGISTRATION || '',
+      botTokenOrder: map.TELEGRAM_BOT_TOKEN_ORDER || '',
+      botTokenTopup: map.TELEGRAM_BOT_TOKEN_TOPUP || '',
+      botTokenTicket: map.TELEGRAM_BOT_TOKEN_TICKET || '',
+      chatIdRegistration: map.TELEGRAM_CHAT_ID_REGISTRATION || '',
+      chatIdOrder: map.TELEGRAM_CHAT_ID_ORDER || '',
+      chatIdTopup: map.TELEGRAM_CHAT_ID_TOPUP || '',
+      chatIdTicket: map.TELEGRAM_CHAT_ID_TICKET || ''
+    }
     },
     {
       headers: {
-        'Cache-Control': 'no-store',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     }
   );
@@ -175,6 +189,7 @@ export async function POST(req: Request) {
   const recaptchaEnabled = body?.recaptchaEnabled === true;
   const termsPolicy = String(body?.termsPolicy || '').trim();
   const footer = body?.footer || {};
+  const telegramConfig = body?.telegramConfig || {};
   const premiumAppDisplayMode = normalizePremiumAppDisplayMode(body?.premiumAppDisplayMode);
   const bankAccountsInput = Array.isArray(body?.bankAccounts) ? body.bankAccounts : [];
   const bankAccounts = bankAccountsInput
@@ -284,9 +299,19 @@ export async function POST(req: Request) {
   await sb.from('settings').upsert({ key: 'FOOTER_COPYRIGHT', value: String(footer.copyright || '').trim() }, { onConflict: 'key' });
   await sb.from('settings').upsert({ key: 'PREMIUM_APP_DISPLAY_MODE', value: premiumAppDisplayMode }, { onConflict: 'key' });
   
+  // Save telegram settings
+  await sb.from('settings').upsert({ key: 'TELEGRAM_BOT_TOKEN', value: String(telegramConfig.botToken || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_BOT_TOKEN_REGISTRATION', value: String(telegramConfig.botTokenRegistration || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_BOT_TOKEN_ORDER', value: String(telegramConfig.botTokenOrder || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_BOT_TOKEN_TOPUP', value: String(telegramConfig.botTokenTopup || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_BOT_TOKEN_TICKET', value: String(telegramConfig.botTokenTicket || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_CHAT_ID_REGISTRATION', value: String(telegramConfig.chatIdRegistration || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_CHAT_ID_ORDER', value: String(telegramConfig.chatIdOrder || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_CHAT_ID_TOPUP', value: String(telegramConfig.chatIdTopup || '').trim() }, { onConflict: 'key' });
+  await sb.from('settings').upsert({ key: 'TELEGRAM_CHAT_ID_TICKET', value: String(telegramConfig.chatIdTicket || '').trim() }, { onConflict: 'key' });
+  
   // Revalidate public cache for site settings and homepage
   try {
-    revalidateTag('site');
     revalidatePath('/');
   } catch {}
 

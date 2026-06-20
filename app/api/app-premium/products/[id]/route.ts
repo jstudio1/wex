@@ -1,13 +1,15 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export async function GET(req: Request, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -17,7 +19,7 @@ export async function GET(req: Request, { params }: Params) {
     const { data: product, error } = await sb
       .from('app_premium_products')
       .select('id, provider_product_id, name, display_name, base_price, markup_percent, markup_fixed, stock, image_url, icon_url, description, is_published, app_category, sub_category')
-      .eq('id', id)
+      .eq('id', numericId)
       .eq('is_published', true)
       .single();
 

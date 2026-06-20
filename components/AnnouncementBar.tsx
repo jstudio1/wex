@@ -1,7 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { Megaphone, Flame } from 'lucide-react';
+
+const REFRESH_INTERVAL_MS = 30000;
+
+function parseAnnouncementSlides(text: string): string[] {
+  return text
+    .split(/\r?\n|\s*\|\|\s*/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export default function AnnouncementBar() {
   const pathname = usePathname();
@@ -10,92 +20,107 @@ export default function AnnouncementBar() {
   const [loading, setLoading] = useState(true);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const speed = 60; // ตั้งค่าคงที่ 60 วินาที
-  
-  // แสดงเฉพาะหน้าแรกเท่านั้น
+  const [isPaused, setIsPaused] = useState(false);
+
   const isHomePage = pathname === '/';
+  const slides = useMemo(() => parseAnnouncementSlides(text), [text]);
+
+  // รวมทุก slide เป็น ticker เดียว คั่นด้วย bullet
+  const tickerText = slides.join('   •   ');
 
   useEffect(() => {
-    fetchAnnouncement();
-    fetchMaintenanceMode();
-    checkAdmin();
-    const interval = setInterval(fetchAnnouncement, 30000); // รีเฟรชทุก 30 วินาที
-    return () => clearInterval(interval);
+    let cancelled = false;
+
+    const fetchAll = async () => {
+      try {
+        const [announcementRes, siteRes, adminRes] = await Promise.all([
+          fetch('/api/announcement', {
+            cache: 'default',
+            headers: { 'Cache-Control': 'max-age=60' },
+          }),
+          fetch('/api/site', { cache: 'no-store' }),
+          fetch('/api/admin/check', { cache: 'no-store' }),
+        ]);
+
+        if (!cancelled && announcementRes.ok) {
+          const announcementJson = await announcementRes.json();
+          setText(announcementJson.text || '');
+          setEnabled(announcementJson.enabled || false);
+        }
+
+        if (!cancelled && siteRes.ok) {
+          const siteJson = await siteRes.json();
+          setMaintenanceMode(siteJson.maintenanceMode === true);
+        }
+
+        if (!cancelled && adminRes.ok) {
+          const adminJson = await adminRes.json();
+          setIsAdmin(adminJson.isAdmin === true);
+        }
+      } catch {
+        // ignore network failures
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    const refreshTimer = setInterval(fetchAll, REFRESH_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(refreshTimer);
+    };
   }, []);
 
-  const fetchMaintenanceMode = async () => {
-    try {
-      const res = await fetch('/api/site', { cache: 'no-store' });
-      if (!res.ok) return;
-      const json = await res.json();
-      setMaintenanceMode(json.maintenanceMode === true);
-    } catch {
-      // ignore
-    }
-  };
+  const canShow = isHomePage && !loading && enabled && slides.length > 0 && (!maintenanceMode || isAdmin);
+  if (!canShow) return null;
 
-  const checkAdmin = async () => {
-    try {
-      const res = await fetch('/api/admin/check', { cache: 'no-store' });
-      if (!res.ok) return;
-      const json = await res.json();
-      setIsAdmin(json.isAdmin === true);
-    } catch {
-      // ignore
-    }
-  };
-
-  const fetchAnnouncement = async () => {
-    try {
-      const res = await fetch('/api/announcement', { 
-        cache: 'default',
-        headers: { 'Cache-Control': 'max-age=60' }
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      setText(json.text || '');
-      setEnabled(json.enabled || false);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // แสดงเฉพาะหน้าแรกเท่านั้น และไม่แสดงเมื่อ maintenance mode เปิดอยู่ (ยกเว้นแอดมิน)
-  if (!isHomePage || (maintenanceMode && !isAdmin)) {
-    return null;
-  }
-  
-  if (loading) {
-    return null;
-  }
-  
-  if (!enabled || !text || text.trim() === '') {
-    return null;
-  }
+  // คำนวณ duration จากความยาวข้อความ — ยิ่งยาวยิ่งช้า
+  const duration = Math.max(15, tickerText.length * 0.25);
 
   return (
-    <div className="relative z-30 w-full overflow-hidden border-b border-emerald-800/30 bg-gradient-to-r from-emerald-950/80 via-emerald-900/80 to-emerald-950/80 backdrop-blur-sm" style={{ position: 'relative', display: 'block', minHeight: '40px' }}>
-      <div className="flex items-center justify-center h-10 md:h-12 mx-auto max-w-full">
-        <div className="marquee-wrapper w-full overflow-hidden">
-          <div 
-            className="marquee-content inline-flex items-center gap-12 text-sm md:text-base font-medium text-emerald-300"
-            style={{ 
-              animationDuration: `${speed}s`,
-              animationName: 'marquee',
-              animationTimingFunction: 'linear',
-              animationIterationCount: 'infinite'
-            }}
-          >
-            <span className="whitespace-nowrap">{text}</span>
-            <span className="whitespace-nowrap">{text}</span>
-            <span className="whitespace-nowrap">{text}</span>
-            <span className="whitespace-nowrap">{text}</span>
+    <div className="relative z-30 w-full border-b border-white/10 bg-black/55 backdrop-blur-xl">
+      <div className="mx-auto max-w-[1600px] px-4 py-2 sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-gradient-to-r from-emerald-900/35 via-slate-950/70 to-cyan-900/30 shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.25),transparent_40%),radial-gradient(circle_at_85%_80%,rgba(56,189,248,0.2),transparent_35%)]" />
+
+          <div className="relative flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+            {/* Badge */}
+            <span className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-300/45 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200 sm:text-[11px]">
+              <Flame className="h-3 w-3" />
+              Promotion
+            </span>
+
+            {/* Marquee ticker */}
+            <div
+              className="marquee-wrapper flex-1 min-w-0"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onTouchStart={() => setIsPaused(true)}
+              onTouchEnd={() => setIsPaused(false)}
+            >
+              <div
+                className="marquee-content"
+                style={{
+                  animationDuration: `${duration}s`,
+                  animationPlayState: isPaused ? 'paused' : 'running',
+                  '--gap': '4rem',
+                } as React.CSSProperties}
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-emerald-50 sm:text-[15px] pr-16">
+                  <Megaphone className="h-4 w-4 flex-shrink-0 text-emerald-300" />
+                  {tickerText}
+                </span>
+                {/* ซ้ำสำหรับ loop ต่อเนื่อง */}
+                <span className="flex items-center gap-2 text-sm font-medium text-emerald-50 sm:text-[15px] pr-16">
+                  <Megaphone className="h-4 w-4 flex-shrink-0 text-emerald-300" />
+                  {tickerText}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

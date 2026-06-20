@@ -24,14 +24,13 @@ import {
 } from '@/components/ui/empty';
 import { Share2 } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 120;
 
 async function fetchSocialServices() {
   try {
     const base = getBaseUrl();
     const res = await fetch(`${base}/api/social/services`, {
-      cache: 'no-store',
-      next: { revalidate: 0, tags: ['social-services', 'social-categories'] },
+      next: { revalidate: 120, tags: ['social-services', 'social-categories'] },
     });
     if (!res.ok) return { services: [], categories: [], globalMarkup: { percent: 0, fixed: 0 } };
     const json = await res.json();

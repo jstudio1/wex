@@ -43,6 +43,8 @@ export async function GET(req: Request) {
     image_url: p.image_url || null,
     banner_url: p.banner_url || null,
     icon_url: p.icon_url || null,
+    tutorial_video_url: p.tutorial_video_url || null,
+    tutorial_video_thumbnail_url: p.tutorial_video_thumbnail_url || null,
     badge_enabled: p.badge_enabled || false,
     badge_percent: p.badge_percent,
     badge_text: p.badge_text,

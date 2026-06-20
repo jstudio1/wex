@@ -121,12 +121,14 @@ async function performSync(providerId: number | null) {
     if (uniqueCategories.length) {
       const { data: existingCategories } = await sb
         .from('social_categories')
-        .select('id, slug, name');
+        .select('id, slug, name, display_order');
 
       const existingBySlug = new Map<string, { id: number; name: string }>();
       for (const cat of existingCategories || []) {
         existingBySlug.set(cat.slug, { id: cat.id, name: cat.name });
       }
+
+      let nextDisplayOrder = Math.max(0, ...(existingCategories || []).map((cat) => Number(cat.display_order || 0))) + 1;
 
       for (const categoryName of uniqueCategories) {
         const slug = slugify(categoryName);
@@ -138,7 +140,7 @@ async function performSync(providerId: number | null) {
 
         const { data: inserted } = await sb
           .from('social_categories')
-          .insert({ name: categoryName, slug })
+          .insert({ name: categoryName, slug, display_order: nextDisplayOrder++, is_published: true })
           .select('id, slug')
           .single();
 
@@ -217,6 +219,9 @@ async function performSync(providerId: number | null) {
         payload.is_published = existing.is_published ?? false;
       } else {
         payload.display_name = svc.name;
+        // Newly-synced services should be visible by default so admins
+        // do not have to manually re-publish thousands of items after a re-sync.
+        payload.is_published = true;
       }
 
         payloads.push(payload);
@@ -258,11 +263,17 @@ async function performSync(providerId: number | null) {
           .in('id', missing);
       }
     }
+    // Invalidate caches so the public order page sees the new services/categories immediately.
+    try {
+      revalidateTag('social-services', 'max');
+      revalidateTag('social-categories', 'max');
+    } catch (e) {
+      console.warn('[social-sync] revalidateTag failed:', e);
+    }
 
-    try { revalidateTag('social-services'); revalidateTag('social-categories'); } catch {}
-    return NextResponse.json({ 
-      ok: true, 
-      counts: { services: upserted, categories: categoriesMap.size }, 
+    return NextResponse.json({
+      ok: true,
+      counts: { services: upserted, categories: categoriesMap.size },
       exchangeRate,
       provider: { id: provider.id, name: provider.name }
     });

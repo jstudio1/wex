@@ -9,7 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter as DialogFooterUI } from '@/components/ui/dialog';
 import { CreditCard, ShoppingCart, Star, Zap, CheckCircle2, X } from 'lucide-react';
-import Image from 'next/image';
 
 type ProductItem = {
   id: number;
@@ -42,6 +41,7 @@ export default function CashcardProductsLayout({ products, isLoading }: Cashcard
   const [submitting, setSubmitting] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const toast = useToast();
   const { openLoginDialog } = useAuthDialog();
 
@@ -179,13 +179,16 @@ export default function CashcardProductsLayout({ products, isLoading }: Cashcard
 
             {/* Product Image */}
             <div className="relative w-20 h-20 mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-              {product.image_url ? (
-                <Image
+              {product.image_url && !imageErrors.has(product.id) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={product.image_url}
                   alt={product.name}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  onError={() => {
+                    setImageErrors((prev) => new Set(prev).add(product.id));
+                  }}
                 />
               ) : (
                 <CreditCard className="h-10 w-10 text-gray-500" />
@@ -233,17 +236,20 @@ export default function CashcardProductsLayout({ products, isLoading }: Cashcard
             <div className="space-y-4">
               {/* Product Info */}
               <div className="flex items-center gap-4 p-4 rounded-lg bg-[#1a1a1a] border border-gray-700">
-                {selectedProduct.image_url && (
+                {selectedProduct.image_url && !imageErrors.has(selectedProduct.id) ? (
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={selectedProduct.image_url}
                       alt={selectedProduct.name}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      onError={() => {
+                        setImageErrors((prev) => new Set(prev).add(selectedProduct.id));
+                      }}
                     />
                   </div>
-                )}
+                ) : null}
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">{selectedProduct.name}</h3>
                   <p className="text-sm text-gray-400">เลือกแพ็คเกจที่ต้องการ</p>

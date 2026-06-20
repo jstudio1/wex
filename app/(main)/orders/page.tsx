@@ -44,25 +44,7 @@ export default function OrdersPage() {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen bg-black relative">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
-        <div 
-          className="absolute inset-0" 
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
-      
-      {/* Decorative Shapes */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-emerald-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen">
       <main className="relative mx-auto max-w-6xl px-4 py-8">
         {/* Header */}
         <div className="mb-6">

@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin';
@@ -13,13 +14,14 @@ const updateSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function PUT(req: Request, context: { params: { categoryId: string } }) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ categoryId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { categoryId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { categoryId } = paramsSchema.parse(rawParams);
     const body = await req.json();
     const payload = updateSchema.parse(body);
     const sb = createServiceClient();
@@ -48,13 +50,14 @@ export async function PUT(req: Request, context: { params: { categoryId: string 
   }
 }
 
-export async function DELETE(_: Request, context: { params: { categoryId: string } }) {
+export async function DELETE(_: NextRequest, context: { params: Promise<{ categoryId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { categoryId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { categoryId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
     const { error } = await sb.from('ticket_categories').delete().eq('id', categoryId);
     if (error) {

@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireAdmin } from '@/lib/admin';
@@ -24,14 +25,15 @@ const updateItemsSchema = z.object({
 });
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productId = parseInt(params.id);
+    const { id } = await params;
+    const productId = parseInt(id);
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
@@ -78,14 +80,15 @@ export async function GET(
 }
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productId = parseInt(params.id);
+    const { id } = await params;
+    const productId = parseInt(id);
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
@@ -164,12 +167,6 @@ export async function PUT(
 
     const updatedItems = await Promise.all(updatePromises);
     
-    // Revalidate cache tags
-    try { 
-      revalidateTag('products'); 
-      revalidateTag(`product-${productId}`);
-    } catch {}
-
     return NextResponse.json({
       ok: true,
       data: { items: updatedItems },

@@ -23,7 +23,7 @@ export interface VerifySlipDebug {
   transactionId?: string | null;
   amount?: number;
   pointsAdded?: number;
-  apiResult?: RDCWApiResponse;
+  apiResult?: RDCWApiResponse | SlipOKApiResponse;
   errorCode?: string;
   settings?: {
     minimumAmount: number;
@@ -63,13 +63,81 @@ export interface RDCWSlipData {
   transactionTime?: string;
 }
 
+// ===== SlipOK API Types =====
+
+export type SlipProvider = 'rdcw' | 'slipok';
+
+export interface SlipOKApiRequest {
+  data?: string;
+  files?: File;
+  url?: string;
+  log?: boolean;
+  amount?: number;
+}
+
+export interface SlipOKApiResponse {
+  success: boolean;
+  data?: SlipOKSlipData;
+  code?: number;
+  message?: string;
+}
+
+export interface SlipOKSlipData {
+  success: boolean;
+  message: string;
+  rqUID?: string;
+  language?: string;
+  transRef: string;
+  sendingBank: string;
+  receivingBank: string;
+  transDate: string;
+  transTime: string;
+  transTimestamp?: string;
+  sender: {
+    displayName?: string;
+    name?: string;
+    proxy?: {
+      type: string | null;
+      value: string | null;
+    };
+    account: {
+      type: string;
+      value: string;
+    };
+  };
+  receiver: {
+    displayName?: string;
+    name?: string;
+    proxy?: {
+      type: string | null;
+      value: string | null;
+    };
+    account: {
+      type: string;
+      value: string;
+    };
+  };
+  amount: number;
+  paidLocalAmount?: number;
+  paidLocalCurrency?: string;
+  countryCode?: string;
+  transFeeAmount?: string;
+  ref1?: string;
+  ref2?: string;
+  ref3?: string;
+  toMerchantId?: string;
+}
+
 // ===== Database Types =====
 
 export interface SlipVerificationSettings {
   id: number;
+  provider: SlipProvider;
   rdcw_client_id: string | null;
   rdcw_client_secret: string | null;
   rdcw_endpoint: string;
+  slipok_branch_id: string | null;
+  slipok_api_key: string | null;
   minimum_topup_amount: number;
   created_at: string;
   updated_at: string;
@@ -84,7 +152,7 @@ export interface SlipHistory {
   qr_payload: string;
   status: 'success' | 'failed' | 'pending';
   error_message: string | null;
-  rdcw_response: any | null;
+  rdcw_response: any | null; // เก็บ response จาก API ที่ใช้ (RDCW หรือ SlipOK)
   created_at: string;
 }
 

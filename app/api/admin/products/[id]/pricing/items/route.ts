@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
@@ -19,14 +20,15 @@ const createItemSchema = z.object({
 });
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const productId = parseInt(params.id, 10);
+    const { id } = await params;
+    const productId = parseInt(id, 10);
     if (isNaN(productId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
@@ -90,11 +92,6 @@ export async function POST(
     if (insertError || !item) {
       return NextResponse.json({ error: 'db_error', detail: insertError?.message }, { status: 500 });
     }
-
-    try {
-      revalidateTag('products');
-      revalidateTag(`product-${productId}`);
-    } catch {}
 
     return NextResponse.json({
       ok: true,

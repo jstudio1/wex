@@ -1,10 +1,11 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -24,7 +25,8 @@ export async function PUT(
   try {
     const body = await req.json();
     const { name, api_url, api_key_name, is_active } = body;
-    const providerId = parseInt(params.id);
+    const { id } = await params;
+    const providerId = parseInt(id);
 
     if (!name || !api_url || !api_key_name) {
       return NextResponse.json({ error: 'invalid_payload', detail: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
@@ -62,8 +64,8 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -81,7 +83,8 @@ export async function DELETE(
   }
 
   try {
-    const providerId = parseInt(params.id);
+    const { id } = await params;
+    const providerId = parseInt(id);
 
     // ตรวจสอบว่ามี services หรือ orders ที่ใช้ provider นี้หรือไม่
     const [servicesCount, ordersCount] = await Promise.all([

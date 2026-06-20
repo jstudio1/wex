@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
+// cache response ชุดสินค้า gtopup 60 วินาที ลดภาระ DB
+export const revalidate = 60;
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const sb = createServiceClient();
     
@@ -22,9 +22,8 @@ export async function GET(req: Request) {
       // Continue with default values (0, 0)
     }
     
-    const url = new URL(req.url);
-    const categorySlug = url.searchParams.get('category');
-    const idsParam = url.searchParams.get('ids');
+    const categorySlug = req.nextUrl.searchParams.get('category');
+    const idsParam = req.nextUrl.searchParams.get('ids');
     
     let productsQuery = sb
       .from('products')

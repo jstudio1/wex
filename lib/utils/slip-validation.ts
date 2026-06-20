@@ -32,7 +32,21 @@ export function validateBankAccount(
     if (userNumbers.length !== apiPattern.length) {
       console.log('🔄 Length mismatch, using substring matching');
       const apiNumbers = apiPattern.replace(/[^0-9]/g, '');
-      return userNumbers.includes(apiNumbers);
+      console.log('🔄 Substring matching:', {
+        userNumbers,
+        apiNumbers,
+        userLength: userNumbers.length,
+        apiLength: apiNumbers.length,
+        includes: userNumbers.includes(apiNumbers),
+      });
+      
+      // ถ้า apiNumbers มีตัวเลข ให้ตรวจสอบว่า userNumbers มี apiNumbers อยู่หรือไม่
+      if (apiNumbers && apiNumbers.length > 0) {
+        return userNumbers.includes(apiNumbers);
+      }
+      
+      // ถ้าไม่มีตัวเลขใน pattern ให้ return false
+      return false;
     }
 
     // Position-by-position pattern matching

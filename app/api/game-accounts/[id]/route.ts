@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -26,12 +27,13 @@ const updateGameAccountSchema = z.object({
 });
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -42,7 +44,7 @@ export async function GET(
     let query = sb
       .from('game_accounts')
       .select('*, game_categories(id, name, slug)')
-      .eq('id', id)
+      .eq('id', numericId)
       .eq('is_published', true);
 
     const { data, error } = await query.single();
@@ -83,15 +85,16 @@ export async function GET(
 }
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -124,7 +127,7 @@ export async function PUT(
     const { data, error } = await sb
       .from('game_accounts')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', numericId)
       .select()
       .single();
 
@@ -147,15 +150,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -163,7 +167,7 @@ export async function DELETE(
     const { error } = await sb
       .from('game_accounts')
       .delete()
-      .eq('id', id);
+      .eq('id', numericId);
 
     if (error) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });

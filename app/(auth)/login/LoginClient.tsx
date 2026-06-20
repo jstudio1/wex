@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import ReCaptcha from '@/components/ReCaptcha';
+import { useAuthDialog } from '@/contexts/AuthDialogContext';
 
 export default function LoginClient() {
   const searchParams = useSearchParams();
@@ -21,6 +22,7 @@ export default function LoginClient() {
   const [recaptchaSiteKey, setRecaptchaSiteKey] = useState('');
   const [recaptchaKey, setRecaptchaKey] = useState(0); // Force re-render
   const toast = useToast();
+  const { openRegisterDialog } = useAuthDialog();
 
   useEffect(() => {
     fetch('/api/recaptcha/config', { cache: 'no-store' })
@@ -127,7 +129,10 @@ export default function LoginClient() {
             <span className="absolute inset-x-10 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
           </button>
           <div className="mt-6 text-center text-sm text-[color:var(--text)]/70">
-            ยังไม่มีบัญชี? <Link href="/register" className="text-accent underline hover:text-accent/80">สมัครสมาชิก</Link>
+            ยังไม่มีบัญชี?{' '}
+            <button type="button" onClick={openRegisterDialog} className="text-accent underline hover:text-accent/80">
+              สมัครสมาชิก
+            </button>
           </div>
         </form>
       </div>

@@ -30,9 +30,8 @@ import {
 } from '@/components/ui/empty';
 import { Package } from 'lucide-react';
 
-// Force dynamic rendering to avoid stale cache
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ใช้ ISR 60 วินาที แทน dynamic เพื่อให้เพจโหลดเร็วขึ้นแต่ยังอัปเดตรายการสินค้าได้บ่อยพอ
+export const revalidate = 60;
 
 type PremiumAppProductRecord = {
   id: number;
@@ -72,7 +71,6 @@ type PremiumAppData = {
 };
 
 async function fetchAppPremiumProducts(): Promise<PremiumAppData> {
-  noStore();
   try {
     const sb = createServiceClient();
     

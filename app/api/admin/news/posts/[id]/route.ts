@@ -3,18 +3,19 @@ import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
 import { slugify } from '@/lib/blog';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const sb = createServiceClient();
     const { data, error } = await sb
       .from('blog_posts')
       .select('*, category:blog_categories(id,name,slug)')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('post_type', 'news')
       .single();
 
@@ -30,13 +31,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await req.json();
     const { title, description, content, cover_image_url, category_id, status, published_at } = body;
 
@@ -52,7 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       .from('blog_posts')
       .select('id')
       .eq('slug', slug)
-      .neq('id', params.id)
+      .neq('id', id)
       .single();
 
     if (existing) {
@@ -77,7 +79,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const { data: currentPost } = await sb
         .from('blog_posts')
         .select('published_at')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
       
       if (!currentPost?.published_at) {
@@ -88,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { data: post, error } = await sb
       .from('blog_posts')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('post_type', 'news')
       .select()
       .single();
@@ -105,18 +107,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await requireAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const sb = createServiceClient();
     const { error } = await sb
       .from('blog_posts')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('post_type', 'news');
 
     if (error) {

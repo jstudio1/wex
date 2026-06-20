@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -8,6 +9,10 @@ import { z } from 'zod';
 
 const updateUserSchema = z.object({
   username: z.string().min(1).max(50).nullable().optional(),
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  email: z.string().email().max(255).optional(),
+  phone: z.string().max(20).optional().nullable(),
   points: z.number().optional(),
   is_admin: z.boolean().optional(),
   is_active: z.boolean().optional(),
@@ -15,15 +20,17 @@ const updateUserSchema = z.object({
   new_password: z.string().min(6).max(100).optional(),
 });
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { id } = await params;
 
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('users')
     .select('id, username, points, created_at, is_admin, is_active')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (error) {
@@ -38,14 +45,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ data });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const currentUser = await getAuthUser();
   if (!currentUser) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const userId = Number(params.id);
+  const { id } = await params;
+  const userId = Number(id);
   const isSelf = userId === currentUser.id;
 
   try {
@@ -82,7 +90,35 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (parsed.username !== undefined) {
       updateData.username = parsed.username?.trim() || null;
     }
-    
+
+    if (parsed.firstName !== undefined) {
+      updateData.first_name = parsed.firstName.trim();
+    }
+    if (parsed.lastName !== undefined) {
+      updateData.last_name = parsed.lastName.trim();
+    }
+    if (parsed.email !== undefined) {
+      const newEmail = parsed.email.trim().toLowerCase();
+      // ตรวจสอบอีเมลซ้ำ (ถ้าเปลี่ยน)
+      const { data: emailDup } = await sb
+        .from('users')
+        .select('id')
+        .eq('email', newEmail)
+        .neq('id', userId)
+        .maybeSingle();
+      if (emailDup) {
+        return NextResponse.json({
+          error: 'email_taken',
+          message: 'อีเมลนี้ถูกใช้งานแล้ว'
+        }, { status: 409 });
+      }
+      updateData.email = newEmail;
+    }
+    if (parsed.phone !== undefined) {
+      const trimmed = (parsed.phone || '').trim();
+      updateData.phone = trimmed.length ? trimmed : null;
+    }
+
     if (parsed.points !== undefined) {
       updateData.points = Math.max(0, parsed.points);
     }
@@ -112,7 +148,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       .from('users')
       .update(updateData)
       .eq('id', userId)
-      .select('id, username, points, created_at, is_admin, is_active')
+      .select('id, username, first_name, last_name, email, phone, points, created_at, is_admin, is_active')
       .single();
 
     if (error) {
@@ -146,14 +182,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const currentUser = await getAuthUser();
   if (!currentUser) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const userId = Number(params.id);
+  const { id } = await params;
+  const userId = Number(id);
   
   // ป้องกันลบตัวเอง
   if (userId === currentUser.id) {

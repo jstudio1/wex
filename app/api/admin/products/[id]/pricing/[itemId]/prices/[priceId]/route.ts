@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -8,15 +9,16 @@ const updatePriceSchema = z.object({
 });
 
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string; itemId: string; priceId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string; priceId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const priceId = parseInt(params.priceId);
-    if (isNaN(priceId)) {
+    const { priceId } = await params;
+    const numericPriceId = parseInt(priceId);
+    if (isNaN(numericPriceId)) {
       return NextResponse.json({ error: 'invalid_price_id' }, { status: 400 });
     }
 
@@ -32,7 +34,7 @@ export async function PUT(
         price: validated.price,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', priceId)
+      .eq('id', numericPriceId)
       .select('id, permission_id, price, permission:permissions(id, name)')
       .single();
 
@@ -58,15 +60,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string; itemId: string; priceId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string; priceId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const priceId = parseInt(params.priceId);
-    if (isNaN(priceId)) {
+    const { priceId } = await params;
+    const numericPriceId = parseInt(priceId);
+    if (isNaN(numericPriceId)) {
       return NextResponse.json({ error: 'invalid_price_id' }, { status: 400 });
     }
 
@@ -76,7 +79,7 @@ export async function DELETE(
     const { error: deleteError } = await sb
       .from('product_item_prices')
       .delete()
-      .eq('id', priceId);
+      .eq('id', numericPriceId);
 
     if (deleteError) {
       return NextResponse.json({ error: 'db_error', detail: deleteError.message }, { status: 500 });

@@ -1,18 +1,19 @@
 import type { Metadata } from 'next';
 
-type Props = { children: React.ReactNode; params: { key: string } };
+type Props = { children: React.ReactNode; params: Promise<{ key: string }> };
 
-export async function generateMetadata({ params }: { params: { key: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ key: string }> }): Promise<Metadata> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   try {
-    const res = await fetch(`${base}/api/products/${encodeURIComponent(params.key)}`, { cache: 'no-store' });
+    const resolved = await params;
+    const res = await fetch(`${base}/api/products/${encodeURIComponent(resolved.key)}`, { cache: 'no-store' });
     if (!res.ok) return {};
     const json = await res.json();
     const data = json?.data;
     if (!data) return {};
     const title = `${data.name}`;
     const description = data?.badge?.text ? `${data.name} — ${data.badge.text}` : `${data.name} ราคาดี พร้อมตัวเลือกที่หลากหลาย`;
-    const url = `/products/${params.key}`;
+    const url = `/products/${resolved.key}`;
     const images = data.image_url ? [String(data.image_url)] : undefined;
     return {
       title,

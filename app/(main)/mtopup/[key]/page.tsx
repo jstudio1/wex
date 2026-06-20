@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Zap, Star, Coins, Gem, Sparkles, Smartphone, Home, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Zap, Star, Coins, Gem, Flame, Smartphone, Home, ShoppingCart, CheckCircle2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const FlashSaleCountdown = dynamic(() => import('@/components/FlashSaleCountdown'), { ssr: false });
 import { Progress } from '@/components/ui/progress';
@@ -102,7 +102,7 @@ export default function MtopupDetailPage() {
       return <Gem className={`${iconSize} text-blue-400`} />;
     }
     if (name.includes('diamond') || name.includes('crystal')) {
-      return <Sparkles className={`${iconSize} text-cyan-400`} />;
+      return <Flame className={`${iconSize} text-cyan-400`} />;
     }
     return <Coins className={`${iconSize} text-yellow-400`} />;
   }, []);
@@ -345,7 +345,7 @@ export default function MtopupDetailPage() {
   
   if (loading || !data) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen">
         <div className="relative h-48 bg-gradient-to-br from-blue-950 via-blue-900 to-blue-950">
           <Skeleton className="h-full w-full" />
         </div>
@@ -366,25 +366,7 @@ export default function MtopupDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
-        <div 
-          className="absolute inset-0" 
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(37, 99, 235) 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
-      
-      {/* Decorative Shapes */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-blue-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
-      </div>
-      
+    <div className="min-h-screen relative">
       {/* Hero Banner */}
       <div className="relative overflow-hidden py-12 md:py-16 shadow-lg">
         {/* Background Image */}

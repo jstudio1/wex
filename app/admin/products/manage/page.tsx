@@ -1,4 +1,4 @@
-﻿import { createServiceClient } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/admin';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input';
 import { FormSubmit } from '@/components/ui/form-submit';
 import dynamic from 'next/dynamic';
 import { getGlobalMarkup } from '@/lib/pricing';
-const AdminSyncSubmit = dynamic(() => import('@/components/AdminSyncSubmit'));
+const SyncProductsDialog = dynamic(() => import('@/components/SyncProductsDialog'));
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-const AdminManageStatusSelect = dynamic(() => import('@/components/AdminManageStatusSelect'), { ssr: false });
+const AdminManageStatusSelect = dynamic(() => import('@/components/AdminManageStatusSelect'));
 
 function ProductTypeFilter({ currentType }: { currentType: string }) {
   'use client';
@@ -38,7 +38,13 @@ function ProductTypeFilter({ currentType }: { currentType: string }) {
   );
 }
 
-async function syncAction(productType?: string) {
+async function syncAction(productType: string | undefined, options: { 
+  resetProductName: boolean; 
+  resetItemName: boolean;
+  resetPrice: boolean;
+  resetInputs: boolean;
+  deleteRemoved: boolean;
+}) {
   'use server';
   const admin = await requireAdmin();
   if (!admin) { return; }
@@ -50,7 +56,11 @@ async function syncAction(productType?: string) {
   }
   const res = await fetch(url.toString(), {
     method: 'POST',
-    headers: { Authorization: `Bearer ${secret}` }
+    headers: { 
+      Authorization: `Bearer ${secret}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(options)
   });
   await res.json();
   revalidatePath('/admin/products/manage');
@@ -67,6 +77,8 @@ async function batchUpdateAction(formData: FormData) {
     const name = String(formData.get(`name_${pid}`) || '').trim();
     const image = String(formData.get(`image_${pid}`) || '').trim();
     const banner = String(formData.get(`banner_${pid}`) || '').trim();
+    const tutorialVideoUrl = String(formData.get(`tutorial_video_url_${pid}`) || '').trim();
+    const tutorialVideoThumbnailUrl = String(formData.get(`tutorial_video_thumbnail_url_${pid}`) || '').trim();
     const publish = formData.get(`publish_${pid}`) != null;
     const badgeEnabled = formData.get(`badge_enabled_${pid}`) != null;
     const badgePercentRaw = formData.get(`badge_percent_${pid}`);
@@ -86,6 +98,8 @@ async function batchUpdateAction(formData: FormData) {
         name,
         image_url: image || null,
         banner_url: banner || null,
+        tutorial_video_url: tutorialVideoUrl || null,
+        tutorial_video_thumbnail_url: tutorialVideoThumbnailUrl || null,
         is_published: publish,
         badge_enabled: badgeEnabled,
         badge_percent: badgePercent,
@@ -112,7 +126,7 @@ export default async function AdminProductsManagePage({ searchParams }: { search
   const sb = createServiceClient();
   const filter = typeof searchParams?.filter === 'string' ? searchParams.filter : 'all';
   const productType = typeof searchParams?.type === 'string' ? searchParams.type : 'all';
-  let q = sb.from('products').select('id, name, key, is_published, image_url, banner_url, badge_enabled, badge_percent, badge_text, badge_apply_price, product_type');
+  let q = sb.from('products').select('id, name, key, is_published, image_url, banner_url, tutorial_video_url, tutorial_video_thumbnail_url, badge_enabled, badge_percent, badge_text, badge_apply_price, product_type');
   if (filter === 'published') q = q.eq('is_published', true);
   if (filter === 'unpublished') q = q.eq('is_published', false);
   if (productType === 'gtopup') q = q.eq('product_type', 'gtopup');
@@ -138,9 +152,11 @@ export default async function AdminProductsManagePage({ searchParams }: { search
           <h1 className="text-xl font-semibold">จัดการบริการ</h1>
         </div>
         <div className="flex items-center gap-3">
-          <form action={() => syncAction(productType !== 'all' ? productType : undefined)}>
-            <AdminSyncSubmit label={productType !== 'all' ? `Sync ${productType === 'gtopup' ? 'เติมเกม' : productType === 'mtopup' ? 'เติมเงินมือถือ' : 'บัตรเติมเงิน'}` : 'Sync ทั้งหมด'} />
-          </form>
+          <SyncProductsDialog 
+            productType={productType !== 'all' ? productType : undefined} 
+            action={syncAction} 
+            label={productType !== 'all' ? `Sync ${productType === 'gtopup' ? 'เติมเกม' : productType === 'mtopup' ? 'เติมเงินมือถือ' : 'บัตรเติมเงิน'}` : 'Sync ทั้งหมด'} 
+          />
         </div>
       </div>
       <div className="flex justify-between items-center -mt-2 gap-2">
@@ -179,6 +195,8 @@ export default async function AdminProductsManagePage({ searchParams }: { search
               <div className="flex flex-col gap-2">
                 <input className="input w-full md:w-72" name={`image_${p.id}`} placeholder="วางลิงก์รูป (Product Icon)..." defaultValue={p.image_url || ''} />
                 <input className="input w-full md:w-72" name={`banner_${p.id}`} placeholder="วางลิงก์รูป Banner..." defaultValue={(p as any).banner_url || ''} />
+                <input className="input w-full md:w-72" name={`tutorial_video_url_${p.id}`} placeholder="วางลิงก์วิดีโอ (YouTube embed URL หรือ iframe code)..." defaultValue={(p as any).tutorial_video_url || ''} />
+                <input className="input w-full md:w-72" name={`tutorial_video_thumbnail_url_${p.id}`} placeholder="วางลิงก์รูป Thumbnail วิดีโอ (ถ้าไม่มีจะใช้ banner/image)..." defaultValue={(p as any).tutorial_video_thumbnail_url || ''} />
               </div>
               <a href={`/admin/products/${p.id}/pricing`} className="inline-flex items-center justify-center rounded-md border border-white/20 px-3 py-2 text-xs hover:bg-white/10 shrink-0">กำหนดราคา</a>
               <div className="flex items-center gap-2">

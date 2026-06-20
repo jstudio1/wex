@@ -9,18 +9,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Save, Eye, EyeOff, Settings, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { SlipVerificationSettings } from '@/lib/types/slip';
+import { SlipVerificationSettings, SlipProvider } from '@/lib/types/slip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SlipVerificationSettingsContent() {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState(false);
+  const [showSlipOKApiKey, setShowSlipOKApiKey] = useState(false);
   const [settings, setSettings] = useState<SlipVerificationSettings | null>(null);
   const [formData, setFormData] = useState({
+    provider: 'rdcw' as SlipProvider,
     rdcw_client_id: '',
     rdcw_client_secret: '',
     rdcw_endpoint: 'https://suba.rdcw.co.th/v2/inquiry',
+    slipok_branch_id: '',
+    slipok_api_key: '',
     minimum_topup_amount: 49,
   });
 
@@ -36,9 +41,12 @@ export default function SlipVerificationSettingsContent() {
         const data = json.data as SlipVerificationSettings;
         setSettings(data);
         setFormData({
+          provider: data.provider || 'rdcw',
           rdcw_client_id: data.rdcw_client_id || '',
           rdcw_client_secret: data.rdcw_client_secret || '',
           rdcw_endpoint: data.rdcw_endpoint || 'https://suba.rdcw.co.th/v2/inquiry',
+          slipok_branch_id: data.slipok_branch_id || '',
+          slipok_api_key: data.slipok_api_key || '',
           minimum_topup_amount: Number(data.minimum_topup_amount) || 49,
         });
       }
@@ -63,9 +71,12 @@ export default function SlipVerificationSettingsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          provider: formData.provider,
           rdcw_client_id: formData.rdcw_client_id || null,
           rdcw_client_secret: formData.rdcw_client_secret || null,
           rdcw_endpoint: formData.rdcw_endpoint || 'https://suba.rdcw.co.th/v2/inquiry',
+          slipok_branch_id: formData.slipok_branch_id || null,
+          slipok_api_key: formData.slipok_api_key || null,
           minimum_topup_amount: Number(formData.minimum_topup_amount) || 49,
         }),
       });
@@ -96,10 +107,15 @@ export default function SlipVerificationSettingsContent() {
     }
   };
 
-  const isConfigured = settings && 
+  const isConfigured = settings && (
+    (settings.provider === 'rdcw' && 
     settings.rdcw_client_id && 
     settings.rdcw_client_secret && 
-    settings.rdcw_endpoint;
+     settings.rdcw_endpoint) ||
+    (settings.provider === 'slipok' && 
+     settings.slipok_branch_id && 
+     settings.slipok_api_key)
+  );
 
   if (loading) {
     return (
@@ -130,7 +146,7 @@ export default function SlipVerificationSettingsContent() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold mb-2">ตั้งค่าสลิปโอนเงิน</h2>
-          <p className="text-sm text-[color:var(--text)]/60">ตั้งค่า RDCW API สำหรับตรวจสอบสลิปโอนเงิน</p>
+          <p className="text-sm text-[color:var(--text)]/60">ตั้งค่า API สำหรับตรวจสอบสลิปโอนเงิน</p>
         </div>
         {isConfigured && (
           <div className="flex items-center gap-2 text-green-500">
@@ -150,15 +166,40 @@ export default function SlipVerificationSettingsContent() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings className="size-5 text-accent" />
-            <CardTitle>การตั้งค่า RDCW API</CardTitle>
+            <CardTitle>การตั้งค่า API</CardTitle>
           </div>
           <CardDescription>
-            ตั้งค่า API credentials สำหรับเชื่อมต่อกับ RDCW API เพื่อตรวจสอบสลิปโอนเงิน
+            เลือก API provider และตั้งค่า credentials สำหรับตรวจสอบสลิปโอนเงิน
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="provider" className="text-[color:var(--text)] font-medium">
+                  API Provider
+                </Label>
+                <Select
+                  value={formData.provider}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, provider: value as SlipProvider }))
+                  }
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="เลือก API Provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rdcw">RDCW API</SelectItem>
+                    <SelectItem value="slipok">SlipOK API</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-[color:var(--text)]/60 mt-1">
+                  เลือก API provider ที่ต้องการใช้สำหรับตรวจสอบสลิป
+                </p>
+              </div>
+
+              {formData.provider === 'rdcw' && (
+                <>
               <div>
                 <Label htmlFor="rdcw_endpoint" className="text-[color:var(--text)] font-medium">
                   RDCW API Endpoint
@@ -225,6 +266,59 @@ export default function SlipVerificationSettingsContent() {
                   Client Secret สำหรับการยืนยันตัวตนกับ RDCW API
                 </p>
               </div>
+                </>
+              )}
+
+              {formData.provider === 'slipok' && (
+                <>
+                  <div>
+                    <Label htmlFor="slipok_branch_id" className="text-[color:var(--text)] font-medium">
+                      SlipOK Branch ID
+                    </Label>
+                    <Input
+                      id="slipok_branch_id"
+                      type="text"
+                      value={formData.slipok_branch_id}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, slipok_branch_id: e.target.value }))
+                      }
+                      placeholder="กรอก Branch ID"
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-[color:var(--text)]/60 mt-1">
+                      Branch ID ของ SlipOK API (ใช้ใน URL: /api/line/apikey/&lt;BRANCH_ID&gt;)
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="slipok_api_key" className="text-[color:var(--text)] font-medium">
+                      SlipOK API Key
+                    </Label>
+                    <div className="relative mt-2">
+                      <Input
+                        id="slipok_api_key"
+                        type={showSlipOKApiKey ? 'text' : 'password'}
+                        value={formData.slipok_api_key}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, slipok_api_key: e.target.value }))
+                        }
+                        placeholder="กรอก SlipOK API Key"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSlipOKApiKey(!showSlipOKApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text)]/60 hover:text-[color:var(--text)] transition-colors"
+                      >
+                        {showSlipOKApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[color:var(--text)]/60 mt-1">
+                      API Key สำหรับ SlipOK (ส่งใน header: x-authorization)
+                    </p>
+                  </div>
+                </>
+              )}
 
               <div>
                 <Label htmlFor="minimum_topup_amount" className="text-[color:var(--text)] font-medium">

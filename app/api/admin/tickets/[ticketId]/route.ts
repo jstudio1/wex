@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin';
@@ -14,13 +15,14 @@ const updateSchema = z.object({
   title: z.string().min(3).max(120).optional(),
 });
 
-export async function GET(_: Request, context: { params: { ticketId: string } }) {
+export async function GET(_: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
     const { data, error } = await sb
       .from('tickets')
@@ -53,7 +55,7 @@ export async function GET(_: Request, context: { params: { ticketId: string } })
   }
 }
 
-export async function PATCH(req: Request, context: { params: { ticketId: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -64,7 +66,8 @@ export async function PATCH(req: Request, context: { params: { ticketId: string 
     if (!payload.status && !payload.category_id && !payload.title) {
       return NextResponse.json({ error: 'no_changes' }, { status: 400 });
     }
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
 
     if (payload.category_id) {

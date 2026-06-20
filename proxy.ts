@@ -17,7 +17,7 @@ const ALLOWED_PATHS_IN_MAINTENANCE = [
   /^\/api\/site(\/?|$)/,
 ];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const url = req.nextUrl.pathname;
   
   // Check maintenance mode (skip for API routes to avoid blocking API calls that need to check maintenance)
@@ -127,5 +127,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|maintenance).*)',
   ],
 };
-
 

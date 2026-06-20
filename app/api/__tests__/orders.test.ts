@@ -70,6 +70,7 @@ describe('Orders API', () => {
       return createMockQueryBuilder() as any;
     });
 
+    // @ts-ignore
     const { GET } = await import('@/app/api/orders/route');
     const request = new NextRequest('http://localhost:3000/api/orders');
     
@@ -88,6 +89,7 @@ describe('Orders API', () => {
     const { getAuthUser } = await import('@/lib/auth');
     vi.mocked(getAuthUser).mockResolvedValue(null);
 
+    // @ts-ignore
     const { GET } = await import('@/app/api/orders/route');
     const request = new NextRequest('http://localhost:3000/api/orders');
     

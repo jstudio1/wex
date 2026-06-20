@@ -1,12 +1,6 @@
 import { getBaseUrl } from '@/lib/url';
 import GameCategoryList from '@/components/GameCategoryList';
 import type { Metadata } from 'next';
-import { unstable_noStore as noStore } from 'next/cache';
-
-// Force dynamic rendering - no cache
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
 export const metadata: Metadata = {
   title: 'หมวดหมู่เกมทั้งหมด - เติมเกม ราคาถูก รวดเร็ว',
@@ -32,19 +26,13 @@ type GameCategory = {
   maxPrice?: number;
 };
 
+export const revalidate = 300;
+
 async function fetchCategories(): Promise<GameCategory[]> {
-  noStore();
   try {
   const base = getBaseUrl();
-    const timestamp = Date.now();
-    const categoriesRes = await fetch(`${base}/api/game-categories?t=${timestamp}&_=${Math.random()}`, { 
-    cache: 'no-store',
-      next: { revalidate: 0 },
-      headers: { 
-        'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      }
+    const categoriesRes = await fetch(`${base}/api/game-categories`, {
+      next: { revalidate: 300, tags: ['game-categories'] },
   });
     
     if (!categoriesRes.ok) {
@@ -67,8 +55,8 @@ export default async function CategoriesPage() {
   const categories = await fetchCategories();
   
   return (
-    <main className="min-h-screen bg-slate-950">
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+    <main className="min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <GameCategoryList categories={categories} />
       </div>
     </main>

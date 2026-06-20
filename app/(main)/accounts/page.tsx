@@ -1,7 +1,8 @@
 import { getBaseUrl } from '@/lib/url';
 import GameAccountsBrowser from '@/components/GameAccountsBrowser';
 import { cache } from 'react';
-import { CACHE_CONFIG } from '@/lib/cache';
+
+export const dynamic = 'force-dynamic';
 
 type GameAccount = {
   id: number;
@@ -28,8 +29,10 @@ const fetchGameAccounts = cache(async (categorySlug?: string): Promise<{ account
   const url = categorySlug 
     ? `${base}/api/game-accounts?category_slug=${categorySlug}`
     : `${base}/api/game-accounts`;
-  const accountsRes = await fetch(url, { next: { revalidate: 120, tags: ['game-accounts'] } });
-  const categoriesRes = await fetch(`${base}/api/game-categories`, { next: { revalidate: 120, tags: ['game-categories'] } });
+  const [accountsRes, categoriesRes] = await Promise.all([
+    fetch(url, { next: { revalidate: 120, tags: ['game-accounts'] } }),
+    fetch(`${base}/api/game-categories`, { next: { revalidate: 120, tags: ['game-categories'] } }),
+  ]);
   
   const accounts = accountsRes.ok ? (await accountsRes.json()).data : [];
   const categories = categoriesRes.ok ? (await categoriesRes.json()).data : [];

@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -9,16 +10,17 @@ const updatePriceSchema = z.object({
 
 // PUT - อัปเดตราคา
 export async function PUT(
-  req: Request,
-  { params }: { params: { id: string; priceId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; priceId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    const priceId = parseInt(params.priceId);
-    if (isNaN(id) || isNaN(priceId)) {
+    const { id, priceId } = await params;
+    const numericId = parseInt(id);
+    const numericPriceId = parseInt(priceId);
+    if (isNaN(numericId) || isNaN(numericPriceId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -31,8 +33,8 @@ export async function PUT(
     const { data: existing, error: checkError } = await sb
       .from('game_account_prices')
       .select('id')
-      .eq('id', priceId)
-      .eq('game_account_id', id)
+      .eq('id', numericPriceId)
+      .eq('game_account_id', numericId)
       .single();
 
     if (checkError || !existing) {
@@ -45,7 +47,7 @@ export async function PUT(
         price: validated.price,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', priceId)
+      .eq('id', numericPriceId)
       .select('*, permission:permissions(id, name)')
       .single();
 
@@ -65,16 +67,17 @@ export async function PUT(
 
 // DELETE - ลบราคา
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string; priceId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; priceId: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const id = parseInt(params.id);
-    const priceId = parseInt(params.priceId);
-    if (isNaN(id) || isNaN(priceId)) {
+    const { id, priceId } = await params;
+    const numericId = parseInt(id);
+    const numericPriceId = parseInt(priceId);
+    if (isNaN(numericId) || isNaN(numericPriceId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }
 
@@ -84,8 +87,8 @@ export async function DELETE(
     const { data: existing, error: checkError } = await sb
       .from('game_account_prices')
       .select('id')
-      .eq('id', priceId)
-      .eq('game_account_id', id)
+      .eq('id', numericPriceId)
+      .eq('game_account_id', numericId)
       .single();
 
     if (checkError || !existing) {
@@ -95,7 +98,7 @@ export async function DELETE(
     const { error } = await sb
       .from('game_account_prices')
       .delete()
-      .eq('id', priceId);
+      .eq('id', numericPriceId);
 
     if (error) {
       return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });

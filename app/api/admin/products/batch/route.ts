@@ -12,6 +12,8 @@ const batchUpdateSchema = z.object({
     image_url: z.string().nullable().optional(),
     banner_url: z.string().nullable().optional(),
     icon_url: z.string().nullable().optional(),
+    tutorial_video_url: z.string().nullable().optional(),
+    tutorial_video_thumbnail_url: z.string().nullable().optional(),
     is_published: z.boolean().optional(),
     badge_enabled: z.boolean().optional(),
     badge_percent: z.number().nullable().optional(),
@@ -42,6 +44,12 @@ export async function PUT(req: Request) {
       }
       if (product.image_url !== undefined) {
         updateData.image_url = product.image_url?.trim() || null;
+      }
+      if (product.tutorial_video_url !== undefined) {
+        updateData.tutorial_video_url = product.tutorial_video_url?.trim() || null;
+      }
+      if (product.tutorial_video_thumbnail_url !== undefined) {
+        updateData.tutorial_video_thumbnail_url = product.tutorial_video_thumbnail_url?.trim() || null;
       }
       if (product.is_published !== undefined) {
         updateData.is_published = product.is_published;
@@ -78,6 +86,8 @@ export async function PUT(req: Request) {
       if (updateData.name !== undefined) baseUpdateData.name = updateData.name;
       if (updateData.image_url !== undefined) baseUpdateData.image_url = updateData.image_url;
       if (product.banner_url !== undefined) baseUpdateData.banner_url = product.banner_url?.trim() || null;
+      if (updateData.tutorial_video_url !== undefined) baseUpdateData.tutorial_video_url = updateData.tutorial_video_url;
+      if (updateData.tutorial_video_thumbnail_url !== undefined) baseUpdateData.tutorial_video_thumbnail_url = updateData.tutorial_video_thumbnail_url;
       if (updateData.is_published !== undefined) baseUpdateData.is_published = updateData.is_published;
       if (updateData.badge_enabled !== undefined) baseUpdateData.badge_enabled = updateData.badge_enabled;
       if (updateData.badge_percent !== undefined) baseUpdateData.badge_percent = updateData.badge_percent;
@@ -129,8 +139,15 @@ export async function PUT(req: Request) {
         await sb.from('product_categories').insert(rows);
       }
     }
-
-    try { revalidateTag('products'); revalidateTag('categories'); } catch {}
+    // Invalidate caches so updated icons / fields show up immediately on public pages
+    try {
+      revalidateTag('products', 'max');
+      revalidateTag('mtopup-products', 'max');
+      revalidateTag('cashcard-products', 'max');
+      revalidateTag('game-categories', 'max');
+    } catch (e) {
+      console.warn('[API] revalidateTag failed:', e);
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

@@ -40,6 +40,8 @@ type Product = {
 	image_url: string | null;
 	banner_url: string | null;
 	icon_url: string | null;
+	tutorial_video_url: string | null;
+	tutorial_video_thumbnail_url: string | null;
 	badge_enabled: boolean;
 	badge_percent: number | null;
 	badge_text: string | null;
@@ -62,6 +64,8 @@ type ProductFormState = {
   image_url: string;
   banner_url: string;
   icon_url: string;
+  tutorial_video_url: string;
+  tutorial_video_thumbnail_url: string;
   is_published: boolean;
   badge_enabled: boolean;
   badge_percent: string;
@@ -75,6 +79,8 @@ const defaultForm: ProductFormState = {
   image_url: '',
   banner_url: '',
   icon_url: '',
+  tutorial_video_url: '',
+  tutorial_video_thumbnail_url: '',
   is_published: false,
   badge_enabled: false,
   badge_percent: '',
@@ -116,6 +122,13 @@ export default function NewTopupServicesManager() {
   const [syncProgress, setSyncProgress] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<string>('');
   const [syncController, setSyncController] = useState<AbortController | null>(null);
+  
+  // State สำหรับ sync options
+  const [resetProductName, setResetProductName] = useState(false);
+  const [resetItemName, setResetItemName] = useState(false);
+  const [resetPrice, setResetPrice] = useState(false);
+  const [resetInputs, setResetInputs] = useState(false);
+  const [deleteRemoved, setDeleteRemoved] = useState(true);
 
 	useEffect(() => {
 		fetchAll();
@@ -260,7 +273,7 @@ export default function NewTopupServicesManager() {
 			const res = await fetch(url.toString(), { 
 				method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ company_ids: companyIds }),
+				body: JSON.stringify({ company_ids: companyIds, resetProductName, resetItemName, resetPrice, resetInputs, deleteRemoved }),
 				signal: controller.signal 
       });
 			
@@ -363,6 +376,8 @@ export default function NewTopupServicesManager() {
       image_url: product.image_url || '',
       banner_url: product.banner_url || '',
       icon_url: product.icon_url || '',
+      tutorial_video_url: product.tutorial_video_url || '',
+      tutorial_video_thumbnail_url: product.tutorial_video_thumbnail_url || '',
       is_published: product.is_published,
       badge_enabled: product.badge_enabled,
       badge_percent: product.badge_percent != null ? String(product.badge_percent) : '',
@@ -380,7 +395,73 @@ export default function NewTopupServicesManager() {
   };
 
   const updateEditForm = <K extends keyof ProductFormState>(field: K, value: ProductFormState[K]) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
+    setEditForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-fill thumbnail from YouTube URL
+      if (field === 'tutorial_video_url' && typeof value === 'string') {
+        const videoId = extractYouTubeVideoId(value);
+        if (videoId && !prev.tutorial_video_thumbnail_url) {
+          updated.tutorial_video_thumbnail_url = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        }
+      }
+      
+      return updated;
+    });
+  };
+
+  // Extract YouTube video ID from various URL formats or just video ID
+  const extractYouTubeVideoId = (url: string): string | null => {
+    if (!url || typeof url !== 'string') return null;
+    
+    const trimmed = url.trim();
+    
+    // ถ้าเป็นแค่ video ID (11 ตัวอักษร)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // Remove iframe tags if present
+    const cleanUrl = trimmed.replace(/<iframe[^>]*>.*?<\/iframe>/gi, '');
+    
+    // Patterns to match YouTube video IDs
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/.*[?&]v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = cleanUrl.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    return null;
+  };
+
+  // Normalize YouTube URL to embed format
+  const normalizeVideoUrl = (url: string): string => {
+    if (!url || typeof url !== 'string') return url;
+    
+    const trimmed = url.trim();
+    if (!trimmed) return url;
+    
+    // ถ้าเป็น embed URL อยู่แล้ว ให้คืนค่าเดิม
+    if (trimmed.includes('youtube.com/embed/')) {
+      return trimmed;
+    }
+    
+    // ดึง video ID
+    const videoId = extractYouTubeVideoId(trimmed);
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    
+    // ถ้าไม่สามารถแปลงได้ ให้คืนค่าเดิม
+    return url;
   };
 
   const toggleCategoryInForm = (id: number) => {
@@ -403,6 +484,8 @@ export default function NewTopupServicesManager() {
         image_url: editForm.image_url.trim() || null,
         banner_url: editForm.banner_url.trim() || null,
         icon_url: editForm.icon_url.trim() || null,
+        tutorial_video_url: editForm.tutorial_video_url.trim() || null,
+        tutorial_video_thumbnail_url: editForm.tutorial_video_thumbnail_url.trim() || null,
         is_published: editForm.is_published,
         badge_enabled: editForm.badge_enabled,
         badge_percent: editForm.badge_percent.trim().length
@@ -595,6 +678,10 @@ export default function NewTopupServicesManager() {
                     <span className="text-gray-500">Icon ราคา</span>
                     <span className="truncate max-w-[60%] text-right">{p.icon_url ? 'ตั้งค่าแล้ว' : '-'}</span>
 											</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">วิดีโอ</span>
+                    <span className="truncate max-w-[60%] text-right">{p.tutorial_video_url ? 'ตั้งค่าแล้ว' : '-'}</span>
+											</div>
 										</div>
                 <div className="mt-auto flex flex-col gap-2 pt-4">
                   <Button
@@ -677,6 +764,40 @@ export default function NewTopupServicesManager() {
                 <div className="md:col-span-2">
                   <label className="text-xs uppercase text-gray-400">รูป Banner</label>
                   <Input value={editForm.banner_url} onChange={(e) => updateEditForm('banner_url', e.target.value)} className="mt-1" placeholder="URL Banner" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs uppercase text-gray-400">วิดีโอวิธีการเติม</label>
+                  <Input 
+                    value={editForm.tutorial_video_url} 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      
+                      // แปลงเป็น embed URL อัตโนมัติ
+                      const normalizedUrl = normalizeVideoUrl(value);
+                      
+                      updateEditForm('tutorial_video_url', normalizedUrl);
+                      
+                      // Auto-fill thumbnail if empty
+                      if (value && !editForm.tutorial_video_thumbnail_url) {
+                        const videoId = extractYouTubeVideoId(value);
+                        if (videoId) {
+                          updateEditForm('tutorial_video_thumbnail_url', `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+                        }
+                      }
+                    }} 
+                    className="mt-1" 
+                    placeholder="YouTube Video ID หรือ URL (เช่น Q2jVu41bT7k หรือ https://www.youtube.com/watch?v=Q2jVu41bT7k)" 
+                  />
+                  <p className="text-xs text-gray-500 mt-1">ใส่แค่ Video ID หรือ URL ระบบจะแปลงเป็น embed URL และดึง thumbnail อัตโนมัติ</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs uppercase text-gray-400">รูป Thumbnail วิดีโอ</label>
+                  <Input 
+                    value={editForm.tutorial_video_thumbnail_url} 
+                    onChange={(e) => updateEditForm('tutorial_video_thumbnail_url', e.target.value)} 
+                    className="mt-1" 
+                    placeholder="URL รูป Thumbnail (จะดึงอัตโนมัติจาก YouTube หรือใช้ banner/image)" 
+                  />
                 </div>
               </div>
 
@@ -815,8 +936,81 @@ export default function NewTopupServicesManager() {
               </Button>
               <Button variant="outline" size="sm" onClick={handleDeselectAll}>
                 ยกเลิกทั้งหมด
-                </Button>
+              </Button>
+            </div>
+            
+            <div className="flex flex-col gap-3 rounded-xl border border-white/10 p-4 bg-[#0a0a0a]">
+              <div>
+                <p className="text-sm font-medium text-emerald-400">ตัวเลือกการซิงก์ข้อมูล (Sync Options)</p>
+                <p className="text-xs text-gray-400 mt-1">เลือกสิ่งที่คุณต้องการให้ระบบนำข้อมูลเดิมจากต้นทางมาเขียนทับใหม่</p>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={resetProductName}
+                    onChange={(e) => setResetProductName(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                  />
+                  <div>
+                    <div className="text-sm text-gray-200">ชื่อเกม / ชื่อแอป</div>
+                    <div className="text-xs text-gray-500 mt-0.5">ถูกนำไปแสดงเป็นชื่อหลักของบริการ</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={resetItemName}
+                    onChange={(e) => setResetItemName(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                  />
+                  <div>
+                    <div className="text-sm text-gray-200">ชื่อแพ็กเกจสินค้า</div>
+                    <div className="text-xs text-gray-500 mt-0.5">เช่น "100 Diamond" หรือ "Premium 30 Days"</div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={resetInputs}
+                    onChange={(e) => setResetInputs(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                  />
+                  <div>
+                    <div className="text-sm text-gray-200">กล่องกรอกข้อมูล ID & เซิร์ฟเวอร์</div>
+                    <div className="text-xs text-gray-500 mt-0.5">รวมถึงรายชื่อช่องเซิร์ฟเวอร์ย่อยของเกม</div>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={resetPrice}
+                    onChange={(e) => setResetPrice(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0f0f0f] text-emerald-500 focus:ring-emerald-500/30"
+                  />
+                  <div>
+                    <div className="text-sm text-red-400">ราคาสินค้า / รีเซ็ตกำไร</div>
+                    <div className="text-xs text-gray-500 mt-0.5">ล้างกำไรที่รับมาเป็น 0 และตั้งราคาบวกใหม่ให้หมด</div>
+                  </div>
+                </label>
+                
+                <label className="flex items-start gap-3 cursor-pointer p-2 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={deleteRemoved}
+                    onChange={(e) => setDeleteRemoved(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 bg-[#0f0f0f] text-red-500 focus:ring-red-500/30"
+                  />
+                  <div>
+                    <div className="text-sm text-red-400">ลบสินค้า / แพ็กเกจที่ถูกผู้ให้บริการเอาออกแล้ว</div>
+                    <div className="text-xs text-gray-500 mt-0.5">แนะนำให้เปิดไว้เพื่อล้างแพ็กเกจเก่าที่ซื้อไม่ได้แล้วออกจากระบบ</div>
+                  </div>
+                </label>
+              </div>
+            </div>
             
             <div className="flex-1 overflow-y-auto border border-white/10 rounded-xl">
               {loadingGames ? (

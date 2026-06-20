@@ -4,9 +4,8 @@ import { Toaster } from '@/components/ui/toaster';
 import dynamic from 'next/dynamic';
 import { createServiceClient } from '@/lib/supabase';
 import { AuthDialogProvider } from '@/contexts/AuthDialogContext';
-const BackgroundParticles = dynamic(() => import('@/components/BackgroundParticles'), { ssr: false });
-const ContactAdminButton = dynamic(() => import('@/components/ContactAdminButton'), { ssr: false });
-const PopupNotification = dynamic(() => import('@/components/PopupNotification'), { ssr: false });
+const ContactAdminButton = dynamic(() => import('@/components/ContactAdminButton'));
+const PopupNotification = dynamic(() => import('@/components/PopupNotification'));
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -86,8 +85,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -95,8 +94,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="th">
       <body className="antialiased">
         <AuthDialogProvider>
-          {/* background particles */}
-          <BackgroundParticles />
           {children}
           <PopupNotification />
           <Toaster />

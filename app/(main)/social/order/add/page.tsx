@@ -1,7 +1,7 @@
 import SocialOrderForm from '@/components/SocialOrderForm';
 import { getBaseUrl } from '@/lib/url';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 120;
 
 async function fetchSocialServices() {
   try {
@@ -16,9 +16,14 @@ async function fetchSocialServices() {
   }
 }
 
-export default async function SocialOrderAddPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
+export default async function SocialOrderAddPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
   const data = await fetchSocialServices();
-  const serviceId = typeof searchParams?.service === 'string' ? Number(searchParams.service) : undefined;
+  const serviceId = typeof params?.service === 'string' ? Number(params.service) : undefined;
   return (
     <main className="mx-auto max-w-[1600px] px-4 lg:px-8 py-6 lg:py-8">
       <SocialOrderForm services={data.services} categories={data.categories} globalMarkup={data.globalMarkup} initialServiceId={serviceId} />

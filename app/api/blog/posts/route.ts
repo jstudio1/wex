@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
 import { cache } from 'react';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export const GET = cache(async (req: NextRequest) => {

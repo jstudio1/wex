@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { AuthDialogProvider, useAuthDialog } from '../AuthDialogContext';
 
 // Test component that uses the hook

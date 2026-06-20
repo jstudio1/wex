@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
-import { Search, ShoppingCart, Info, Package, RefreshCcw, Sparkles, TrendingUp } from 'lucide-react';
+import { Search, ShoppingCart, Info, Package, RefreshCcw, Flame, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAuthDialog } from '@/contexts/AuthDialogContext';
 import {
@@ -99,7 +99,7 @@ function ProductCard({
       <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
         {mounted && product.stock !== null && product.stock > 0 && product.stock <= 5 && (
           <Badge className="bg-amber-500/90 hover:bg-amber-500 text-white shadow-lg backdrop-blur-sm border-0">
-            <Sparkles className="size-3 mr-1" />
+            <Flame className="size-3 mr-1" />
             เหลือน้อย
           </Badge>
         )}

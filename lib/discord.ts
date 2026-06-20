@@ -1,4 +1,5 @@
 import { createServiceClient } from './supabase';
+import { sendTelegramNotification } from './telegram';
 
 export interface DiscordEmbed {
   title?: string;
@@ -424,8 +425,18 @@ export async function logOrderToDiscord(data: OrderData): Promise<void> {
     const embed = createOrderEmbed(data);
     const serviceType = mapOrderTypeToServiceType(data.type);
     await sendDiscordWebhook([embed], serviceType);
+    
+    // Send Telegram Notification
+    let detailStr = '';
+    if (data.additionalInfo) {
+      for (const [key, value] of Object.entries(data.additionalInfo)) {
+        if (value) detailStr += `\n<b>${key}:</b> ${value}`;
+      }
+    }
+    const message = `🛍 <b>สั่งซื้อบริการ:</b> ${data.productName}\n<b>ผู้ใช้:</b> ${data.username}\n<b>พอยต์:</b> ${data.amount.toFixed(2)}${data.status ? `\n<b>สถานะ:</b> ${data.status}` : ''}${detailStr}`;
+    await sendTelegramNotification(message, 'order');
   } catch (error) {
-    console.error('Error logging order to Discord:', error);
+    console.error('Error logging order:', error);
     // ไม่ throw error
   }
 }
@@ -437,8 +448,12 @@ export async function logTopupToDiscord(data: TopupData): Promise<void> {
   try {
     const embed = createTopupEmbed(data);
     await sendDiscordWebhook([embed], 'wallet');
+    
+    // Send Telegram Notification
+    const message = `💰 <b>เติมเงิน (${data.method || 'code'})</b>\n<b>ผู้ใช้:</b> ${data.username}\n<b>จำนวน:</b> ${data.amount.toFixed(2)} พอยต์\n<b>สถานะ:</b> สำเร็จ`;
+    await sendTelegramNotification(message, 'topup');
   } catch (error) {
-    console.error('Error logging topup to Discord:', error);
+    console.error('Error logging topup:', error);
     // ไม่ throw error
   }
 }
@@ -450,8 +465,18 @@ export async function logGamePlayToDiscord(data: OrderData & { gameName?: string
   try {
     const embed = createGamePlayEmbed(data);
     await sendDiscordWebhook([embed], 'game-play');
+    
+    // Send Telegram Notification
+    let detailStr = '';
+    if (data.additionalInfo) {
+      for (const [key, value] of Object.entries(data.additionalInfo)) {
+        if (value) detailStr += `\n<b>${key}:</b> ${value}`;
+      }
+    }
+    const message = `🎰 <b>เล่นเกมสุ่มรางวัล:</b> ${data.gameName || '-'}\n<b>ผู้ใช้:</b> ${data.username}\n<b>ค่าใช้จ่าย:</b> ${data.amount.toFixed(2)} พอยต์\n<b>รางวัล:</b> ${data.prizeName || '-'}${data.status ? `\n<b>สถานะ:</b> ${data.status}` : ''}${detailStr}`;
+    await sendTelegramNotification(message, 'order');
   } catch (error) {
-    console.error('Error logging game play to Discord:', error);
+    console.error('Error logging game play:', error);
     // ไม่ throw error
   }
 }

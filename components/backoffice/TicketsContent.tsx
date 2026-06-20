@@ -401,12 +401,12 @@ useEffect(() => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/40 px-5 py-4">
+      <div className="rounded-lg border border-white/10 bg-black/40 px-5 py-4 space-y-3">
         <div>
           <p className="text-xs uppercase tracking-[0.4em] text-white/40">Ticket Support</p>
           <h2 className="text-xl font-semibold text-white">จัดการ Ticket ลูกค้า</h2>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {STATUS_FILTERS.filter(item => item.value !== 'all').map((item) => (
             <div key={item.value} className="rounded-md border border-white/10 bg-white/5 px-4 py-2 text-center">
               <p className="text-xs text-white/50">{item.label}</p>

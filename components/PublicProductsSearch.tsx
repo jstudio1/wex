@@ -1,18 +1,13 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { SearchIcon, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import AnimatedProductCard from '@/components/AnimatedProductCard';
 import ProductRow from '@/components/ProductRow';
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -29,31 +24,51 @@ type ProductCard = {
   badge?: { text?: string | null; percent?: number | null } | null;
 };
 
-export default function PublicProductsSearch({ products, controlledQuery, onQueryChange, hideSearch, flashStart, flashEnd, isLoading, basePath = '/products' }: { products: ProductCard[]; controlledQuery?: string; onQueryChange?: (v: string) => void; hideSearch?: boolean; flashStart?: string | null; flashEnd?: string | null; isLoading?: boolean; basePath?: string }) {
+type PublicProductsSearchProps = {
+  products: ProductCard[];
+  controlledQuery?: string;
+  onQueryChange?: (value: string) => void;
+  hideSearch?: boolean;
+  flashStart?: string | null;
+  flashEnd?: string | null;
+  isLoading?: boolean;
+  basePath?: string;
+  preserveOrder?: boolean;
+};
+
+export default function PublicProductsSearch({
+  products,
+  controlledQuery,
+  onQueryChange,
+  hideSearch,
+  flashStart,
+  flashEnd,
+  isLoading,
+  basePath = '/products',
+  preserveOrder = false,
+}: PublicProductsSearchProps) {
   const [internal, setInternal] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const q = controlledQuery !== undefined ? controlledQuery : internal;
-  // ใช้ 54 (9 rows × 6 columns) แทน 50 เพื่อให้แสดงเต็มหน้าบน desktop (md:grid-cols-6)
+  const query = controlledQuery !== undefined ? controlledQuery : internal;
   const itemsPerPage = 54;
 
   const filtered = useMemo(() => {
-    let result = products;
-    const query = q.trim().toLowerCase();
-    if (query) {
-      result = products.filter((p) =>
-        `${p.name} ${p.key}`.toLowerCase().includes(query)
-      );
+    const normalized = query.trim().toLowerCase();
+    const matched = normalized
+      ? products.filter((product) => `${product.name} ${product.key}`.toLowerCase().includes(normalized))
+      : products;
+
+    if (preserveOrder) {
+      return matched;
     }
-    
-    // เรียงบริการที่มี Flash Sale (badge) ให้แสดงก่อน
-    return [...result].sort((a, b) => {
-      const aHasBadge = a.badge && (a.badge.text || a.badge.percent);
-      const bHasBadge = b.badge && (b.badge.text || b.badge.percent);
-      if (aHasBadge && !bHasBadge) return -1;
-      if (!aHasBadge && bHasBadge) return 1;
+
+    return [...matched].sort((a, b) => {
+      const aHasBadge = Boolean(a.badge && (a.badge.text || a.badge.percent));
+      const bHasBadge = Boolean(b.badge && (b.badge.text || b.badge.percent));
+      if (aHasBadge !== bHasBadge) return aHasBadge ? -1 : 1;
       return 0;
     });
-  }, [q, products]);
+  }, [query, products, preserveOrder]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -64,42 +79,29 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [q]);
+  }, [query]);
 
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
-  }, [totalPages, currentPage]);
-
-  const renderProductCard = (p: ProductCard, isHighlight: boolean = false, index: number = 0) => {
-    return (
-      <AnimatedProductCard 
-        key={p.id}
-        product={p} 
-        isHighlight={isHighlight} 
-        index={index}
-        flashStart={flashStart}
-        flashEnd={flashEnd}
-      />
-    );
-  };
+  }, [currentPage, totalPages]);
 
   if (isLoading) {
     return (
       <div>
         {!hideSearch && (
-          <div className="flex justify-center mb-4">
+          <div className="mb-4 flex justify-center">
             <InputGroup>
               <Skeleton className="h-10 w-full max-w-md" />
             </InputGroup>
           </div>
         )}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 md:gap-8">
-          {Array.from({ length: 54 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center text-center">
-              <Skeleton className="h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48 rounded-xl" />
-              <Skeleton className="h-4 w-24 mt-3" />
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 md:grid-cols-6 md:gap-8">
+          {Array.from({ length: 54 }).map((_, index) => (
+            <div key={index} className="flex flex-col items-center text-center">
+              <Skeleton className="h-24 w-24 rounded-xl sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48" />
+              <Skeleton className="mt-3 h-4 w-24" />
             </div>
           ))}
         </div>
@@ -110,14 +112,14 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
   return (
     <div>
       {!hideSearch && (
-        <div className="flex justify-start mb-4">
-          <InputGroup className="max-w-md border border-gray-800 rounded-xl bg-[#050505] transition-colors focus-within:border-emerald-500 focus-within:shadow-[0_0_0_1px_rgba(16,185,129,0.4)]">
+        <div className="mb-4 flex justify-start">
+          <InputGroup className="max-w-md rounded-xl border border-gray-800 bg-[#050505] transition-colors focus-within:border-emerald-500 focus-within:shadow-[0_0_0_1px_rgba(16,185,129,0.4)]">
             <InputGroupInput
               placeholder="ค้นหาเกม..."
-              value={q}
-              className="text-white placeholder:text-gray-500 bg-transparent border-none focus:ring-0 focus:border-none"
-              onChange={(e) =>
-                controlledQuery !== undefined ? onQueryChange?.(e.target.value) : setInternal(e.target.value)
+              value={query}
+              className="border-none bg-transparent text-white placeholder:text-gray-500 focus:border-none focus:ring-0"
+              onChange={(event) =>
+                controlledQuery !== undefined ? onQueryChange?.(event.target.value) : setInternal(event.target.value)
               }
             />
             <InputGroupAddon className="text-emerald-400">
@@ -126,24 +128,22 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
           </InputGroup>
         </div>
       )}
-      
-      {/* All Products Section */}
+
       <div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 md:gap-8">
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 md:grid-cols-6 md:gap-8">
           {(() => {
-            // แบ่ง products เป็น rows (6 cards ต่อ row สำหรับ md ขึ้นไป)
             const rows: ProductCard[][] = [];
             let currentRow: ProductCard[] = [];
-            const itemsPerRow = 6; // ใช้จำนวนสูงสุด (md:grid-cols-6)
-            
-            paginatedProducts.forEach((p, index) => {
-              currentRow.push(p);
+            const itemsPerRow = 6;
+
+            paginatedProducts.forEach((product, index) => {
+              currentRow.push(product);
               if (currentRow.length === itemsPerRow || index === paginatedProducts.length - 1) {
                 rows.push([...currentRow]);
                 currentRow = [];
               }
             });
-            
+
             return rows.map((row, rowIndex) => (
               <ProductRow
                 key={rowIndex}
@@ -156,22 +156,22 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
             ));
           })()}
         </div>
+
         {filtered.length === 0 && (
-          <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30% mt-8">
+          <Empty className="from-muted/50 to-background mt-8 h-full bg-gradient-to-b from-30%">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Search className="size-6" />
               </EmptyMedia>
               <EmptyTitle>ไม่พบผลการค้นหา</EmptyTitle>
-              <EmptyDescription>
-                ลองค้นหาด้วยคำอื่น หรือดูรายการทั้งหมด
-              </EmptyDescription>
+              <EmptyDescription>ลองค้นหาด้วยคำอื่น หรือดูรายการทั้งหมด</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
       </div>
+
       {totalPages > 1 && filtered.length > 0 && (
-        <div className="flex items-center justify-center gap-2 pt-6 mt-6 border-t border-white/10">
+        <div className="mt-6 flex items-center justify-center gap-2 border-t border-white/10 pt-6">
           <Button
             variant="outline"
             size="sm"
@@ -219,48 +219,12 @@ export default function PublicProductsSearch({ products, controlledQuery, onQuer
           </Button>
         </div>
       )}
+
       {totalPages > 1 && filtered.length > 0 && (
-        <div className="text-center text-sm text-[color:var(--text)]/60 mt-2">
+        <div className="mt-2 text-center text-sm text-[color:var(--text)]/60">
           หน้า {currentPage} / {totalPages} (แสดง {paginatedProducts.length} จาก {filtered.length} รายการ)
         </div>
       )}
     </div>
   );
 }
-
-function CountdownBadge({ flashStart, flashEnd }: { flashStart?: string | null; flashEnd?: string | null }) {
-  const [now, setNow] = useState<number | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setNow(Date.now());
-    const iv = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(iv);
-  }, []);
-
-  if (!mounted || now === null) return null;
-
-  const endMs = flashEnd ? new Date(flashEnd).getTime() : NaN;
-  const startMs = flashStart ? new Date(flashStart).getTime() : NaN;
-
-  if (!Number.isFinite(endMs)) return null;
-  if (Number.isFinite(startMs) && now < startMs) return null;
-  if (now > endMs) return null;
-
-  const msLeft = endMs - now;
-  const hours = Math.max(0, Math.floor(msLeft / 3_600_000));
-  const minutes = Math.max(0, Math.floor((msLeft % 3_600_000) / 60_000));
-  const seconds = Math.max(0, Math.floor((msLeft % 60_000) / 1000));
-  const timeStr = hours > 0 
-    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}` 
-    : `${minutes}:${String(seconds).padStart(2, '0')}`;
-
-  return (
-    <Badge variant="secondary" className="h-5 min-w-fit rounded-full px-2 font-mono tabular-nums text-xs bg-orange-500/20 border-orange-500/30 text-orange-200">
-      {timeStr}
-    </Badge>
-  );
-}
-
-

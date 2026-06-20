@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CreditCard, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CashcardProduct {
@@ -21,334 +21,154 @@ interface CashcardCarouselSectionProps {
   products: CashcardProduct[];
 }
 
+function formatPrice(value: number) {
+  return value.toLocaleString('th-TH', { maximumFractionDigits: 0 });
+}
+
 export default function CashcardCarouselSection({ products }: CashcardCarouselSectionProps) {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [velocity, setVelocity] = useState(0);
-  const [lastX, setLastX] = useState(0);
-  const [lastTime, setLastTime] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
-  const animationFrameRef = useRef<number | null>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check scroll position and update navigation buttons
-  const checkScrollPosition = () => {
+  const updateScrollButtons = useCallback(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    setCanScrollLeft(container.scrollLeft > 0);
-    setCanScrollRight(
-      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-    );
-  };
+    if (!container) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    setCanScrollLeft(container.scrollLeft > 8);
+    setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 8);
+  }, []);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    checkScrollPosition();
-    container.addEventListener('scroll', checkScrollPosition);
-    window.addEventListener('resize', checkScrollPosition);
+    updateScrollButtons();
+    container.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
 
     return () => {
-      container.removeEventListener('scroll', checkScrollPosition);
-      window.removeEventListener('resize', checkScrollPosition);
+      container.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
     };
-  }, [products]);
+  }, [products.length, updateScrollButtons]);
 
-  // Continuous smooth scrolling during drag
-  useEffect(() => {
-    if (isDragging) {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      const animate = () => {
-        if (!isDragging || !container) return;
-        const rect = container.getBoundingClientRect();
-        const x = currentX - rect.left;
-        const walk = (x - startX) * 1.2;
-        container.scrollLeft = scrollLeft - walk;
-        animationFrameRef.current = requestAnimationFrame(animate);
-      };
-
-      animationFrameRef.current = requestAnimationFrame(animate);
-
-      return () => {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-      };
-    }
-  }, [isDragging, currentX, startX, scrollLeft]);
-
-  // Momentum scrolling with smooth animation
-  useEffect(() => {
-    if (!isDragging && Math.abs(velocity) > 0.1) {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      const animate = () => {
-        if (!container) return;
-        
-        container.scrollLeft -= velocity;
-        setVelocity(velocity * 0.95); // Friction coefficient
-        
-        if (Math.abs(velocity) > 0.1) {
-          animationFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          setVelocity(0);
-          checkScrollPosition();
-        }
-      };
-      
-      animationFrameRef.current = requestAnimationFrame(animate);
-      
-      return () => {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-      };
-    }
-  }, [isDragging, velocity]);
-
-  const scrollTo = (direction: 'left' | 'right') => {
+  const scrollByDirection = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
-    // Card width is approximately 200px, gap is gap-6 = 24px
-    const cardWidth = 200;
-    const gap = 24;
-    const scrollAmount = (cardWidth + gap) * 5; // Scroll 5 cards at a time
-
-    if (direction === 'left') {
-      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-    } else {
-      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-    
-    setTimeout(checkScrollPosition, 500);
+    const amount = Math.max(Math.floor(container.clientWidth * 0.8), 320);
+    container.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
   };
 
-  // Drag to scroll functionality with smooth momentum
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    // Cancel any ongoing momentum scroll
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    setIsDragging(true);
-    setVelocity(0);
-    const rect = container.getBoundingClientRect();
-    setStartX(e.pageX - rect.left);
-    setCurrentX(e.pageX);
-    setLastX(e.pageX);
-    setLastTime(Date.now());
-    setScrollLeft(container.scrollLeft);
-    container.style.cursor = 'grabbing';
-    container.style.userSelect = 'none';
-    container.style.scrollBehavior = 'auto';
-  };
-
-  const handleMouseLeave = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      const container = scrollContainerRef.current;
-      if (container) {
-        container.style.cursor = 'grab';
-        container.style.userSelect = 'auto';
-        container.style.scrollBehavior = 'smooth';
-      }
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      const container = scrollContainerRef.current;
-      if (container) {
-        container.style.cursor = 'grab';
-        container.style.userSelect = 'auto';
-        container.style.scrollBehavior = 'smooth';
-        setTimeout(() => {
-          checkScrollPosition();
-        }, 100);
-      }
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    
-    const currentTime = Date.now();
-    const timeDelta = currentTime - lastTime;
-    
-    // Calculate velocity for momentum
-    if (timeDelta > 0) {
-      const currentVelocity = ((e.pageX - lastX) / timeDelta) * 16;
-      setVelocity(currentVelocity);
-    }
-    
-    setCurrentX(e.pageX);
-    setLastX(e.pageX);
-    setLastTime(currentTime);
-  };
-
-  // Touch events for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    setIsDragging(true);
-    setVelocity(0);
-    const rect = container.getBoundingClientRect();
-    setStartX(e.touches[0].pageX - rect.left);
-    setCurrentX(e.touches[0].pageX);
-    setLastX(e.touches[0].pageX);
-    setLastTime(Date.now());
-    setScrollLeft(container.scrollLeft);
-    container.style.scrollBehavior = 'auto';
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    
-    const currentTime = Date.now();
-    const timeDelta = currentTime - lastTime;
-    
-    if (timeDelta > 0) {
-      const currentVelocity = ((e.touches[0].pageX - lastX) / timeDelta) * 16;
-      setVelocity(currentVelocity);
-    }
-    
-    setCurrentX(e.touches[0].pageX);
-    setLastX(e.touches[0].pageX);
-    setLastTime(currentTime);
-  };
-
-  const handleTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      const container = scrollContainerRef.current;
-      if (container) {
-        container.style.scrollBehavior = 'smooth';
-        setTimeout(() => {
-          checkScrollPosition();
-        }, 100);
-      }
-    }
-  };
-
-  if (products.length === 0) {
-    return null;
-  }
+  if (products.length === 0) return null;
 
   return (
-    <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 shadow-md">
-            <CreditCard className="h-6 w-6 text-white" strokeWidth={2.5} />
+    <section className="relative overflow-hidden rounded-3xl border border-white/15 bg-black/55 p-5 shadow-[0_18px_45px_rgba(0,0,0,0.35)] sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_20%,rgba(168,85,247,0.2),transparent_42%),radial-gradient(circle_at_88%_84%,rgba(59,130,246,0.16),transparent_38%)]" />
+
+      <div className="relative mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/20 text-fuchsia-200 sm:h-11 sm:w-11 sm:rounded-2xl">
+            <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">บัตรเติมเงิน</h2>
-            <p className="text-sm text-gray-400">Cash Card</p>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-white sm:text-xl lg:text-2xl">บัตรเติมเงิน</h2>
+            <p className="text-[10px] uppercase tracking-[0.12em] text-fuchsia-200/85 sm:text-xs">Cash Card Collection</p>
           </div>
         </div>
-        <Link 
-          href="/cashcard" 
-          className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+
+        <Link
+          href="/cashcard"
+          className="inline-flex shrink-0 items-center gap-1 self-start whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white/35 hover:bg-white/20 sm:self-auto sm:text-sm"
         >
           ดูทั้งหมด
-          <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Link>
       </div>
 
-      {/* Carousel Container */}
       <div className="relative">
-        {/* Navigation Buttons */}
-        {products.length > 5 && (
-          <>
+        {products.length > 2 && (
+          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden items-center justify-between px-1 sm:flex">
             <button
-              onClick={() => scrollTo('left')}
+              type="button"
+              onClick={() => scrollByDirection('left')}
               disabled={!canScrollLeft}
               className={cn(
-                "absolute left-0 top-1/2 -translate-y-1/2 z-30 h-10 w-10 rounded-full bg-purple-500/90 hover:bg-purple-500 text-white shadow-lg transition-all duration-200 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed",
-                !canScrollLeft && "hidden"
+                'pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition-all duration-200',
+                canScrollLeft ? 'hover:border-fuchsia-300/60 hover:bg-fuchsia-500/20' : 'opacity-0'
               )}
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
-              onClick={() => scrollTo('right')}
+              type="button"
+              onClick={() => scrollByDirection('right')}
               disabled={!canScrollRight}
               className={cn(
-                "absolute right-0 top-1/2 -translate-y-1/2 z-30 h-10 w-10 rounded-full bg-purple-500/90 hover:bg-purple-500 text-white shadow-lg transition-all duration-200 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed",
-                !canScrollRight && "hidden"
+                'pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition-all duration-200',
+                canScrollRight ? 'hover:border-fuchsia-300/60 hover:bg-fuchsia-500/20' : 'opacity-0'
               )}
               aria-label="Scroll right"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
-          </>
+          </div>
         )}
 
-        {/* Scrollable Container */}
-        <div
-          ref={scrollContainerRef}
-          className={`flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth px-4 py-2 cursor-grab active:cursor-grabbing select-none ${!isDragging ? 'snap-x snap-mandatory' : ''}`}
-          onMouseDown={handleMouseDown}
-          onMouseLeave={handleMouseLeave}
-          onMouseUp={handleMouseUp}
-          onMouseMove={handleMouseMove}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {products.map((product, index) => (
-            <Link 
-              key={product.id} 
-              href={`/cashcard/${product.key}`} 
-              className="group block flex-shrink-0 w-[200px] snap-start my-2"
-              prefetch={index < 6}
-            >
-              <div className="relative rounded-xl overflow-hidden shadow-lg shadow-black/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-900/20">
-                {product.image_url ? (
-                  <Image 
-                    src={product.image_url} 
-                    alt={product.name} 
-                    width={200}
-                    height={280}
-                    className="object-cover w-full h-auto" 
-                    sizes="200px"
-                    loading={index < 6 ? 'eager' : 'lazy'}
-                    priority={index < 3}
-                  />
-                ) : (
-                  <div className="w-[200px] h-[280px] bg-gray-900/60 flex items-center justify-center">
-                    <CreditCard className="h-16 w-16 text-gray-600" />
+        <div ref={scrollContainerRef} className="scrollbar-hide relative flex snap-x snap-mandatory gap-4 overflow-x-auto pb-1 pr-1">
+          {products.map((product, index) => {
+            const price = Number(product.item?.price || 0);
+            return (
+              <Link
+                key={product.id}
+                href={`/cashcard/${product.key}`}
+                className="group block min-w-[188px] snap-start sm:min-w-[212px]"
+                prefetch={index < 6}
+              >
+                <article className="overflow-hidden rounded-2xl border border-white/15 bg-black/45 shadow-[0_12px_30px_rgba(0,0,0,0.3)] transition-all duration-300 hover:-translate-y-1 hover:border-fuchsia-300/55 hover:shadow-[0_15px_36px_rgba(168,85,247,0.24)]">
+                  <div className="relative">
+                    {product.image_url ? (
+                      <Image
+                        src={product.image_url}
+                        alt={product.name}
+                        width={212}
+                        height={296}
+                        className="h-auto w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="(max-width: 640px) 188px, 212px"
+                        loading={index < 6 ? 'eager' : 'lazy'}
+                        priority={index < 3}
+                      />
+                    ) : (
+                      <div className="flex h-[296px] w-full items-center justify-center bg-white/[0.03] text-white/35">
+                        <CreditCard className="h-14 w-14" />
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                    <div className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-fuchsia-300/45 bg-fuchsia-500/20 px-2 py-1 text-[10px] font-semibold text-fuchsia-100">
+                      <Flame className="h-3 w-3" />
+                      พร้อมส่ง
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-0 p-3">
+                      <p className="line-clamp-2 text-sm font-semibold leading-tight text-white">{product.name}</p>
+                      <div className="mt-1.5 flex items-center justify-between text-xs">
+                        <span className="uppercase tracking-wide text-white/55">เริ่มต้น</span>
+                        <span className="font-bold text-fuchsia-200">{price > 0 ? `${formatPrice(price)} ฿` : '-'}</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            </Link>
-          ))}
+                </article>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
-

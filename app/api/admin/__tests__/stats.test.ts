@@ -41,13 +41,16 @@ describe('Admin Stats API', () => {
     const { requireAdmin } = await import('@/lib/admin');
     const { createServiceClient } = await import('@/lib/supabase');
     
+    // @ts-ignore
     vi.mocked(requireAdmin).mockResolvedValue({ id: 1, username: 'admin', is_admin: true });
     
     // Mock all query builders to return empty arrays (stats will be 0)
     const mockSb = vi.mocked(createServiceClient)();
     vi.mocked(mockSb.from).mockReturnValue(createMockQueryBuilder([], null) as any);
+    // @ts-ignore
     vi.mocked(mockSb.rpc).mockResolvedValue({ data: null, error: null });
 
+    // @ts-ignore
     const { GET } = await import('@/app/api/admin/stats/route');
     const request = new NextRequest('http://localhost:3000/api/admin/stats');
     
@@ -66,6 +69,7 @@ describe('Admin Stats API', () => {
     const { requireAdmin } = await import('@/lib/admin');
     vi.mocked(requireAdmin).mockResolvedValue(null);
 
+    // @ts-ignore
     const { GET } = await import('@/app/api/admin/stats/route');
     const request = new NextRequest('http://localhost:3000/api/admin/stats');
     

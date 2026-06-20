@@ -14,7 +14,9 @@ async function getFooterSettings() {
       'FOOTER_LINE_URL',
       'FOOTER_INSTAGRAM_URL',
       'FOOTER_PHONE',
+      'CONTACT_PHONE',
       'FOOTER_EMAIL',
+      'CONTACT_EMAIL',
       'FOOTER_WORKING_HOURS',
       'FOOTER_COPYRIGHT',
       'SITE_BRAND_NAME',
@@ -32,8 +34,8 @@ async function getFooterSettings() {
       facebookUrl: map.FOOTER_FACEBOOK_URL || '',
       lineUrl: map.FOOTER_LINE_URL || '',
       instagramUrl: map.FOOTER_INSTAGRAM_URL || '',
-      phone: map.FOOTER_PHONE || '',
-      email: map.FOOTER_EMAIL || 'contact@WeXPlus.com',
+      phone: map.CONTACT_PHONE || map.FOOTER_PHONE || '',
+      email: map.CONTACT_EMAIL || map.FOOTER_EMAIL || 'contact@WeXPlus.com',
       workingHours: map.FOOTER_WORKING_HOURS || 'ติดต่อได้ 24 ชม.',
       copyright: map.FOOTER_COPYRIGHT || `© ${new Date().getFullYear()} สิทธิ์ทั้งหมด`,
       brandName: map.SITE_BRAND_NAME || 'WeXPlus',
@@ -73,9 +75,9 @@ export default async function Footer() {
       </div>
       
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           {/* 1) โลโก้ + คำบรรยายเว็บ */}
-          <div className="space-y-4">
+          <div className="col-span-2 space-y-4 lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-3 group">
               <Image
                 src={settings.logoUrl}
@@ -185,7 +187,7 @@ export default async function Footer() {
           </div>
 
           {/* 4) ติดต่อเรา */}
-          <div>
+          <div className="col-span-2 lg:col-span-1">
             <h3 className="text-lg font-semibold text-white mb-4">ติดต่อเรา</h3>
             <ul className="space-y-3 text-sm text-gray-300">
               <li>

@@ -55,7 +55,7 @@ const statusStyles: Record<TopupRecord['state'], string> = {
   unknown: 'bg-gray-500/10 text-gray-300 border-gray-500/40',
 };
 
-const statusIcon: Record<TopupRecord['state'], JSX.Element> = {
+const statusIcon: Record<TopupRecord['state'], React.ReactElement> = {
   success: <CheckCircle2 className="size-3.5" />,
   failed: <XCircle className="size-3.5" />,
   pending: <Clock className="size-3.5" />,

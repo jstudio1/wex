@@ -6,6 +6,7 @@ import React from 'react';
 vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<any>, options?: any) => {
     const Component = React.lazy(importFn);
+    // @ts-ignore
     Component.displayName = 'LazyComponent';
     return Component;
   },
@@ -50,6 +51,7 @@ describe('Lazy Loading Components', () => {
   });
 
   it('ควร lazy load AccountClient', async () => {
+    // @ts-ignore
     const { default: AccountClient } = await import('@/app/(main)/account/AccountClient');
     expect(AccountClient).toBeDefined();
   });

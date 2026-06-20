@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { requireAdmin } from '@/lib/admin';
@@ -11,7 +12,8 @@ const updateCategorySchema = z.object({
   show_on_homepage: z.boolean().optional(),
 });
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
@@ -29,7 +31,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { data, error } = await sb
       .from('categories')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -39,8 +41,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
       return NextResponse.json({ error: 'db_error' }, { status: 500 });
     }
-
-    try { revalidateTag('categories'); } catch {}
     return NextResponse.json({ data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -50,18 +50,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
+  const { id } = await params;
+
   const sb = createServiceClient();
-  const { error } = await sb.from('categories').delete().eq('id', params.id);
+  const { error } = await sb.from('categories').delete().eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: 'db_error' }, { status: 500 });
   }
-
-  try { revalidateTag('categories'); } catch {}
   return NextResponse.json({ ok: true });
 }
 

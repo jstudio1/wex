@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamicImport from 'next/dynamic';
 import { getBaseUrl } from '@/lib/url';
-import { ChevronRight, Users, PackageCheck, AppWindow, Gamepad2, CreditCard, User } from 'lucide-react';
+import { ChevronRight, Users, PackageCheck, AppWindow, Gamepad2, ShoppingBag, Share2 } from 'lucide-react';
 
 const CashcardCarouselSection = dynamicImport(() => import('@/components/CashcardCarouselSection'), {
   loading: () => (
@@ -10,7 +10,6 @@ const CashcardCarouselSection = dynamicImport(() => import('@/components/Cashcar
       <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
     </section>
   ),
-  ssr: false,
 });
 
 const GtopupCarouselSection = dynamicImport(() => import('@/components/GtopupCarouselSection'), {
@@ -19,7 +18,6 @@ const GtopupCarouselSection = dynamicImport(() => import('@/components/GtopupCar
       <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
     </section>
   ),
-  ssr: false,
 });
 
 const GameAccountsBannerSection = dynamicImport(() => import('@/components/GameAccountsBannerSection'), {
@@ -28,7 +26,6 @@ const GameAccountsBannerSection = dynamicImport(() => import('@/components/GameA
       <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
     </section>
   ),
-  ssr: false,
 });
 
 const RecommendMenuSection = dynamicImport(() => import('@/components/RecommendMenuSection'), {
@@ -37,7 +34,6 @@ const RecommendMenuSection = dynamicImport(() => import('@/components/RecommendM
       <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
     </section>
   ),
-  ssr: false,
 });
 import { cache } from 'react';
 import { createServiceClient } from '@/lib/supabase';
@@ -49,7 +45,6 @@ const NewsSection = dynamicImport(() => import('@/components/NewsSection'), {
       <div className="h-64 w-full bg-gray-900/50 rounded-xl animate-pulse" />
     </section>
   ),
-  ssr: false,
 });
 
 const PremiumAppCategoryCard = dynamicImport(() => import('@/components/PremiumAppCategoryCard').then(mod => ({ default: mod.PremiumAppCategoryCard })), {
@@ -59,19 +54,70 @@ const PremiumAppCategoryCard = dynamicImport(() => import('@/components/PremiumA
 
 const FlashSaleSection = dynamicImport(() => import('@/components/FlashSaleSection'), {
   loading: () => <div className="h-96 w-full bg-gray-900/50 rounded-2xl animate-pulse" />,
-  ssr: false,
+});
+
+const LatestSoldAppPremiumCarousel = dynamicImport(() => import('@/components/LatestSoldAppPremiumCarousel'), {
+  loading: () => <div className="h-32 w-full bg-gray-900/50 rounded-xl animate-pulse" />,
 });
 
 const getSite = cache(async () => {
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/site`, { 
-    next: { revalidate: 0, tags: ['site'] },
-    cache: 'no-store',
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-    }
+  const res = await fetch(`${base}/api/site`, {
+    // cache global settings à¸£à¸°à¸¢à¸°à¸ªà¸±à¹‰à¸™ à¸¥à¸” DB round-trip à¸•à¸­à¸™à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¸«à¸™à¹‰à¸²
+    next: { revalidate: 300, tags: ['site'] },
   });
-  return res.ok ? res.json() : { title: 'เติมเกม ง่าย รวดเร็ว', subtitle: 'เลือกเกมยอดนิยมและเริ่มสั่งซื้อได้ทันที', posters: [] };
+  return res.ok ? res.json() : { title: 'à¹€à¸•à¸´à¸¡à¹€à¸à¸¡ à¸‡à¹ˆà¸²à¸¢ à¸£à¸§à¸”à¹€à¸£à¹‡à¸§', subtitle: 'à¹€à¸¥à¸·à¸­à¸à¹€à¸à¸¡à¸¢à¸­à¸”à¸™à¸´à¸¢à¸¡à¹à¸¥à¸°à¹€à¸£à¸´à¹ˆà¸¡à¸ªà¸±à¹ˆà¸‡à¸‹à¸·à¹‰à¸­à¹„à¸”à¹‰à¸—à¸±à¸™à¸—à¸µ', posters: [] };
+});
+
+const getLatestSoldAppPremium = cache(async () => {
+  try {
+    const sb = createServiceClient();
+    
+    // ดึงประวัติการขายล่าสุด (orders ทั้งหมด ไม่ซ้ำ product)
+    const { data: orders, error } = await sb
+      .from('app_premium_orders')
+      .select(`
+        id,
+        created_at,
+        app_premium_products (
+          id,
+          display_name,
+          name,
+          image_url,
+          icon_url
+        )
+      `)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (error) {
+      console.error('Error fetching latest sold app premium orders:', error);
+      return [];
+    }
+
+    // แสดงประวัติการขายล่าสุดทั้งหมด (ไม่ต้อง unique)
+    const result = (orders || [])
+      .filter((order: any) => order.app_premium_products)
+      .map((order: any) => {
+        const product = order.app_premium_products;
+        return {
+          id: product.id,
+          order_id: order.id,
+          display_name: product.display_name || product.name,
+          name: product.name,
+          image_url: product.image_url,
+          icon_url: product.icon_url,
+          sold_at: order.created_at,
+        };
+      })
+      .slice(0, 20); // แสดง 20 orders ล่าสุด
+
+    return result;
+  } catch (error) {
+    console.error('Latest sold app premium fetch error:', error);
+    return [];
+  }
 });
 
 const getPremiumAppCategories = cache(async () => {
@@ -135,7 +181,7 @@ function extractDescriptionSummary(html?: string | null, limit = 2): string[] {
   const sanitized = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|li|div)>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<li[^>]*>/gi, 'â€¢ ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
@@ -190,15 +236,15 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
     const sb = createServiceClient();
     const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
     
-    // Fetch products - เรียงตาม badge_enabled ก่อน (true มาก่อน), แล้วค่อยเรียงตาม id
+    // Fetch products - à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡ badge_enabled à¸à¹ˆà¸­à¸™ (true à¸¡à¸²à¸à¹ˆà¸­à¸™), à¹à¸¥à¹‰à¸§à¸„à¹ˆà¸­à¸¢à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡ id
     const { data: products, error: productsError } = await sb
       .from('products')
       .select('id, name, key, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price')
       .eq('is_published', true)
       .eq('product_type', productType)
-      .order('badge_enabled', { ascending: false }) // badge_enabled = true มาก่อน
+      .order('badge_enabled', { ascending: false }) // badge_enabled = true à¸¡à¸²à¸à¹ˆà¸­à¸™
       .order('id', { ascending: false })
-      .limit(limit * 2); // ดึงมากกว่า limit เพื่อให้มีสินค้าที่มี badge เพียงพอ
+      .limit(limit * 2); // à¸”à¸¶à¸‡à¸¡à¸²à¸à¸à¸§à¹ˆà¸² limit à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸«à¹‰à¸¡à¸µà¸ªà¸´à¸™à¸„à¹‰à¸²à¸—à¸µà¹ˆà¸¡à¸µ badge à¹€à¸žà¸µà¸¢à¸‡à¸žà¸­
     
     if (productsError || !products) {
       console.error(`Error fetching ${productType} products:`, productsError);
@@ -345,25 +391,36 @@ const getPremiumAppProductsByCategory = cache(async () => {
   }
 });
 
-export const dynamic = 'force-dynamic';
+// à¹ƒà¸«à¹‰ homepage à¹€à¸›à¹‡à¸™ ISR à¹à¸—à¸™ dynamic à¸—à¸¸à¸à¸„à¸£à¸±à¹‰à¸‡ à¹€à¸žà¸·à¹ˆà¸­à¸¥à¸”à¹€à¸§à¸¥à¸²à¹‚à¸«à¸¥à¸”à¹à¸¥à¸° DB load
+export const revalidate = 60;
 
 export default function HomePage() {
-  return (
-    <HomeServer />
-  );
+  return <HomeServer />;
 }
 
 async function HomeServer() {
-  const site = await getSite();
-  const stats = await getHomeStats();
-  const premiumAppCategories = await getPremiumAppCategories();
-  const premiumAppProductsByCategory = await getPremiumAppProductsByCategory();
-  const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
-  
-  // Fetch products by type in order: gtopup, cashcard, game_accounts
-  const gtopupProducts = await getProductsByType('gtopup', 12);
-  const cashcardProducts = await getProductsByType('cashcard', 12);
-  const gameAccountProducts = await getGameAccounts(12);
+  const [
+    site,
+    stats,
+    premiumAppProductsByCategory,
+    latestSoldAppPremium,
+    globalMarkup,
+  ] = await Promise.all([
+    getSite(),
+    getHomeStats(),
+    getPremiumAppProductsByCategory(),
+    getLatestSoldAppPremium(),
+    getGlobalMarkup(),
+  ]);
+
+  const { pct: globalPct, fix: globalFix } = globalMarkup;
+
+  // à¸”à¸¶à¸‡à¸ªà¸´à¸™à¸„à¹‰à¸²à¹à¸•à¹ˆà¸¥à¸°à¸›à¸£à¸°à¹€à¸ à¸—à¹à¸šà¸šà¸‚à¸™à¸²à¸™ à¸¥à¸”à¹€à¸§à¸¥à¸² TTFB
+  const [gtopupProducts, cashcardProducts, gameAccountProducts] = await Promise.all([
+    getProductsByType('gtopup', 12),
+    getProductsByType('cashcard', 12),
+    getGameAccounts(12),
+  ]);
   
   // Calculate prices for products in each category
   const categoriesWithProductsAndPrices = premiumAppProductsByCategory.map((catData: any) => {
@@ -389,297 +446,414 @@ async function HomeServer() {
   });
   
   return (
-    <div className="min-h-screen bg-black relative">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
-        <div 
-          className="absolute inset-0" 
-          style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(16, 185, 129) 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }}
-        />
-      </div>
-      
-      {/* Decorative Shapes */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -left-24 w-80 h-80 bg-emerald-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl" />
-      </div>
+    <div className="relative isolate min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.24),transparent_60%),radial-gradient(circle_at_15%_20%,rgba(59,130,246,0.18),transparent_45%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:34px_34px]" />
 
-      {/* Hero Banner Section */}
-      <div className="relative">
-        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
-          <div className="rounded-2xl overflow-hidden shadow-xl">
-            {site.posters && site.posters.length > 0 ? (
-              <div className="relative w-full" style={{ aspectRatio: '16/6' }}>
-                <Image
-                  src={site.posters[0]}
-                  alt={site.title || 'Overzone Shop - เติมเกม ผ่อนได้เกม'}
-                  fill
-                  className="object-cover"
-                  priority
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, (max-width: 1600px) 1600px, 1600px"
-                />
-              </div>
-            ) : (
-              <div className="relative w-full bg-gradient-to-r from-gray-800 to-gray-900" style={{ aspectRatio: '16/6' }}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center space-y-2">
-                    <p className="text-gray-300 text-base font-medium">Banner Image ขนาดที่แนะนำ</p>
-                    <p className="text-gray-400 text-sm">ขนาดมาตรฐาน: 1920 x 720 px (16:6)</p>
-                    <p className="text-gray-500 text-xs">ขนาดสำหรับ Retina: 3840 x 1440 px (2x)</p>
-                    <p className="text-gray-500 text-xs mt-2">Container สูงสุด: 1600px กว้าง</p>
+      <div className="relative mx-auto max-w-[1600px] px-4 pb-14 pt-6 sm:px-6 lg:px-8">
+        <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2.1fr)_minmax(340px,1fr)]">
+          <div className="relative min-w-0 self-start overflow-hidden rounded-[28px] border border-white/15 bg-black/45 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
+            {/* Image block */}
+            <div className="relative">
+              {site.posters && site.posters.length > 0 ? (
+                <>
+                  {/* Mobile: natural image ratio, no crop, no letterbox */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={site.posters[0]}
+                    alt={site.title || 'Wexplus hero banner'}
+                    className="block w-full h-auto sm:hidden"
+                    loading="eager"
+                    fetchPriority="high"
+                  />
+                  {/* Desktop: fixed-ratio cover crop */}
+                  <div className="relative hidden w-full sm:block sm:aspect-[16/6]">
+                    <Image
+                      src={site.posters[0]}
+                      alt={site.title || 'Wexplus hero banner'}
+                      fill
+                      className="object-cover"
+                      priority
+                      sizes="(max-width: 1024px) 100vw, (max-width: 1600px) 1050px, 1050px"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="relative w-full bg-gradient-to-br from-emerald-900/30 via-[#0a0a0a] to-cyan-900/30 aspect-[16/9] sm:aspect-[16/6]">
+                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+                    <div className="space-y-2">
+                      <p className="text-base font-semibold text-white/90">Hero banner area</p>
+                      <p className="text-sm text-white/60">Recommended size: 1920 x 720 (16:6)</p>
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Caption section below the image, not overlapping */}
+            <div className="bg-gradient-to-b from-black/55 to-black/70 px-4 py-4 space-y-2 sm:px-7 sm:py-6 sm:space-y-4 lg:px-10 lg:py-7">
+              <span className="inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300 sm:px-3 sm:py-1 sm:text-xs">
+                24/7 automated checkout
+              </span>
+              <h1 className="text-base font-bold leading-tight text-white sm:text-3xl lg:text-4xl">
+                {site.title || 'Fast digital top-up and game services'}
+              </h1>
+              <p className="line-clamp-2 max-w-xl text-xs text-white/80 sm:text-base sm:line-clamp-none">
+                {site.subtitle || 'Top up games, mobile credits, premium apps, and social services from one trusted storefront.'}
+              </p>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-400 sm:px-5 sm:py-2.5 sm:text-sm"
+                >
+                  Browse products
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Link>
+                <Link
+                  href="/premium-app"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-black/35 px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:border-white/45 hover:bg-white/10 sm:px-5 sm:py-2.5 sm:text-sm"
+                >
+                  Explore premium apps
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid min-w-0 gap-4">
+            <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/45 p-5 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-semibold uppercase tracking-[0.12em] text-emerald-300">Platform Snapshot</p>
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                  Live
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Users', value: stats.totalUsers.toLocaleString('th-TH'), icon: Users },
+                  { label: 'Orders', value: stats.totalOrders.toLocaleString('th-TH'), icon: PackageCheck },
+                  { label: 'Premium stock', value: stats.premiumStock.toLocaleString('th-TH'), icon: AppWindow },
+                  { label: 'Game accounts', value: gameAccountProducts.length.toLocaleString('th-TH'), icon: Gamepad2 },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-center">
+                      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className="text-[11px] uppercase tracking-wide text-white/55">{item.label}</p>
+                      <p className="text-lg font-semibold text-white">{item.value}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {latestSoldAppPremium.length > 0 && (
+              <div className="min-w-0 overflow-hidden rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-emerald-900/20 via-black/50 to-cyan-900/20 p-5 backdrop-blur-sm">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                    <AppWindow className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-emerald-300">Latest Sold Premium Apps</h2>
+                    <p className="text-xs text-white/60">Updated from recent completed orders</p>
+                  </div>
+                </div>
+                <LatestSoldAppPremiumCarousel products={latestSoldAppPremium} />
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Recommend Menu Section - Under Hero Banner */}
-      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
-        <RecommendMenuSection />
-      </div>
-
-      <main className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-8 space-y-12 relative">
-        {/* Flash Sale Section */}
-        <FlashSaleSection />
-
-        {/* Summary Stats Section */}
-        <section className="grid grid-cols-2 gap-3 max-[380px]:grid-cols-1 md:grid-cols-3">
-          {[
-            {
-              title: 'ผู้ใช้งาน',
-              value: stats.totalUsers.toLocaleString('th-TH'),
-              subtext: 'สมาชิกทั้งหมด',
-              icon: Users,
-            },
-            {
-              title: 'จำนวนออเดอร์',
-              value: stats.totalOrders.toLocaleString('th-TH'),
-              subtext: 'คำสั่งซื้อทั้งหมด',
-              icon: PackageCheck,
-            },
-            {
-              title: 'สต็อกแอพพรีเมี่ยม',
-              value: stats.premiumStock.toLocaleString('th-TH'),
-              subtext: 'รายการพร้อมจำหน่าย',
-              icon: AppWindow,
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.title}
-                className="flex items-center gap-3 rounded-2xl border border-emerald-800 bg-[#0a0a0a] p-4 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:p-5"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-900/20 text-emerald-500 sm:h-12 sm:w-12">
-                  <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-emerald-500">{item.title}</p>
-                  <p className="text-xl font-bold tracking-tight text-white sm:text-2xl">{item.value}</p>
-                  <p className="text-xs text-gray-400 sm:text-sm">{item.subtext}</p>
-                </div>
-              </div>
-            );
-          })}
         </section>
 
-        {/* Products Sections - Ordered by: Premium App, Gtopup, Cashcard, Game Accounts */}
-        
-        {/* 1. Premium App Products Section (Combined) */}
-        {(() => {
-          // Combine all products from all categories into one array
-          const allPremiumProducts = categoriesWithProductsAndPrices.flatMap((catData: any) => 
-            catData.products.map((product: any) => ({
-              ...product,
-              categoryName: catData.category.display_name,
-            }))
-          );
-          
-          // Shuffle array randomly (Fisher-Yates shuffle)
-          const shuffledProducts = [...allPremiumProducts];
-          for (let i = shuffledProducts.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
-          }
-          
-          // Limit to 12 products (2 rows x 6 columns)
-          const displayProducts = shuffledProducts.slice(0, 12);
-          
-          return displayProducts.length > 0 ? (
-            <section className="rounded-2xl p-6 bg-[#0a0a0a] shadow-sm border border-gray-800">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 shadow-md">
-                    <AppWindow className="h-6 w-6 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">แอพพรีเมี่ยม</h2>
-                    <p className="text-sm text-gray-400">Premium Applications</p>
-                  </div>
-                </div>
-                <Link 
-                  href="/premium-app" 
-                  className="inline-flex items-center gap-1 text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors group"
+        <section className="mt-6">
+          <RecommendMenuSection />
+        </section>
+
+        <main className="mt-8 space-y-10">
+          <FlashSaleSection />
+
+          <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6">
+            {[
+              {
+                title: 'Users',
+                value: stats.totalUsers.toLocaleString('th-TH'),
+                subtext: 'registered customers',
+                icon: Users,
+              },
+              {
+                title: 'Orders',
+                value: stats.totalOrders.toLocaleString('th-TH'),
+                subtext: 'completed transactions',
+                icon: PackageCheck,
+              },
+              {
+                title: 'Premium stock',
+                value: stats.premiumStock.toLocaleString('th-TH'),
+                subtext: 'ready-to-sell apps',
+                icon: AppWindow,
+              },
+              {
+                title: 'Games',
+                value: stats.totalGames.toLocaleString('th-TH'),
+                subtext: 'available game list',
+                icon: Gamepad2,
+              },
+              {
+                title: 'Other products',
+                value: stats.totalProducts.toLocaleString('th-TH'),
+                subtext: 'top-up and gift cards',
+                icon: ShoppingBag,
+              },
+              {
+                title: 'Social services',
+                value: stats.totalSocialServices.toLocaleString('th-TH'),
+                subtext: 'boost services ready',
+                icon: Share2,
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.title}
+                  className="flex flex-col items-center rounded-xl border border-white/15 bg-black/45 p-3 text-center shadow-[0_12px_35px_rgba(0,0,0,0.35)] sm:rounded-2xl sm:p-4"
                 >
-                  ดูทั้งหมด
-                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                {displayProducts.map((product: any, index: number) => (
-                    <Link 
-                      key={product.id} 
-                      href={`/premium-app/${product.id}`} 
+                  <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300 sm:mb-3 sm:h-9 sm:w-9">
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </div>
+                  <p className="text-[10px] uppercase tracking-wide text-white/55 sm:text-[11px]">{item.title}</p>
+                  <p className="text-lg font-bold leading-tight text-white sm:text-2xl">{item.value}</p>
+                  <p className="text-[11px] text-white/55 sm:text-xs">{item.subtext}</p>
+                </div>
+              );
+            })}
+          </section>
+
+          {(() => {
+            const allPremiumProducts = categoriesWithProductsAndPrices.flatMap((catData: any) =>
+              catData.products.map((product: any) => ({
+                ...product,
+                categoryName: catData.category.display_name,
+              }))
+            );
+
+            const shuffledProducts = [...allPremiumProducts];
+            for (let i = shuffledProducts.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffledProducts[i], shuffledProducts[j]] = [shuffledProducts[j], shuffledProducts[i]];
+            }
+
+            const displayProducts = shuffledProducts.slice(0, 12);
+
+            return displayProducts.length > 0 ? (
+              <section className="relative overflow-hidden rounded-3xl border border-white/15 bg-black/55 p-5 shadow-[0_18px_45px_rgba(0,0,0,0.35)] sm:p-6">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(16,185,129,0.2),transparent_40%),radial-gradient(circle_at_86%_82%,rgba(6,182,212,0.14),transparent_38%)]" />
+
+                <div className="relative mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-500/15 text-emerald-200 sm:h-11 sm:w-11 sm:rounded-2xl">
+                      <AppWindow className="h-5 w-5 sm:h-6 sm:w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-white sm:text-xl lg:text-2xl">Premium App Picks</h2>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-emerald-200/85 sm:text-xs">Fresh inventory highlights</p>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/premium-app"
+                    className="inline-flex shrink-0 items-center gap-1 self-start whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white/35 hover:bg-white/20 sm:self-auto sm:text-sm"
+                  >
+                    ดูทั้งหมด
+                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </Link>
+                </div>
+
+                <div className="relative grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  {displayProducts.map((product: any, index: number) => (
+                    <Link
+                      key={product.id}
+                      href={`/premium-app/${product.id}`}
                       className="group block h-full"
                       prefetch={index < 6}
                     >
-                      <div className="flex h-full flex-col rounded-xl sm:rounded-2xl border border-gray-800/60 bg-gradient-to-br from-[#0f0f0f] to-[#0a0a0a] p-3 sm:p-4 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/70 hover:shadow-xl hover:shadow-emerald-900/20">
-                        {/* Product Image - Fixed Height */}
-                        <div className="relative h-32 sm:h-36 md:h-40 w-full rounded-lg sm:rounded-xl overflow-hidden bg-gray-900/60 flex items-center justify-center mb-3 sm:mb-4 flex-shrink-0">
+                      <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.02] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300/55 hover:shadow-[0_16px_34px_rgba(16,185,129,0.22)]">
+                        <div className="relative h-32 w-full overflow-hidden bg-black/45 sm:h-36 md:h-40">
                           {product.image_url || product.icon_url ? (
-                            <Image 
-                              src={product.image_url || product.icon_url} 
-                              alt={product.display_name || product.name} 
+                            <Image
+                              src={product.image_url || product.icon_url}
+                              alt={product.display_name || product.name}
                               fill
-                              className="object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-105" 
+                              className="object-contain p-3 transition-transform duration-500 group-hover:scale-105"
                               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 20vw, 180px"
                               loading={index < 6 ? 'eager' : 'lazy'}
                               priority={index < 3}
                             />
                           ) : (
-                            <AppWindow className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 text-gray-600" />
+                            <div className="flex h-full w-full items-center justify-center text-white/35">
+                              <AppWindow className="h-12 w-12" />
+                            </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                          <div className="absolute left-2 top-2 inline-flex rounded-full border border-emerald-300/45 bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-100">
+                            {product.categoryName || 'Premium App'}
+                          </div>
                         </div>
-                        
-                        {/* Product Info - Flex container with fixed bottom */}
-                        <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">
-                          {/* Product Name - Fixed height */}
+
+                        <div className="flex flex-1 flex-col p-3.5">
                           <div
-                            className="text-xs sm:text-sm font-semibold text-white line-clamp-2 h-[2.5rem] sm:h-[2.8rem] text-center leading-snug sm:leading-tight flex items-center justify-center"
+                            className="line-clamp-2 min-h-[2.75rem] text-sm font-semibold leading-tight text-white"
                             dangerouslySetInnerHTML={{ __html: product.display_name || product.name || '' }}
                             suppressHydrationWarning
                           />
-                          
-                          {/* Product Details - Flexible middle section */}
-                          <div className="flex-1 min-h-0 flex flex-col rounded-lg sm:rounded-xl border border-emerald-900/40 bg-emerald-900/5 px-2.5 sm:px-3 py-2 sm:py-3 shadow-inner">
-                            {/* Summary - Flexible content area */}
-                            <div className="flex-1 min-h-[3rem] sm:min-h-[3.5rem] flex flex-col justify-start">
-                              {product.summary && product.summary.length > 0 ? (
-                                <ul className="text-[10px] sm:text-xs text-gray-300 space-y-1">
-                                  {product.summary.slice(0, 2).map((line: string, idx: number) => (
-                                    <li key={`${product.id}-summary-${idx}`} className="flex items-start gap-1.5">
-                                      <span className="text-emerald-500 leading-4 flex-shrink-0 mt-0.5 text-[10px]">•</span>
-                                      <span className="flex-1 leading-4 line-clamp-2">{line.replace(/^•\s*/, '')}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-[10px] sm:text-xs text-gray-500 text-center py-0.5">ยังไม่มีรายละเอียด</p>
-                              )}
+
+                          <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-2.5 py-2 text-[11px] text-white/70">
+                            {product.summary && product.summary.length > 0 ? (
+                              <p className="line-clamp-2">{product.summary.slice(0, 2).join(' • ')}</p>
+                            ) : (
+                              <p className="line-clamp-2 text-white/45">รายละเอียดบริการจะอัปเดตเพิ่มเติมในหน้าสินค้า</p>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">
+                              <p className="text-[10px] uppercase tracking-wide text-white/45">Price</p>
+                              <p className="text-sm font-semibold text-emerald-300">฿{Number(product.finalPrice || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}</p>
                             </div>
-                            
-                            {/* Price and Stock - Fixed at bottom */}
-                            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 mt-auto border-t border-emerald-900/20 flex-shrink-0">
-                              <div className="rounded-md sm:rounded-lg bg-black/30 px-2 sm:px-2.5 py-1.5 sm:py-2 border border-white/5">
-                                <div className="text-[9px] sm:text-[10px] uppercase tracking-wide text-gray-500 mb-0.5 sm:mb-1">ราคา</div>
-                                <div className="text-sm sm:text-base font-bold text-emerald-400 leading-none">{product.finalPrice.toFixed(0)} ฿</div>
-                              </div>
-                              <div className="rounded-md sm:rounded-lg bg-black/30 px-2 sm:px-2.5 py-1.5 sm:py-2 border border-white/5">
-                                <div className="text-[9px] sm:text-[10px] uppercase tracking-wide text-gray-500 mb-0.5 sm:mb-1">คงเหลือ</div>
-                                {product.stock > 0 ? (
-                                  <div className="text-sm sm:text-base font-semibold text-white leading-none">{product.stock}</div>
-                                ) : (
-                                  <div className="text-xs sm:text-sm font-semibold text-red-400 leading-none">หมด</div>
-                                )}
-                              </div>
+                            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">
+                              <p className="text-[10px] uppercase tracking-wide text-white/45">Stock</p>
+                              <p className="text-sm font-semibold text-white">{product.stock > 0 ? product.stock.toLocaleString('th-TH') : 'หมด'}</p>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     </Link>
                   ))}
                 </div>
               </section>
-          ) : null;
-        })()}
+            ) : null;
+          })()}
 
+          {(() => {
+            const productsWithBadge = gtopupProducts.filter((p: any) => p.badge_enabled === true);
+            const productsWithoutBadge = gtopupProducts.filter((p: any) => !p.badge_enabled || p.badge_enabled === false);
 
-        {/* 2. Gtopup (เติมเกม) Section */}
-        {(() => {
-          // แยกสินค้าที่มี badge_enabled (มีโปรโมชั่น) กับไม่มี
-          const productsWithBadge = gtopupProducts.filter((p: any) => p.badge_enabled === true);
-          const productsWithoutBadge = gtopupProducts.filter((p: any) => !p.badge_enabled || p.badge_enabled === false);
-          
-          // สุ่มสินค้าที่มี badge
-          const shuffledWithBadge = [...productsWithBadge];
-          for (let i = shuffledWithBadge.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledWithBadge[i], shuffledWithBadge[j]] = [shuffledWithBadge[j], shuffledWithBadge[i]];
-          }
-          
-          // สุ่มสินค้าที่ไม่มี badge
-          const shuffledWithoutBadge = [...productsWithoutBadge];
-          for (let i = shuffledWithoutBadge.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffledWithoutBadge[i], shuffledWithoutBadge[j]] = [shuffledWithoutBadge[j], shuffledWithoutBadge[i]];
-          }
-          
-          // รวมกัน โดยสินค้าที่มี badge มาก่อนเสมอ
-          // เอา badge มาก่อน (สูงสุด 12 อัน), ถ้าไม่พอค่อยเอาไม่มี badge มาเติม
-          const maxWithBadge = Math.min(shuffledWithBadge.length, 12);
-          const remainingSlots = 12 - maxWithBadge;
-          const displayProducts = [
-            ...shuffledWithBadge.slice(0, maxWithBadge),
-            ...shuffledWithoutBadge.slice(0, remainingSlots)
-          ];
-          
-          return displayProducts.length > 0 ? (
-            <GtopupCarouselSection products={displayProducts} />
-          ) : null;
-        })()}
+            const shuffledWithBadge = [...productsWithBadge];
+            for (let i = shuffledWithBadge.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffledWithBadge[i], shuffledWithBadge[j]] = [shuffledWithBadge[j], shuffledWithBadge[i]];
+            }
 
-        {/* 3. Cashcard (บัตรเติมเงิน) Section */}
-        {cashcardProducts.length > 0 && (
-          <CashcardCarouselSection products={cashcardProducts} />
-        )}
+            const shuffledWithoutBadge = [...productsWithoutBadge];
+            for (let i = shuffledWithoutBadge.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffledWithoutBadge[i], shuffledWithoutBadge[j]] = [shuffledWithoutBadge[j], shuffledWithoutBadge[i]];
+            }
 
-        {/* 4. Game Accounts (ไอดีเกมส์) Section */}
-        <GameAccountsBannerSection bannerUrl={site.gameAccountsBannerUrl || null} />
+            const maxWithBadge = Math.min(shuffledWithBadge.length, 12);
+            const remainingSlots = 12 - maxWithBadge;
+            const displayProducts = [
+              ...shuffledWithBadge.slice(0, maxWithBadge),
+              ...shuffledWithoutBadge.slice(0, remainingSlots),
+            ];
 
-        {/* 5. News Section (ข่าวสาร) */}
-        <NewsSection />
-      </main>
+            return site.navbarMenus?.products !== false && displayProducts.length > 0 ? <GtopupCarouselSection products={displayProducts} /> : null;
+          })()}
+
+          {site.navbarMenus?.cashcard !== false && cashcardProducts.length > 0 && <CashcardCarouselSection products={cashcardProducts} />}
+
+          {site.navbarMenus?.categories !== false && <GameAccountsBannerSection bannerUrl={site.gameAccountsBannerUrl || null} />}
+
+          <NewsSection />
+        </main>
+      </div>
     </div>
   );
 }
-
 const getHomeStats = cache(async () => {
   try {
-    const base = getBaseUrl();
-    const res = await fetch(`${base}/api/home/stats`, {
-      next: { revalidate: 60, tags: ['home-stats'] },
-    });
-    if (!res.ok) {
-      throw new Error(`home stats request failed: ${res.status}`);
-    }
-    const data = await res.json();
+    const sb = createServiceClient();
+    const [
+      usersRes,
+      ordersRes,
+      gameOrdersRes,
+      socialOrdersRes,
+      cashcardOrdersRes,
+      premiumOrdersRes,
+      slipData,
+      redeemData,
+      premiumStockData,
+      gtopupProductsRes,
+      gameAccountsRes,
+      socialServicesRes,
+    ] = await Promise.all([
+      sb.from('users').select('id', { count: 'exact', head: true }),
+      sb.from('orders').select('id', { count: 'exact', head: true }),
+      sb.from('game_account_orders').select('id', { count: 'exact', head: true }),
+      sb.from('social_orders').select('id', { count: 'exact', head: true }),
+      sb.from('cashcard_orders').select('id', { count: 'exact', head: true }),
+      sb.from('app_premium_orders').select('id', { count: 'exact', head: true }),
+      sb.from('slip_history').select('amount').in('status', ['success', 'completed']),
+      sb.from('redeem_code_usage').select('points'),
+      sb.from('app_premium_products').select('stock').eq('is_published', true),
+      sb.from('products').select('id', { count: 'exact', head: true }).eq('is_published', true).eq('product_type', 'gtopup'),
+      sb.from('game_accounts').select('id', { count: 'exact', head: true }).eq('is_published', true).not('game_category_id', 'is', null),
+      sb.from('social_services').select('id', { count: 'exact', head: true }).eq('is_published', true),
+    ]);
+
+    const totalUsers = usersRes?.count ?? 0;
+    const totalOrders =
+      (ordersRes?.count ?? 0) +
+      (gameOrdersRes?.count ?? 0) +
+      (socialOrdersRes?.count ?? 0) +
+      (cashcardOrdersRes?.count ?? 0) +
+      (premiumOrdersRes?.count ?? 0);
+
+    // Calculate topup sum manually
+    const slipSum = (slipData?.data || []).reduce((sum, row: any) => {
+      const amount = Number(row?.amount);
+      return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
+
+    const redeemSum = (redeemData?.data || []).reduce((sum, row: any) => {
+      const points = Number(row?.points);
+      return sum + (Number.isFinite(points) ? points : 0);
+    }, 0);
+
+    const totalTopup = slipSum + redeemSum;
+
+    // Calculate premium stock sum manually
+    const premiumStock = Math.max(
+      0,
+      Math.floor(
+        (premiumStockData?.data || []).reduce((sum, row: any) => {
+          const stock = Number(row?.stock);
+          return sum + (Number.isFinite(stock) ? stock : 0);
+        }, 0)
+      )
+    );
+
+    // จำนวนเกม = products ที่เป็น gtopup (เกมที่เปิดให้เติม)
+    const totalGames = gtopupProductsRes?.count ?? 0;
+    
+    // สินค้าอื่นๆ = game_accounts ที่ is_published = true
+    const totalProducts = gameAccountsRes?.count ?? 0;
+    
+    const totalSocialServices = socialServicesRes?.count ?? 0;
+
     const parseNumber = (value: unknown) => {
       const numeric = Number(value);
       return Number.isFinite(numeric) ? numeric : 0;
     };
+
     return {
-      totalUsers: parseNumber(data?.totalUsers),
-      totalOrders: parseNumber(data?.totalOrders),
-      totalTopup: parseNumber(data?.totalTopup),
-      premiumStock: parseNumber(data?.premiumStock),
+      totalUsers: parseNumber(totalUsers),
+      totalOrders: parseNumber(totalOrders),
+      totalTopup: parseNumber(totalTopup),
+      premiumStock: parseNumber(premiumStock),
+      totalGames: parseNumber(totalGames),
+      totalProducts: parseNumber(totalProducts),
+      totalSocialServices: parseNumber(totalSocialServices),
     };
   } catch (error) {
     console.error('home stats fetch error:', error);
@@ -688,6 +862,10 @@ const getHomeStats = cache(async () => {
       totalOrders: 0,
       totalTopup: 0,
       premiumStock: 0,
+      totalGames: 0,
+      totalProducts: 0,
+      totalSocialServices: 0,
     };
   }
 });
+

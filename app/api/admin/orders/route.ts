@@ -38,7 +38,7 @@ export async function GET() {
       // 4. App Premium orders
       sb
         .from('app_premium_orders')
-        .select('id, reference, external_reference, product_id, created_at, status, price, user_id, product_data, raw_response')
+        .select('id, reference, external_reference, app_premium_product_id, created_at, status, price, user_id, product_data, raw_response')
         .order('created_at', { ascending: false })
         .limit(1000),
       
@@ -58,7 +58,7 @@ export async function GET() {
         ...(cashcardOrders.data || []).map((o: any) => o.product_id).filter(Boolean),
       ])
     ];
-    const appPremiumProductIds = [...new Set((appPremiumOrders.data || []).map((o: any) => o.product_id).filter(Boolean))];
+    const appPremiumProductIds = [...new Set((appPremiumOrders.data || []).map((o: any) => o.app_premium_product_id).filter(Boolean))];
     const socialServiceIds = [...new Set((socialOrders.data || []).map((o: any) => o.social_service_id).filter(Boolean))];
     const userIds = [
       ...new Set([
@@ -169,20 +169,33 @@ export async function GET() {
     }));
 
     // Format app premium orders
-    const formattedAppPremiumOrders = (appPremiumOrders.data || []).map((order: any) => ({
-      type: 'app_premium' as const,
-      id: order.reference || order.external_reference || `ap-${order.id}`,
-      transaction_id: order.reference || order.external_reference,
-      product_id: order.product_id,
-      user_id: order.user_id,
-      created_at: order.created_at,
-      state: order.status,
-      price: order.price,
-      product_data: order.product_data || null,
-      raw_response: order.raw_response || null,
-      product: appPremiumProductsMap.get(order.product_id) || null,
-      user: usersMap.get(order.user_id) || null,
-    }));
+    const formattedAppPremiumOrders = (appPremiumOrders.data || []).map((order: any) => {
+      // Parse product_data if it's a string
+      let productData = order.product_data;
+      if (typeof productData === 'string' && productData.trim()) {
+        try {
+          productData = JSON.parse(productData);
+        } catch (e) {
+          // If parsing fails, keep as string
+          productData = order.product_data;
+        }
+      }
+      
+      return {
+        type: 'app_premium' as const,
+        id: order.reference || order.external_reference || `ap-${order.id}`,
+        transaction_id: order.reference || order.external_reference,
+        product_id: order.app_premium_product_id,
+        user_id: order.user_id,
+        created_at: order.created_at,
+        state: order.status,
+        price: order.price,
+        product_data: productData || null,
+        raw_response: order.raw_response || null,
+        product: appPremiumProductsMap.get(order.app_premium_product_id) || null,
+        user: usersMap.get(order.user_id) || null,
+      };
+    });
 
     // Format social orders
     const formattedSocialOrders = (socialOrders.data || []).map((order: any) => ({

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { verifySlipWithRDCW } from '@/lib/utils/slip-api';
+import { 
+  verifySlipWithRDCW, 
+  verifySlipWithSlipOK,
+  normalizeSlipOKResponse,
+} from '@/lib/utils/slip-api';
 import { validateBankAccount } from '@/lib/utils/slip-validation';
 import {
   SlipVerificationError,
@@ -10,6 +14,7 @@ import {
   type VerifySlipRequest,
   type VerifySlipResponse,
   type RDCWApiResponse,
+  type SlipOKApiResponse,
 } from '@/lib/types/slip';
 
 // Validation Schema
@@ -64,7 +69,7 @@ export async function POST(request: NextRequest) {
       qr_payload: string;
       status: 'success' | 'failed';
       error_message?: string | null;
-      rdcw_response?: RDCWApiResponse | null;
+      rdcw_response?: RDCWApiResponse | SlipOKApiResponse | null;
     }) => {
       const { error: historyError } = await sb.from('slip_history').insert({
         ...entry,
@@ -107,27 +112,158 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!settings.rdcw_client_id || !settings.rdcw_client_secret || !settings.rdcw_endpoint) {
-      throw new SlipVerificationError(
-        'ยังไม่ได้ตั้งค่า RDCW API กรุณาติดต่อผู้ดูแลระบบ',
-        ErrorCodes.API_ERROR,
-        500,
-        { settings }
-      );
-    }
+    const provider = settings.provider || 'rdcw';
 
-    // 4. Verify Slip with RDCW API
-    let apiResult;
+    // 4. Verify Slip with selected API provider
+    let apiResult: RDCWApiResponse | SlipOKApiResponse;
+    let slipData: {
+      transRef?: string;
+      ref1?: string;
+      amount: number;
+      sender: {
+        account: {
+          value: string;
+        };
+        name?: string;
+      };
+      receiver: {
+        account: {
+          value: string;
+        };
+        name?: string;
+      };
+      transactionDate?: string;
+      transactionTime?: string;
+    };
+
     try {
-      apiResult = await verifySlipWithRDCW(
-        qrPayload,
-        settings.rdcw_endpoint,
-        settings.rdcw_client_id,
-        settings.rdcw_client_secret
-      );
-      if (isDebugMode) {
-        console.log('🧾 RDCW API Result:', JSON.stringify(apiResult, null, 2));
+      if (provider === 'slipok') {
+        // Verify with SlipOK API
+        if (!settings.slipok_branch_id || !settings.slipok_api_key) {
+          throw new SlipVerificationError(
+            'ยังไม่ได้ตั้งค่า SlipOK API กรุณาติดต่อผู้ดูแลระบบ',
+            ErrorCodes.API_ERROR,
+            500,
+            { settings }
+          );
+        }
+
+        apiResult = await verifySlipWithSlipOK(
+          qrPayload,
+          settings.slipok_branch_id,
+          settings.slipok_api_key
+        );
+
+        if (isDebugMode) {
+          console.log('🧾 SlipOK API Result:', JSON.stringify(apiResult, null, 2));
+        }
+
+        // Handle SlipOK error codes
+        const errorCode = apiResult.code;
+        
+        // Error codes ที่มี data กลับมา - ให้ตรวจสอบเอง (เหมือน RDCW)
+        // 1014 = บัญชีไม่ตรง (SlipOK ตรวจสอบกับบัญชีหลักใน SlipOK แล้ว แต่เราต้องการตรวจสอบกับบัญชีในระบบของเราเอง)
+        // 1013 = ยอดไม่ตรง (SlipOK ตรวจสอบเอง แต่เราต้องการตรวจสอบเองด้วย)
+        // **หมายเหตุ**: SlipOK จะตรวจสอบบัญชีกับบัญชีหลักที่ตั้งค่าไว้ใน SlipOK (ผ่าน branch_id)
+        // แต่เรายังต้องการให้ตรวจสอบกับบัญชีที่ตั้งค่าไว้ในระบบของเราเองด้วย
+        
+        // ถ้ามี error code 1014 หรือ 1013 แต่มี data กลับมา ให้ข้ามการ throw error และไปตรวจสอบเอง
+        const shouldSkipSlipOKValidation = (errorCode === 1014 || errorCode === 1013) && apiResult.data;
+        
+        // Error codes ที่ต้อง throw error ทันที (ไม่มี data หรือ error code อื่นๆ)
+        // 1012 = สลิปซ้ำ (ต้อง throw ทันที)
+        // 1010 = ธนาคารล่าช้า (ต้อง throw ทันที)
+        if (!shouldSkipSlipOKValidation && (!apiResult.success || !apiResult.data)) {
+          let errorMessage = apiResult.message || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้';
+
+          // Map SlipOK error codes to user-friendly messages
+          if (errorCode === 1012) {
+            errorMessage = 'สลิปซ้ำ สลิปนี้เคยใช้แล้ว';
+          } else if (errorCode === 1010) {
+            errorMessage = apiResult.message || 'กรุณารอสักครู่แล้วลองใหม่อีกครั้ง';
+          }
+
+          await insertHistory({
+            user_id: userId,
+            transaction_id: null,
+            amount: 0,
+            points_added: 0,
+            qr_payload: qrPayload,
+            status: 'failed',
+            error_message: errorMessage,
+            rdcw_response: apiResult,
+          });
+
+          throw new SlipVerificationError(
+            errorMessage,
+            ErrorCodes.INVALID_QR,
+            400,
+            apiResult
+          );
+        }
+
+        // ถ้ามี data กลับมา (ไม่ว่าจะมี error code หรือไม่) ให้ normalize และตรวจสอบเอง
+        if (apiResult.data) {
+          // Normalize SlipOK response to common format
+          slipData = normalizeSlipOKResponse(apiResult.data);
+          
+          if (shouldSkipSlipOKValidation) {
+            console.log('⚠️ SlipOK returned error code', errorCode, 'but has data. Will validate ourselves.');
+          }
+        } else {
+          // ไม่มี data กลับมา - throw error
+          throw new SlipVerificationError(
+            apiResult.message || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้',
+            ErrorCodes.INVALID_QR,
+            400,
+            apiResult
+          );
+        }
+      } else {
+        // Verify with RDCW API (default)
+        if (!settings.rdcw_client_id || !settings.rdcw_client_secret || !settings.rdcw_endpoint) {
+          throw new SlipVerificationError(
+            'ยังไม่ได้ตั้งค่า RDCW API กรุณาติดต่อผู้ดูแลระบบ',
+            ErrorCodes.API_ERROR,
+            500,
+            { settings }
+          );
+        }
+
+        apiResult = await verifySlipWithRDCW(
+          qrPayload,
+          settings.rdcw_endpoint,
+          settings.rdcw_client_id,
+          settings.rdcw_client_secret
+        );
+
+        if (isDebugMode) {
+          console.log('🧾 RDCW API Result:', JSON.stringify(apiResult, null, 2));
+        }
+
+        if (!apiResult.valid || !apiResult.data) {
+          await insertHistory({
+            user_id: userId,
+            transaction_id: null,
+            amount: 0,
+            points_added: 0,
+            qr_payload: qrPayload,
+            status: 'failed',
+            error_message: apiResult.error || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้',
+            rdcw_response: apiResult,
+          });
+
+          throw new SlipVerificationError(
+            apiResult.error || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้',
+            ErrorCodes.INVALID_QR,
+            400,
+            apiResult
+          );
+        }
+
+        slipData = apiResult.data;
       }
+
       if (isDebugMode) {
         debugContext = {
           ...debugContext,
@@ -138,37 +274,17 @@ export async function POST(request: NextRequest) {
         };
       }
     } catch (error) {
-      console.error('RDCW API Error:', error);
+      if (error instanceof SlipVerificationError) {
+        throw error;
+      }
+      console.error(`${provider.toUpperCase()} API Error:`, error);
       throw new SlipVerificationError(
-        'ไม่สามารถเชื่อมต่อกับ RDCW API ได้',
+        `ไม่สามารถเชื่อมต่อกับ ${provider.toUpperCase()} API ได้`,
         ErrorCodes.API_ERROR,
         500,
         error
       );
     }
-
-    if (!apiResult.valid || !apiResult.data) {
-      // Save failed attempt to history
-      await insertHistory({
-        user_id: userId,
-        transaction_id: null,
-        amount: 0,
-        points_added: 0,
-        qr_payload: qrPayload,
-        status: 'failed',
-        error_message: apiResult.error || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้',
-        rdcw_response: apiResult,
-      });
-
-      throw new SlipVerificationError(
-        apiResult.error || 'สลิปไม่ถูกต้องหรือไม่สามารถอ่านได้',
-        ErrorCodes.INVALID_QR,
-        400,
-        apiResult
-      );
-    }
-
-    const slipData = apiResult.data;
 
     // 5. Validate Amount
     const amount = slipData.amount;
@@ -229,10 +345,22 @@ export async function POST(request: NextRequest) {
           const receiverAccount = slipData.receiver.account.value;
           let accountMatched = false;
 
+          console.log('🔍 Validating receiver account:', {
+            receiverAccount,
+            bankAccounts: bankAccounts.map(a => a.accountNumber),
+          });
+
           // ตรวจสอบกับทุกบัญชีที่ตั้งค่าไว้
           for (const account of bankAccounts) {
             if (account.accountNumber) {
-              if (validateBankAccount(account.accountNumber, receiverAccount)) {
+              const isValid = validateBankAccount(account.accountNumber, receiverAccount);
+              console.log('🔍 Account validation result:', {
+                userAccount: account.accountNumber,
+                apiAccount: receiverAccount,
+                isValid,
+              });
+              
+              if (isValid) {
                 accountMatched = true;
                 break;
               }
@@ -240,6 +368,11 @@ export async function POST(request: NextRequest) {
           }
 
           if (!accountMatched) {
+            console.log('❌ Account validation failed:', {
+              receiverAccount,
+              expectedAccounts: bankAccounts.map(a => a.accountNumber),
+            });
+
             await insertHistory({
               user_id: userId,
               transaction_id: slipData.transRef || slipData.ref1 || null,
@@ -258,6 +391,8 @@ export async function POST(request: NextRequest) {
               { actual: receiverAccount, expectedAccounts: bankAccounts.map(a => a.accountNumber) }
             );
           }
+
+          console.log('✅ Account validation passed');
         }
       } catch (parseError) {
         console.error('Error parsing bank accounts:', parseError);
@@ -373,7 +508,7 @@ export async function POST(request: NextRequest) {
       qr_payload: qrPayload,
       status: 'success',
       error_message: null,
-      rdcw_response: apiResult,
+      rdcw_response: apiResult, // เก็บ response จาก API ที่ใช้
     });
 
     console.log('✅ Slip verification successful');

@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
-const PricingLayoutClient = dynamic(() => import('./layout-client'), { ssr: false });
+const PricingLayoutClient = dynamic(() => import('./layout-client'));
 
 export default async function PricingLayout({ children }: { children: ReactNode }) {
   const user = await getAuthUser();

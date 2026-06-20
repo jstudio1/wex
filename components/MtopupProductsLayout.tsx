@@ -313,7 +313,7 @@ export default function MtopupProductsLayout({ products, isLoading }: MtopupProd
                   <button
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className={`relative rounded-xl border-2 transition-all overflow-hidden group ${
+                    className={`relative rounded-xl border-2 transition-all overflow-hidden group flex flex-col ${
                       selectedItem?.id === item.id
                         ? 'border-emerald-600 shadow-lg ring-2 ring-emerald-900/50 scale-[1.02]'
                         : 'border-gray-700 bg-[#0a0a0a] hover:border-emerald-500 hover:shadow-md'
@@ -322,17 +322,15 @@ export default function MtopupProductsLayout({ products, isLoading }: MtopupProd
                     {selectedItem?.id === item.id && (
                       <div className="absolute inset-0 bg-emerald-600/10 pointer-events-none" />
                     )}
-                    
-                    {item.is_recommended && (
-                      <div className="absolute top-1.5 right-1.5 z-10">
-                        <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs px-1.5 py-0 shadow-md">
-                          <Star className="size-2.5 mr-0.5" fill="currentColor" />
-                          แนะนำ
-                        </Badge>
+
+                    {item.is_recommended ? (
+                      <div className="relative z-10 w-full bg-gradient-to-r from-yellow-500 to-orange-500 px-2 py-0.5 flex items-center justify-center gap-1 text-[10px] font-bold text-white tracking-wide">
+                        <Star className="size-3" fill="currentColor" />
+                        แนะนำ
                       </div>
-                    )}
-                    
-                    <div className="p-4 text-center">
+                    ) : null}
+
+                    <div className={`p-4 text-center ${item.is_recommended ? 'pt-3' : ''}`}>
                       <div className="text-sm font-semibold text-white mb-2 line-clamp-2">
                         {item.name}
                       </div>

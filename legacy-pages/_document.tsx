@@ -1,6 +1,7 @@
 import { Html, Head, Main, NextScript } from 'next/document';
 
-export default function Document() {
+// Legacy _document preserved for reference after migration to App Router
+export default function LegacyDocument() {
   return (
     <Html lang="th">
       <Head />
@@ -11,3 +12,5 @@ export default function Document() {
     </Html>
   );
 }
+
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Package,
   Grid3x3,
@@ -49,6 +49,7 @@ type MenuItem = {
   label: string;
   icon: typeof Package;
   subItems?: { id: string; label: string }[];
+  badge?: number;
 };
 
 type MenuSection = {
@@ -164,8 +165,7 @@ const menuSections: MenuSection[] = [
   {
     label: 'ตั้งค่าบัญชีการเงิน',
     items: [
-      { id: 'payment-settings', label: 'การชำระเงิน', icon: DollarSign },
-      { id: 'slip-settings', label: 'ตั้งค่าสลิปโอนเงิน', icon: Receipt },
+      { id: 'payment-settings', label: 'ตั้งค่าชำระเงิน', icon: DollarSign },
     ],
   },
 ];
@@ -178,6 +178,24 @@ export default function AppSidebar({
   setSelectedMenu: (id: string) => void;
 }) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['marketing', 'games', 'social', 'blog']));
+  const [unreadTickets, setUnreadTickets] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/admin/tickets/unread-count');
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadTickets(data.count || 0);
+        }
+      } catch {
+        // silently ignore
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {
@@ -230,6 +248,7 @@ export default function AppSidebar({
                   const isActive =
                     selectedMenu === item.id ||
                     (hasSubItems && item.subItems?.some((sub) => selectedMenu === sub.id));
+                  const badgeCount = item.id === 'tickets' ? unreadTickets : (item.badge ?? 0);
 
                   return (
                     <SidebarMenuItem key={item.id}>
@@ -243,6 +262,11 @@ export default function AppSidebar({
                       >
                         <Icon className={cn('size-4', isActive && 'text-purple-400')} />
                         <span className="flex-1">{item.label}</span>
+                        {badgeCount > 0 && (
+                          <span className="ml-1 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center animate-pulse">
+                            {badgeCount > 99 ? '99+' : badgeCount}
+                          </span>
+                        )}
                         {hasSubItems ? (
                           isExpanded ? (
                             <ChevronDown className="ml-auto size-4" />

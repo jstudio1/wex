@@ -104,13 +104,13 @@ export default function BlogListClient({ initialCategories, initialPosts }: Blog
               href={`/blog/${post.slug}`}
               className="group rounded-lg border border-white/10 bg-black/30 overflow-hidden hover:border-emerald-500/50 transition-all"
             >
-              <div className="relative h-48 w-full overflow-hidden bg-gray-800/50">
+              <div className="relative h-48 w-full overflow-hidden bg-black/40">
                 {post.cover_image_url ? (
                   <Image
                     src={post.cover_image_url}
                     alt={post.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-contain group-hover:scale-105 transition-transform duration-300"
                     unoptimized={post.cover_image_url.includes('via.placeholder.com')}
                   />
                 ) : (

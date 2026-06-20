@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -13,15 +14,17 @@ const updateRedeemCodeSchema = z.object({
   description: z.string().max(500).nullable().optional(),
 });
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { id } = await params;
 
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('redeem_codes')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (error || !data) {
@@ -31,11 +34,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ data });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const parsed = updateRedeemCodeSchema.safeParse(body);
     if (!parsed.success) {
@@ -49,7 +53,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { data: existing } = await sb
       .from('redeem_codes')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (!existing) {
@@ -62,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         .from('redeem_codes')
         .select('id')
         .eq('code', data.code.toUpperCase())
-        .neq('id', params.id)
+        .neq('id', id)
         .maybeSingle();
 
       if (codeExists) {
@@ -85,7 +89,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const { data: updated, error } = await sb
       .from('redeem_codes')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -99,16 +103,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { id } = await params;
 
   const sb = createServiceClient();
 
   const { error } = await sb
     .from('redeem_codes')
     .delete()
-    .eq('id', params.id);
+    .eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: 'db_error', details: error.message }, { status: 500 });

@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin';
@@ -19,7 +20,7 @@ const messageSchema = z.object({
   status: z.enum(['open', 'in_progress', 'waiting_customer', 'closed']).optional(),
 });
 
-export async function GET(req: Request, context: { params: { ticketId: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -30,7 +31,8 @@ export async function GET(req: Request, context: { params: { ticketId: string } 
       page: url.searchParams.get('page') || undefined,
       limit: url.searchParams.get('limit') || undefined,
     });
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
 
     const from = (pagination.page - 1) * pagination.limit;
@@ -90,13 +92,14 @@ export async function GET(req: Request, context: { params: { ticketId: string } 
   }
 }
 
-export async function POST(req: Request, context: { params: { ticketId: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const admin = await requireAdmin();
   if (!admin) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
     const formData = await req.formData();
     const payload: Record<string, string> = {};

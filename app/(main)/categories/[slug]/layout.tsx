@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
 
-type Props = { children: React.ReactNode; params: { slug: string } };
+type Props = { children: React.ReactNode; params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   try {
     const res = await fetch(`${base}/api/categories`, { cache: 'no-store' });
     if (!res.ok) return {};
     const json = await res.json();
     const list = json?.data || [];
-    const cat = list.find((c: any) => c.slug === params.slug);
+    const resolved = await params;
+    const cat = list.find((c: any) => c.slug === resolved.slug);
     if (!cat) return {};
     const title = `${cat.name}`;
     const description = `หมวดหมู่ ${cat.name} — บริการ/สินค้าในหมวดนี้`;
-    const url = `/categories/${params.slug}`;
+    const url = `/categories/${resolved.slug}`;
     return {
       title,
       description,

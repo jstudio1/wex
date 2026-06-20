@@ -338,9 +338,12 @@ export default function BlogPostsContent() {
             </div>
             <div>
               <Label htmlFor="cover_image">รูปปก</Label>
+              <p className="text-xs text-white/50 mt-1 mb-2">
+                ขนาดที่แนะนำ: 1600 × 900 px (อัตราส่วน 16:9) ไฟล์ไม่เกิน 5MB
+              </p>
               <div className="space-y-2">
                 {formData.cover_image_url && (
-                  <div className="relative w-full h-48 rounded overflow-hidden border border-white/10">
+                  <div className="relative w-full aspect-video rounded overflow-hidden border border-white/10">
                     <Image src={formData.cover_image_url} alt="Cover" fill className="object-cover" />
                   </div>
                 )}

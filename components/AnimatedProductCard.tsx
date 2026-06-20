@@ -105,12 +105,12 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
             <img 
               src={p.image_url} 
               alt={p.name} 
-              className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}
+              className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}
               loading="lazy"
               key={`${p.id}-${p.image_url}`}
             />
           ) : (
-            <div className={`rounded-xl bg-gray-800 flex items-center justify-center ${isHighlight ? 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-36 w-36 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
+            <div className={`rounded-xl bg-gray-800 flex items-center justify-center ${isHighlight ? 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
               <span className="text-xs text-gray-500 text-center px-2">ไม่มีรูป</span>
             </div>
           )}

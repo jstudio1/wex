@@ -1,16 +1,19 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
 
 export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  const numericId = Number(id);
+
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const id = Number(params.id);
-  if (!id) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  if (!numericId) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
 
   const payload = await req.json();
   const update: Record<string, unknown> = {};
@@ -28,7 +31,7 @@ export async function PATCH(
   const { error } = await sb
     .from('app_premium_products')
     .update(update)
-    .eq('id', id);
+    .eq('id', numericId);
 
   if (error) return NextResponse.json({ error: 'db_error', detail: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

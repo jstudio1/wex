@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAuthUser } from '@/lib/auth';
@@ -12,13 +13,14 @@ const updateSchema = z.object({
   action: z.enum(['close']).default('close'),
 });
 
-export async function GET(_: Request, context: { params: { ticketId: string } }) {
+export async function GET(_: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   try {
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
     const { data, error } = await sb
       .from('tickets')
@@ -52,7 +54,7 @@ export async function GET(_: Request, context: { params: { ticketId: string } })
   }
 }
 
-export async function PATCH(req: Request, context: { params: { ticketId: string } }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ ticketId: string }> }) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -61,7 +63,8 @@ export async function PATCH(req: Request, context: { params: { ticketId: string 
   try {
     const body = await req.json();
     const payload = updateSchema.parse(body);
-    const { ticketId } = paramsSchema.parse(context.params);
+    const rawParams = await context.params;
+    const { ticketId } = paramsSchema.parse(rawParams);
     const sb = createServiceClient();
 
     const { data: ticket, error: ticketError } = await sb

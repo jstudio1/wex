@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { createServiceClient } from '@/lib/supabase';
@@ -16,13 +17,14 @@ const prizeSchema = z.object({
 });
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const gameId = parseInt(params.id);
+  const { id } = await params;
+  const gameId = parseInt(id);
   if (isNaN(gameId)) {
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
   }
@@ -43,14 +45,15 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   try {
-    const gameId = parseInt(params.id);
+    const { id } = await params;
+    const gameId = parseInt(id);
     if (isNaN(gameId)) {
       return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
     }

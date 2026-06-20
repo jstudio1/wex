@@ -9,7 +9,7 @@ describe('normalizeNavbarOrder', () => {
   });
 
   it('ควรคืนค่า default order เมื่อ input เป็น null', () => {
-    const result = normalizeNavbarOrder(null);
+    const result = normalizeNavbarOrder(null as any);
     expect(result).toBeInstanceOf(Array);
     expect(result.length).toBeGreaterThan(0);
   });
