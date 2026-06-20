@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { logOrderToDiscord } from '@/lib/discord';
 import { createGtopupOrder, generateDestRef, WepayError, getWepayServiceInfo } from '@/lib/providers/wepay';
 import { validateCoupon } from '@/lib/coupons';
@@ -130,7 +129,7 @@ export async function POST(req: Request) {
     // ดึง product จาก database
     const { data: product, error: productError } = await sb
       .from('products')
-      .select('id, name, key, image_url, provider_company_id')
+      .select('id, name, key, image_url, provider_company_id, badge_enabled, badge_percent, badge_apply_price')
       .eq('key', product_key)
       .eq('is_published', true)
       .maybeSingle();
@@ -141,7 +140,7 @@ export async function POST(req: Request) {
     // ดึง item จาก database
     const { data: item, error: itemError } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
+      .select('id, name, sku, price, original_price, agent_cost_price, markup_percent, markup_fixed, is_flashsale, flashsale_price, flashsale_max_quantity, flashsale_duration_days, flashsale_start_date')
       .eq('product_id', product.id)
       .eq('sku', item_sku)
       .maybeSingle();
@@ -186,10 +185,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // ใช้ flashsale_price ถ้ามี, ไม่งั้นใช้ราคาปกติ (สำหรับการคำนวณราคาที่ขาย)
-    const itemPrice = item.is_flashsale && item.flashsale_price 
-      ? Number(item.flashsale_price) 
-      : Number(item.price || 0);
+    // คำนวณราคาขายสด ให้ตรงกับสูตรเดียวกับที่แสดงผลหน้า user
+    // ราคาขาย (item.price) คือราคาขายจริง ไม่บวก Global Markup (ใช้เฉพาะแอพพรีเมียม) และไม่ใช่ราคาทุน (markup_percent/fixed ต่อสินค้าเลิกใช้แล้ว)
+    const sellBase = Number(item.price ?? (item as any).agent_cost_price ?? 0);
+    const liveComputedPrice = sellBase;
+
+    // ใช้ badge discount เดียวกับที่แสดงผลหน้า user (ต้องเปิด badge_enabled จริงๆ ไม่ใช่แค่ badge_apply_price)
+    const badgeEnabled = Boolean((product as any).badge_enabled);
+    const badgePercent = Number((product as any).badge_percent ?? 0);
+    const applyBadgeDiscount = badgeEnabled && Boolean((product as any).badge_apply_price) && badgePercent > 0;
+    const computedWithBadge = applyBadgeDiscount
+      ? Math.max(0, liveComputedPrice * (1 - badgePercent / 100))
+      : liveComputedPrice;
+
+    // ใช้ flashsale_price ถ้ามี, ไม่งั้นใช้ราคาที่คำนวณสด (สำหรับการคำนวณราคาที่ขาย)
+    const itemPrice = item.is_flashsale && item.flashsale_price
+      ? Number(item.flashsale_price)
+      : computedWithBadge;
     
     // จำนวนเงินที่แท้จริงที่จะเติม (face value) - ใช้ original_price ถ้ามี, ไม่งั้นใช้ price
     const faceValue = Number((item as any).original_price || item.price || 0);

@@ -35,37 +35,79 @@ const WEPAY_PRODUCTS_URL =
 // Cache สำหรับ discount จาก API (cache ระหว่าง sync session)
 let discountCache = new Map<string, number>();
 
+// ส่วนลดตัวแทนที่ admin กำหนดไว้ใน product_agent_discounts (แหล่งข้อมูลหลัก เพราะ wePAY client_api
+// ต้อง whitelist IP ของ production server เท่านั้น ถ้าเรียกจาก IP อื่นจะถูก Cloudflare บล็อกและ error เงียบๆ)
+let agentDiscountOverrides = new Map<string, number>();
+
+async function loadAgentDiscountOverrides() {
+  try {
+    const sb = createServiceClient();
+    const { data, error } = await sb
+      .from('product_agent_discounts')
+      .select('provider_company_id, discount_percent');
+    if (error) {
+      console.warn('[PRODUCTS][SYNC] Failed to load product_agent_discounts overrides:', error.message);
+      return;
+    }
+    agentDiscountOverrides = new Map(
+      (data || []).map((row: any) => [String(row.provider_company_id || '').trim().toUpperCase(), Number(row.discount_percent ?? 0)])
+    );
+  } catch (err) {
+    console.warn('[PRODUCTS][SYNC] Unexpected error loading agent discount overrides:', err);
+  }
+}
+
 async function resolveAgentDiscountPercent(
   providerCompanyId: string | undefined | null,
   productType: 'gtopup' | 'mtopup' | 'cashcard' = 'gtopup'
 ): Promise<number> {
-  // ดึง discount จาก cache หรือ wePAY API เท่านั้น
-  if (providerCompanyId) {
-    const cacheKey = `${productType}:${providerCompanyId}`;
-    
-    // ตรวจสอบ cache ก่อน
-    if (discountCache.has(cacheKey)) {
-      return discountCache.get(cacheKey) ?? 0;
-    }
+  if (!providerCompanyId) return 0;
 
-    // ถ้ายังไม่มีใน cache ให้ดึงจาก API
-    try {
-      const serviceInfo = await getWepayServiceInfo(productType, providerCompanyId);
-      if (serviceInfo.discount !== undefined && serviceInfo.discount !== null) {
-        const discount = Number(serviceInfo.discount);
-        // เก็บใน cache
-        discountCache.set(cacheKey, discount);
-        return discount;
-      }
-    } catch (err) {
-      // ถ้า API error ให้ใช้ 0
-      console.warn(`[PRODUCTS][SYNC] Failed to get service info for ${providerCompanyId}, using 0%:`, err instanceof WepayError ? err.message : 'Unknown error');
-      // เก็บ 0 ใน cache เพื่อไม่ให้เรียก API ซ้ำ
-      discountCache.set(cacheKey, 0);
-    }
+  const cacheKey = `${productType}:${providerCompanyId}`;
+  if (discountCache.has(cacheKey)) {
+    return discountCache.get(cacheKey) ?? 0;
   }
 
+  // 1. ดึงเปอร์เซ็นต์ส่วนลดจริงจาก wePAY API ก่อน (ต้องเรียกจาก IP ที่ wePAY whitelist ไว้เท่านั้น เช่น production server)
+  try {
+    const serviceInfo = await getWepayServiceInfo(productType, providerCompanyId);
+    if (serviceInfo.discount !== undefined && serviceInfo.discount !== null) {
+      const discount = Number(serviceInfo.discount);
+      discountCache.set(cacheKey, discount);
+      // อัปเดตตาราง override ให้ตรงกับค่าจริงจาก wePAY เสมอ เพื่อให้เป็นแหล่งสำรองที่ทันสมัย
+      void persistAgentDiscountOverride(providerCompanyId, discount);
+      return discount;
+    }
+  } catch (err) {
+    console.warn(`[PRODUCTS][SYNC] Failed to get service info for ${providerCompanyId} from wePAY, falling back to saved override:`, err instanceof WepayError ? err.message : 'Unknown error');
+  }
+
+  // 2. ถ้าเรียก wePAY ไม่ได้ (เช่น IP ไม่ได้ whitelist) ใช้ค่าที่บันทึกไว้ล่าสุดใน product_agent_discounts แทน
+  const overrideKey = providerCompanyId.trim().toUpperCase();
+  if (agentDiscountOverrides.has(overrideKey)) {
+    const fallback = agentDiscountOverrides.get(overrideKey) ?? 0;
+    discountCache.set(cacheKey, fallback);
+    return fallback;
+  }
+
+  discountCache.set(cacheKey, 0);
   return 0;
+}
+
+async function persistAgentDiscountOverride(providerCompanyId: string, discountPercent: number) {
+  try {
+    const sb = createServiceClient();
+    await sb.from('product_agent_discounts').upsert(
+      {
+        provider_company_id: providerCompanyId.trim(),
+        discount_percent: discountPercent,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'provider_company_id' }
+    );
+  } catch (err) {
+    console.warn(`[PRODUCTS][SYNC] Failed to persist agent discount override for ${providerCompanyId}:`, err);
+  }
 }
 
 function computeAgentCost(basePrice: number, discountPercent: number) {
@@ -131,11 +173,14 @@ function buildUidRegex(raw?: string | null, hasServer?: boolean) {
 export async function POST(req: Request) {
   // Clear discount cache เมื่อเริ่ม sync ใหม่
   discountCache.clear();
-  
+
   const auth = req.headers.get('authorization');
   if (!auth || auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+
+  // โหลดส่วนลดตัวแทนที่ admin กำหนดไว้เอง (ใช้เป็นแหล่งข้อมูลหลักก่อนเรียก wePAY API)
+  await loadAgentDiscountOverrides();
 
   // เพิ่ม timeout 5 นาที (300,000 ms)
   const controller = new AbortController();

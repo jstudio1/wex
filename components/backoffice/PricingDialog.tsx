@@ -73,12 +73,13 @@ const computeDiscountFromCost = (publicPrice: number | null, agentCost: number) 
 const normalizeItem = (item: any) => {
   const originalPrice = toNullableNumber(item.original_price);
   const agentCost = toNumber(item.agent_cost_price ?? item.price);
+  const sellPrice = toNumber(item.price ?? agentCost);
   const discountPercent = toNumber(item.agent_discount_percent, 0);
   return {
     id: item.id,
     name: item.name ?? '',
     sku: item.sku ?? '',
-    price: agentCost,
+    price: sellPrice,
     agent_cost_price: agentCost,
     original_price: originalPrice,
     agent_discount_percent: discountPercent,
@@ -251,16 +252,15 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
 
   const applyDiscountToItems = (list: ProductItem[], percent: number) => {
     return list.map((item) => {
-      const base = item.original_price ?? item.price ?? 0;
+      const base = item.original_price ?? item.agent_cost_price ?? 0;
       const cost =
         base !== null && base !== undefined
-          ? computeAgentCostFromDiscount(Number(base), percent) ?? Number(item.price ?? 0)
-          : Number(item.price ?? 0);
+          ? computeAgentCostFromDiscount(Number(base), percent) ?? Number(item.agent_cost_price ?? 0)
+          : Number(item.agent_cost_price ?? 0);
       return {
         ...item,
         agent_discount_percent: percent,
         agent_cost_price: cost,
-        price: cost,
       };
     });
   };
@@ -494,7 +494,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
             id: item.id,
             name: item.name.trim(),
             sku: item.sku.trim(),
-            price: item.agent_cost_price,
+            price: item.price,
             original_price: item.original_price,
             agent_cost_price: item.agent_cost_price,
             agent_discount_percent: item.agent_discount_percent,
@@ -757,7 +757,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
               </CardHeader>
               <CardContent>
                 <div className="rounded-xl border border-gray-900 bg-[#0a0a0a] overflow-hidden">
-                  <Table className="min-w-[1200px]">
+                  <Table className="min-w-[1250px]">
                       <TableHeader>
                       <TableRow className="border-gray-900 bg-white/5 hover:bg-white/5 text-gray-300">
                         <TableHead className="min-w-[40px] text-gray-300"></TableHead>
@@ -765,9 +765,10 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                         <TableHead className="min-w-[220px] text-gray-300">แพ็กเกจ</TableHead>
                         <TableHead className="min-w-[140px] text-gray-300">SKU</TableHead>
                         <TableHead className="min-w-[260px] text-gray-300">Icon URL</TableHead>
-                        <TableHead className="min-w-[150px] text-gray-300">ราคาทุน</TableHead>
-                        <TableHead className="min-w-[120px] text-gray-300">Markup %</TableHead>
-                        <TableHead className="min-w-[120px] text-gray-300">Markup ฿</TableHead>
+                        <TableHead className="min-w-[140px] text-gray-300">ราคาทุน (wePAY)</TableHead>
+                        <TableHead className="min-w-[150px] text-gray-300">ราคาขาย</TableHead>
+                        <TableHead className="min-w-[120px] text-gray-300">กำไร</TableHead>
+                        <TableHead className="min-w-[150px] text-emerald-300">ราคาขายจริง</TableHead>
                         <TableHead className="min-w-[120px] text-right text-gray-300">จัดการ</TableHead>
                         <TableHead className="min-w-[120px] text-center text-gray-300">ราคาสิทธิ์</TableHead>
                         </TableRow>
@@ -877,76 +878,46 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                             </div>
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                              value={item.agent_cost_price ?? item.price}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                  setItems((prevItems) =>
-                                    prevItems.map((i) => {
-                                      if (i.id !== item.id) return i;
-                                      const parsed = val === '' ? 0 : parseFloat(val) || 0;
-                                      const newDiscount = computeDiscountFromCost(
-                                        i.original_price,
-                                        parsed,
-                                      );
-                                      return {
-                                        ...i,
-                                        price: parsed,
-                                        agent_cost_price: parsed,
-                                        agent_discount_percent: Number.isFinite(newDiscount)
-                                          ? newDiscount
-                                          : i.agent_discount_percent,
-                                      };
-                                    }),
-                                    );
-                                  }
-                                }}
-                              placeholder="0.00"
-                              className={`${darkInputClass} w-full min-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                              />
+                              <div className="text-white font-medium min-w-[140px]" title="ราคาทุนนี้ดึงมาจาก wePAY อัตโนมัติทุกครั้งที่ Sync ไม่สามารถแก้ไขตรงนี้ได้">
+                                {Number(item.agent_cost_price ?? 0).toFixed(2)} ฿
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input
                                 type="text"
                                 inputMode="decimal"
-                                value={item.markup_percent}
+                                value={item.price}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                  setItems((prevItems) =>
-                                    prevItems.map((i) =>
+                                    setItems((prevItems) =>
+                                      prevItems.map((i) =>
                                         i.id === item.id
-                                          ? { ...i, markup_percent: val === '' ? 0 : parseFloat(val) || 0 }
-                                        : i,
-                                    ),
+                                          ? { ...i, price: val === '' ? 0 : parseFloat(val) || 0 }
+                                          : i,
+                                      ),
                                     );
                                   }
                                 }}
-                              className={`${darkInputClass} w-full min-w-[130px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                                placeholder="0.00"
+                                className={`${darkInputClass} w-full min-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                               />
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={item.markup_fixed}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                  setItems((prevItems) =>
-                                    prevItems.map((i) =>
-                                        i.id === item.id
-                                          ? { ...i, markup_fixed: val === '' ? 0 : parseFloat(val) || 0 }
-                                        : i,
-                                    ),
-                                    );
-                                  }
-                                }}
-                              className={`${darkInputClass} w-full min-w-[130px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                              />
+                              {(() => {
+                                const profit = Number(item.price || 0) - Number(item.agent_cost_price || 0);
+                                const isLoss = profit < 0;
+                                return (
+                                  <span className={`font-semibold ${isLoss ? 'text-red-400' : 'text-emerald-300'}`}>
+                                    {isLoss ? '' : '+'}{profit.toFixed(2)} ฿
+                                  </span>
+                                );
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-semibold text-emerald-300">
+                                {Number(item.price || 0).toFixed(2)} ฿
+                              </span>
                             </TableCell>
                             <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -1168,7 +1139,7 @@ export default function PricingDialog({ open, onOpenChange, productId }: Pricing
                         <div className="font-semibold text-white">{selectedItemForPrice.name}</div>
                         <div className="text-sm text-gray-400">SKU: {selectedItemForPrice.sku}</div>
                         <div className="text-sm text-gray-500">
-                          ราคาปกติ: {Number(selectedItemForPrice.agent_cost_price ?? selectedItemForPrice.price).toFixed(2)} ฿
+                          ราคาปกติ: {Number(selectedItemForPrice.price ?? selectedItemForPrice.agent_cost_price).toFixed(2)} ฿
             </div>
                       </div>
                     )}

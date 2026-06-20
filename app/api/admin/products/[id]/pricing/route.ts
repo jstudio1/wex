@@ -118,7 +118,6 @@ export async function PUT(
       }
       if (itemUpdate.price !== undefined) {
         updateData.price = itemUpdate.price;
-        updateData.agent_cost_price = itemUpdate.price;
       }
       if (itemUpdate.original_price !== undefined) {
         updateData.original_price = itemUpdate.original_price;
@@ -129,7 +128,6 @@ export async function PUT(
       }
       if (itemUpdate.agent_cost_price !== undefined) {
         updateData.agent_cost_price = itemUpdate.agent_cost_price;
-        updateData.price = itemUpdate.agent_cost_price;
       }
       if (itemUpdate.agent_discount_percent !== undefined) {
         updateData.agent_discount_percent = itemUpdate.agent_discount_percent;

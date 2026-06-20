@@ -1,7 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { getAuthUser } from '@/lib/auth';
 
 type Params = { params: Promise<{ key: string }> };
@@ -25,7 +24,6 @@ export async function GET(req: NextRequest, { params }: Params) {
     // Get icon_url from product object
     const iconUrl = (product as any).icon_url || null;
 
-    const { pct: gpct, fix: gfix } = await getGlobalMarkup();
     const productId = Number(product.id); // แปลงเป็น number เพื่อให้แน่ใจว่า type ถูกต้อง
     
     // Get user permission_id if available
@@ -121,7 +119,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const percentDisplay = badgePercent != null && badgePercent > 0 ? `${badgePercent}% OFF` : null;
     const badgeDisplay = badgeText || percentDisplay;
 
-    const applyDiscount = Boolean((product as any).badge_apply_price) && badgePercent != null && badgePercent > 0;
+    const applyDiscount = badgeEnabled && Boolean((product as any).badge_apply_price) && badgePercent != null && badgePercent > 0;
 
     // Process icon_url
     const finalIconUrl = iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0 
@@ -152,9 +150,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     const mappedItems = (items || []).map((i) => {
       const publicPrice = Number((i as any).public_price ?? i.original_price ?? i.price ?? 0);
       const agentCost = Number((i as any).agent_cost_price ?? i.price ?? 0);
-      const pct = Number((i as any).markup_percent ?? 0);
-      const fix = Number((i as any).markup_fixed ?? 0);
-      const computed = computePrice(agentCost, pct, fix, gpct, gfix);
+      // ราคาขายที่ admin ตั้งไว้ในหลังบ้านคือราคาขายจริง ไม่บวก Global Markup (ใช้เฉพาะแอพพรีเมียม)
+      const sellBase = Number(i.price ?? agentCost ?? 0);
+      const computed = sellBase;
       
       // ตรวจสอบว่า item เป็น flashsale และยังอยู่ในช่วงเวลาหรือไม่
       const isFlashsale = Boolean((i as any).is_flashsale);

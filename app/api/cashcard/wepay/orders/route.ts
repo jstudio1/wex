@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase';
 import { logOrderToDiscord } from '@/lib/discord';
 import { createCashcardOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
 import { validateCoupon } from '@/lib/coupons';
+import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { z } from 'zod';
 
 const FALLBACK_BASE =
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
     // ดึง product จาก database
     const { data: product, error: productError } = await sb
       .from('products')
-      .select('id, name, key, image_url, provider_company_id, product_type')
+      .select('id, name, key, image_url, provider_company_id, product_type, badge_enabled, badge_percent, badge_apply_price')
       .eq('key', product_key)
       .eq('is_published', true)
       .eq('product_type', 'cashcard')
@@ -138,7 +139,7 @@ export async function POST(req: Request) {
     // ดึง item จาก database
     const { data: item, error: itemError } = await sb
       .from('product_items')
-      .select('id, name, sku, price, original_price')
+      .select('id, name, sku, price, original_price, agent_cost_price, markup_percent, markup_fixed')
       .eq('product_id', product.id)
       .eq('sku', item_sku)
       .maybeSingle();
@@ -146,9 +147,21 @@ export async function POST(req: Request) {
     if (itemError) return NextResponse.json({ error: 'db_error', detail: itemError.message }, { status: 500 });
     if (!item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 });
 
-    // ราคาที่ขาย (สำหรับคำนวณราคาที่ลูกค้าต้องจ่าย)
-    const itemPrice = Number(item.price || 0);
-    
+    // คำนวณราคาขายสด (ทุน + markup ต่อสินค้า + markup ทั้งเว็บ) ให้ตรงกับสูตรเดียวกับที่แสดงผลหน้า user
+    const { pct: gpct, fix: gfix } = await getGlobalMarkup();
+    const agentCost = Number((item as any).agent_cost_price ?? item.price ?? 0);
+    const itemMarkupPct = Number((item as any).markup_percent ?? 0);
+    const itemMarkupFix = Number((item as any).markup_fixed ?? 0);
+    const liveComputedPrice = computePrice(agentCost, itemMarkupPct, itemMarkupFix, gpct, gfix);
+
+    // ใช้ badge discount เดียวกับที่แสดงผลหน้า user (ต้องเปิด badge_enabled จริงๆ ไม่ใช่แค่ badge_apply_price)
+    const badgeEnabled = Boolean((product as any).badge_enabled);
+    const badgePercent = Number((product as any).badge_percent ?? 0);
+    const applyBadgeDiscount = badgeEnabled && Boolean((product as any).badge_apply_price) && badgePercent > 0;
+    const itemPrice = applyBadgeDiscount
+      ? Math.max(0, liveComputedPrice * (1 - badgePercent / 100))
+      : liveComputedPrice;
+
     // จำนวนเงินที่แท้จริงที่จะเติม (face value) - ใช้ original_price ถ้ามี, ไม่งั้นใช้ price
     const faceValue = Number((item as any).original_price || item.price || 0);
 

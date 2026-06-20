@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
 // cache response ชุดสินค้า gtopup 60 วินาที ลดภาระ DB
 export const revalidate = 60;
@@ -9,19 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const sb = createServiceClient();
-    
-    // Get global markup with error handling
-    let gpct = 0;
-    let gfix = 0;
-    try {
-      const markup = await getGlobalMarkup();
-      gpct = markup.pct;
-      gfix = markup.fix;
-    } catch (markupErr) {
-      console.error('[GET /api/products] Error fetching global markup:', markupErr);
-      // Continue with default values (0, 0)
-    }
-    
+
     const categorySlug = req.nextUrl.searchParams.get('category');
     const idsParam = req.nextUrl.searchParams.get('ids');
     
@@ -66,28 +53,42 @@ export async function GET(req: NextRequest) {
       countByProduct.set(pid, (countByProduct.get(pid) || 0) + 1);
     }
 
+    const badgeByProduct = new Map<number, { applyDiscount: boolean; percent: number }>();
+    for (const p of products || []) {
+      const pid = (p as any).id as number;
+      const badgeEnabled = Boolean((p as any).badge_enabled);
+      const badgePercent = Number((p as any).badge_percent ?? 0);
+      const applyDiscount = badgeEnabled && Boolean((p as any).badge_apply_price) && badgePercent > 0;
+      badgeByProduct.set(pid, { applyDiscount, percent: badgePercent });
+    }
+
     const itemsByProduct = new Map<number, any[]>();
     for (const it of items || []) {
-      const arr = itemsByProduct.get(it.product_id as number) || [];
+      const productId = it.product_id as number;
+      const arr = itemsByProduct.get(productId) || [];
       const agentCost = Number((it as any).agent_cost_price ?? it.price ?? 0);
       const publicPrice = Number((it as any).public_price ?? it.original_price ?? agentCost);
-      const pct = Number((it as any).markup_percent ?? 0);
-      const fix = Number((it as any).markup_fixed ?? 0);
-      const computed = computePrice(agentCost, pct, fix, gpct, gfix);
+      // ราคาขายที่ admin ตั้งไว้ในหลังบ้านคือราคาขายจริง ไม่บวก Global Markup (ใช้เฉพาะแอพพรีเมียม)
+      const sellBase = Number(it.price ?? agentCost ?? 0);
+      const computed = sellBase;
+      const badgeInfo = badgeByProduct.get(productId);
+      const finalComputed = badgeInfo?.applyDiscount
+        ? Math.max(0, computed * (1 - badgeInfo.percent / 100))
+        : computed;
       const originalPriceStr = Number.isFinite(publicPrice) ? publicPrice.toFixed(2) : '0.00';
       const agentCostStr = Number.isFinite(agentCost) ? agentCost.toFixed(2) : '0.00';
       arr.push({
         id: it.id,
         name: it.name,
         sku: it.sku,
-        price: computed.toFixed(2),
+        price: finalComputed.toFixed(2),
         originalPrice: originalPriceStr,
         agentCost: agentCostStr,
         agentDiscountPercent: Number((it as any).agent_discount_percent ?? 0),
         is_recommended: Boolean((it as any).is_recommended),
         icon_url: (it as any).icon_url || null
       });
-      itemsByProduct.set(it.product_id as number, arr);
+      itemsByProduct.set(productId, arr);
     }
 
     // categories map
