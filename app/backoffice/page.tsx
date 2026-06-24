@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell, RefreshCw, Smartphone } from 'lucide-react';
+import { Package, Grid3x3, ShoppingCart, Users, Tag, Gift, Globe, Coins, Home, Share2, FolderTree, LayoutDashboard, ChevronRight, ChevronDown, Key, Gamepad2, TrendingUp, DollarSign, CreditCard, Trophy, Receipt, Share, MessageSquare, FileText, Phone, Bell, RefreshCw, Smartphone, AlertTriangle, Clock } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -760,6 +760,70 @@ function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRef
         )}
       </div>
 
+      {/* Order Health Alert - คำสั่งซื้อที่ล้มเหลว/ค้างอยู่ */}
+      {(stats?.orderHealth?.failedLast24h > 0 || stats?.orderHealth?.stuckPendingCount > 0 || stats?.orderHealth?.stuckSocialCount > 0) && (
+        <Card className="bg-gradient-to-br from-red-950/40 to-orange-950/20 border-red-700/50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <CardTitle className="text-white">คำสั่งซื้อที่มีปัญหา</CardTitle>
+            </div>
+            <CardDescription className="text-gray-400">
+              ออเดอร์ล้มเหลวหรือค้างอยู่นานเกิน {stats?.orderHealth?.thresholdMinutes || 10} นาที ควรตรวจสอบระบบเติม/provider
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
+                <div>
+                  <div className="text-xl font-bold text-white">{stats?.orderHealth?.failedLast24h || 0}</div>
+                  <p className="text-xs text-gray-400">ล้มเหลวใน 24 ชม. (รวมทั้งหมด {stats?.orderHealth?.failedCount || 0})</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                <Clock className="h-5 w-5 text-orange-400 shrink-0" />
+                <div>
+                  <div className="text-xl font-bold text-white">{stats?.orderHealth?.stuckPendingCount || 0}</div>
+                  <p className="text-xs text-gray-400">เติมเกม/มือถือ/บัตร ค้างอยู่</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                <Clock className="h-5 w-5 text-orange-400 shrink-0" />
+                <div>
+                  <div className="text-xl font-bold text-white">{stats?.orderHealth?.stuckSocialCount || 0}</div>
+                  <p className="text-xs text-gray-400">ปั้มโซเชียล ค้างอยู่</p>
+                </div>
+              </div>
+            </div>
+            {Array.isArray(stats?.orderHealth?.stuckOrders) && stats.orderHealth.stuckOrders.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-gray-800">
+                      <th className="py-2 pr-4">รหัส</th>
+                      <th className="py-2 pr-4">สินค้า</th>
+                      <th className="py-2 pr-4">สถานะ</th>
+                      <th className="py-2 pr-4">ค้างมาแล้ว</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.orderHealth.stuckOrders.map((o: any) => (
+                      <tr key={o.id} className="border-b border-gray-800/50">
+                        <td className="py-2 pr-4 text-gray-300">{o.transaction_id || o.id}</td>
+                        <td className="py-2 pr-4 text-gray-300">{o.product_name}</td>
+                        <td className="py-2 pr-4 text-orange-400">{o.state}</td>
+                        <td className="py-2 pr-4 text-gray-300">{o.minutesStuck} นาที</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Revenue & Topup Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-emerald-950/50 to-emerald-900/30 border-emerald-700/50">
@@ -880,6 +944,50 @@ function EnhancedDashboard({ stats, onRefresh, refreshing }: { stats: any; onRef
         </div>
       </div>
 
+
+      {/* Top 5 สินค้าขายดี แยกตามประเภท */}
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-yellow-400" />
+          สินค้าขายดี Top 5
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {([
+            { key: 'gtopup', label: 'เติมเกม', color: 'text-blue-400' },
+            { key: 'mtopup', label: 'เติมเงินมือถือ', color: 'text-emerald-400' },
+            { key: 'cashcard', label: 'บัตรเติมเงิน', color: 'text-purple-400' },
+          ] as const).map((type) => {
+            const items = stats?.topProducts?.[type.key] || [];
+            return (
+              <Card key={type.key} className="bg-[#0a0a0a] border-gray-800">
+                <CardHeader className="pb-3">
+                  <CardTitle className={`text-sm font-semibold ${type.color}`}>{type.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {items.length === 0 ? (
+                    <p className="text-xs text-gray-500">ยังไม่มีออเดอร์ที่สำเร็จ</p>
+                  ) : (
+                    <ol className="space-y-2">
+                      {items.map((item: any, idx: number) => (
+                        <li key={item.product_id} className="flex items-center justify-between gap-2 text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs text-gray-500 w-4 shrink-0">{idx + 1}.</span>
+                            <span className="text-gray-200 truncate">{item.name}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-white font-semibold">{item.quantity} ออเดอร์</div>
+                            <div className="text-xs text-gray-500">{formatCurrency(item.revenue)} ฿</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
