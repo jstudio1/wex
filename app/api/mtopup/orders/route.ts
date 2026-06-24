@@ -4,7 +4,6 @@ import { createServiceClient } from '@/lib/supabase';
 import { logOrderToDiscord } from '@/lib/discord';
 import { createMtopupOrder, generateDestRef, WepayError } from '@/lib/providers/wepay';
 import { validateCoupon } from '@/lib/coupons';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 import { z } from 'zod';
 
 const FALLBACK_BASE =
@@ -150,12 +149,11 @@ export async function POST(req: Request) {
     if (itemError) return NextResponse.json({ error: 'db_error', detail: itemError.message }, { status: 500 });
     if (!item) return NextResponse.json({ error: 'item_not_found' }, { status: 404 });
 
-    // คำนวณราคาขายสด (ทุน + markup ต่อสินค้า + markup ทั้งเว็บ) ให้ตรงกับสูตรเดียวกับที่แสดงผลหน้า user
-    const { pct: gpct, fix: gfix } = await getGlobalMarkup();
+    // คำนวณราคาขายสด ให้ตรงกับสูตรเดียวกับที่แสดงผลหน้า user
+    // ราคาขาย (item.price) คือราคาขายจริง ไม่บวก Global Markup (ใช้เฉพาะแอพพรีเมียม) และไม่ใช่ราคาทุน
     const agentCost = Number((item as any).agent_cost_price ?? item.price ?? 0);
-    const itemMarkupPct = Number((item as any).markup_percent ?? 0);
-    const itemMarkupFix = Number((item as any).markup_fixed ?? 0);
-    const liveComputedPrice = computePrice(agentCost, itemMarkupPct, itemMarkupFix, gpct, gfix);
+    const sellBase = Number(item.price ?? agentCost ?? 0);
+    const liveComputedPrice = sellBase;
 
     // ใช้ badge discount เดียวกับที่แสดงผลหน้า user (ต้องเปิด badge_enabled จริงๆ ไม่ใช่แค่ badge_apply_price)
     const badgeEnabled = Boolean((product as any).badge_enabled);

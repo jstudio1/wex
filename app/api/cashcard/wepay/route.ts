@@ -1,24 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase';
-import { getGlobalMarkup, computePrice } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
     const sb = createServiceClient();
-    
-    // Get global markup with error handling
-    let gpct = 0;
-    let gfix = 0;
-    try {
-      const markup = await getGlobalMarkup();
-      gpct = markup.pct;
-      gfix = markup.fix;
-    } catch (markupErr) {
-      console.error('[GET /api/cashcard/wepay] Error fetching global markup:', markupErr);
-    }
-    
+
     const { data: products, error: perr } = await sb
       .from('products')
       .select('id, name, key, image_url, badge_enabled, badge_percent, badge_text, badge_apply_price')
@@ -61,9 +49,9 @@ export async function GET(req: Request) {
       const arr = itemsByProduct.get(it.product_id as number) || [];
       const agentCost = Number((it as any).agent_cost_price ?? it.price ?? 0);
       const publicPrice = Number((it as any).public_price ?? it.original_price ?? agentCost);
-      const pct = Number((it as any).markup_percent ?? 0);
-      const fix = Number((it as any).markup_fixed ?? 0);
-      const computed = computePrice(agentCost, pct, fix, gpct, gfix);
+      // ราคาขายที่ admin ตั้งไว้ในหลังบ้านคือราคาขายจริง ไม่บวก Global Markup (ใช้เฉพาะแอพพรีเมียม)
+      const sellBase = Number(it.price ?? agentCost ?? 0);
+      const computed = sellBase;
       const originalPriceStr = Number.isFinite(publicPrice) ? publicPrice.toFixed(2) : '0.00';
       const agentCostStr = Number.isFinite(agentCost) ? agentCost.toFixed(2) : '0.00';
       arr.push({
