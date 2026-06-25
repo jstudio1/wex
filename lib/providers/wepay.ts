@@ -97,17 +97,33 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
     bodyPreview: bodyString.substring(0, 100) + (bodyString.length > 100 ? '...' : '')
   });
 
+  // ตั้ง timeout กันค้างไม่จำกัดเวลาถ้า wePAY ไม่ตอบกลับ (เคยทำให้ Apache/Cloudflare ตัดเป็น 502 ก่อนที่เราจะคืนเงินลูกค้าได้)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25_000);
+
   const init: RequestInit & { dispatcher?: Agent } = {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: bodyString,
     cache: 'no-store',
     dispatcher: ipv4Agent,
+    signal: controller.signal,
   };
 
-  const res = await fetch(`${BASE_URL}/client_api.json.php`, init as RequestInit);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/client_api.json.php`, init as RequestInit);
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error('[wePAY] Request timed out after 25s:', { url: `${BASE_URL}/client_api.json.php`, params: debugParams });
+      throw new WepayError('timeout', 'wePAY ไม่ตอบกลับภายในเวลาที่กำหนด กรุณาลองใหม่อีกครั้ง');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const text = await res.text();
   
