@@ -259,7 +259,7 @@ export default function OrdersContent() {
         key={order.id}
         className="bg-card border border-emerald-500/20 hover:border-emerald-500/50 transition-colors"
       >
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="p-4 !pt-4 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
               {productImage && (
