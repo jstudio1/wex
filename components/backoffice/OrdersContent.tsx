@@ -137,6 +137,7 @@ export default function OrdersContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refundingTx, setRefundingTx] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -156,6 +157,29 @@ export default function OrdersContent() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManualRefund = async (transactionId: string) => {
+    if (!confirm(`ยืนยันคืนเงินสำหรับออเดอร์ ${transactionId} ให้ลูกค้า?`)) return;
+    setRefundingTx(transactionId);
+    try {
+      const res = await fetch('/api/admin/orders/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transaction_id: transactionId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.detail || json.error || 'คืนเงินไม่สำเร็จ');
+      }
+      toast.show({ title: 'คืนเงินสำเร็จ', description: `คืนเงิน ${json.refunded_amount} บาทเข้า wallet ลูกค้าแล้ว` });
+      await fetchOrders();
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.show({ title: 'เกิดข้อผิดพลาด', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setRefundingTx(null);
     }
   };
 
@@ -264,6 +288,17 @@ export default function OrdersContent() {
                 <span className={`text-xs px-2 py-1 rounded border w-fit ${productOrder.refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
                   {productOrder.refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
                 </span>
+              )}
+              {productOrder.state === 'failed' && !productOrder.refunded && productOrder.transaction_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={refundingTx === productOrder.transaction_id}
+                  onClick={() => handleManualRefund(productOrder.transaction_id!)}
+                  className="h-6 px-2 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 w-fit"
+                >
+                  {refundingTx === productOrder.transaction_id ? 'กำลังคืนเงิน...' : 'คืนเงิน'}
+                </Button>
               )}
             </div>
           </TableCell>
@@ -787,10 +822,21 @@ export default function OrdersContent() {
                 {(selectedOrder.type === 'gtopup' || selectedOrder.type === 'mtopup' || selectedOrder.type === 'cashcard') && selectedOrder.state === 'failed' && (
                   <div className="space-y-2 col-span-2">
                     <div className="text-sm text-gray-400">สถานะการคืนเงิน</div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <span className={`text-xs px-2 py-1 rounded border ${(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
                         {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
                       </span>
+                      {!(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).refunded && selectedOrder.transaction_id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={refundingTx === selectedOrder.transaction_id}
+                          onClick={() => handleManualRefund(selectedOrder.transaction_id!)}
+                          className="h-7 px-3 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+                        >
+                          {refundingTx === selectedOrder.transaction_id ? 'กำลังคืนเงิน...' : 'คืนเงินให้ลูกค้า'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
