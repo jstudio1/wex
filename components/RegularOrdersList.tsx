@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, ShoppingCart, History, Check, Loader2, XCircle, Clock } from 'lucide-react';
+import { RefreshCw, ShoppingCart, History, Check, Loader2, XCircle, Clock, RotateCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -327,11 +327,11 @@ export default function RegularOrdersList() {
                 {timelineLoading && <div className="text-sm text-gray-400">กำลังโหลดไทม์ไลน์...</div>}
                 {!timelineLoading && timelineItems && timelineItems.map((it, idx) => {
                   const st = (it.state || '').toLowerCase();
-                  const Icon = st === 'completed' || st === 'success' ? Check : st === 'failed' || st === 'cancelled' ? XCircle : st === 'processing' || st === 'confirming' ? Loader2 : Clock;
-                  const label = st === 'pending' ? 'รอดำเนินการ' : st === 'processing' || st === 'confirming' ? 'กำลังดำเนินการ' : st === 'completed' || st === 'success' ? 'สำเร็จ' : translateState(st);
+                  const Icon = st === 'refunded' ? RotateCcw : st === 'completed' || st === 'success' ? Check : st === 'failed' || st === 'cancelled' ? XCircle : st === 'processing' || st === 'confirming' ? Loader2 : Clock;
+                  const label = st === 'refunded' ? 'คืนเงินแล้ว' : st === 'pending' ? 'รอดำเนินการ' : st === 'processing' || st === 'confirming' ? 'กำลังดำเนินการ' : st === 'completed' || st === 'success' ? 'สำเร็จ' : translateState(st);
                   return (
                     <div key={idx} className="flex items-start gap-3">
-                      <Icon className={`mt-0.5 h-4 w-4 ${st === 'completed' || st === 'success' ? 'text-green-500' : st === 'failed' || st === 'cancelled' ? 'text-red-500' : 'text-gray-500'}`} />
+                      <Icon className={`mt-0.5 h-4 w-4 ${st === 'refunded' ? 'text-emerald-400' : st === 'completed' || st === 'success' ? 'text-green-500' : st === 'failed' || st === 'cancelled' ? 'text-red-500' : 'text-gray-500'}`} />
                       <div>
                         <div className="font-medium text-white">{label}</div>
                         <div className="text-xs text-gray-400">{new Date(it.created_at).toLocaleString('th-TH')}</div>

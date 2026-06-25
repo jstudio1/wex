@@ -44,6 +44,7 @@ interface GtopupOrder extends BaseOrder {
   input_json?: Record<string, any> | null;
   result_code?: string | null;
   result_message?: string | null;
+  refunded?: boolean;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
@@ -53,6 +54,7 @@ interface MtopupOrder extends BaseOrder {
   input_json?: Record<string, any> | null;
   result_code?: string | null;
   result_message?: string | null;
+  refunded?: boolean;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
@@ -62,6 +64,7 @@ interface CashcardOrder extends BaseOrder {
   input_json?: Record<string, any> | null;
   result_code?: string | null;
   result_message?: string | null;
+  refunded?: boolean;
   product?: { id: number; name: string; image_url: string | null; key: string } | null;
 }
 
@@ -253,9 +256,16 @@ export default function OrdersContent() {
           </TableCell>
           <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
           <TableCell>
-            <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
-              {translateState(order.state)}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span className={`text-xs px-2 py-1 rounded border w-fit ${getStateColorClass(order.state)}`}>
+                {translateState(order.state)}
+              </span>
+              {productOrder.state === 'failed' && (
+                <span className={`text-xs px-2 py-1 rounded border w-fit ${productOrder.refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+                  {productOrder.refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
+                </span>
+              )}
+            </div>
           </TableCell>
           <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
         </TableRow>
@@ -774,6 +784,16 @@ export default function OrdersContent() {
                   <div className="text-sm text-gray-400">วันที่สั่งซื้อ</div>
                   <div className="text-white">{new Date(selectedOrder.created_at).toLocaleString('th-TH')}</div>
                 </div>
+                {(selectedOrder.type === 'gtopup' || selectedOrder.type === 'mtopup' || selectedOrder.type === 'cashcard') && selectedOrder.state === 'failed' && (
+                  <div className="space-y-2 col-span-2">
+                    <div className="text-sm text-gray-400">สถานะการคืนเงิน</div>
+                    <div>
+                      <span className={`text-xs px-2 py-1 rounded border ${(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+                        {(selectedOrder as GtopupOrder | MtopupOrder | CashcardOrder).refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Product Info */}

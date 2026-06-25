@@ -140,6 +140,15 @@ export async function POST(req: Request) {
         console.error('[WEBHOOK][WEPAY] Failed to refund wallet for', transactionId, refundError);
       } else {
         console.log('[WEBHOOK][WEPAY] Refunded', existing.price, 'to user', existing.user_id, 'for failed order', transactionId);
+        try {
+          await sb.from('order_status_logs').insert({
+            transaction_id: transactionId,
+            state: 'refunded',
+            message: `คืนเงิน ${existing.price} บาทเข้า wallet แล้ว`
+          });
+        } catch (logErr) {
+          console.warn('Failed to insert refund status log:', logErr);
+        }
       }
     }
 

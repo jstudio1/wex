@@ -99,19 +99,23 @@ export async function GET() {
     ];
     
     const orderLogsMap = new Map<string, string>();
+    const refundedTxSet = new Set<string>();
     if (allTransactionIds.length > 0) {
       const { data: logs } = await sb
         .from('order_status_logs')
-        .select('transaction_id, message')
+        .select('transaction_id, message, state')
         .in('transaction_id', allTransactionIds)
         .not('message', 'is', null);
-      
+
       if (logs) {
         for (const log of logs) {
           const txId = log.transaction_id as string;
           const message = log.message as string;
           if (txId && message && !orderLogsMap.has(txId)) {
             orderLogsMap.set(txId, message);
+          }
+          if (txId && log.state === 'refunded') {
+            refundedTxSet.add(txId);
           }
         }
       }
@@ -130,6 +134,7 @@ export async function GET() {
       input_json: order.input_json || null,
       result_code: order.result_code || null,
       result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
+      refunded: order.transaction_id ? refundedTxSet.has(order.transaction_id) : false,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
@@ -147,6 +152,7 @@ export async function GET() {
       input_json: order.input_json || null,
       result_code: order.result_code || null,
       result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
+      refunded: order.transaction_id ? refundedTxSet.has(order.transaction_id) : false,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
@@ -164,6 +170,7 @@ export async function GET() {
       input_json: order.input_json || null,
       result_code: order.result_code || null,
       result_message: order.transaction_id ? orderLogsMap.get(order.transaction_id) || null : null,
+      refunded: order.transaction_id ? refundedTxSet.has(order.transaction_id) : false,
       product: productsMap.get(order.product_id) || null,
       user: usersMap.get(order.user_id) || null,
     }));
