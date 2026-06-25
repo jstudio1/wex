@@ -234,8 +234,7 @@ const getGameAccounts = cache(async (limit: number = 12) => {
 const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit: number = 12) => {
   try {
     const sb = createServiceClient();
-    const { pct: globalPct, fix: globalFix } = await getGlobalMarkup();
-    
+
     // Fetch products - à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡ badge_enabled à¸à¹ˆà¸­à¸™ (true à¸¡à¸²à¸à¹ˆà¸­à¸™), à¹à¸¥à¹‰à¸§à¸„à¹ˆà¸­à¸¢à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡ id
     const { data: products, error: productsError } = await sb
       .from('products')
@@ -273,16 +272,14 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
     for (const it of items || []) {
       const arr = itemsByProduct.get(it.product_id as number) || [];
       const agentCost = Number((it as any).agent_cost_price ?? it.price ?? 0);
-      const publicPrice = Number((it as any).public_price ?? it.original_price ?? agentCost);
-      const pct = Number((it as any).markup_percent ?? 0);
-      const fix = Number((it as any).markup_fixed ?? 0);
-      const computed = computePrice(agentCost, pct, fix, globalPct, globalFix);
-      
+      const sellBase = Number(it.price ?? agentCost ?? 0);
+      const publicPrice = Number((it as any).public_price ?? it.original_price ?? sellBase);
+
       arr.push({
         id: it.id,
         name: it.name,
         sku: it.sku,
-        price: computed.toFixed(2),
+        price: sellBase.toFixed(2),
         originalPrice: publicPrice.toFixed(2),
         is_recommended: Boolean((it as any).is_recommended),
         icon_url: (it as any).icon_url || null
@@ -305,8 +302,12 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
     // Build result
     return products.map((p: any) => {
       const productItems = itemsByProduct.get(p.id) || [];
-      const recommendedItem = productItems.find((item: any) => item.is_recommended) || productItems[0];
-      
+      // "เริ่มต้น" คือราคาต่ำสุดที่มีขาย ไม่ใช่ไอเทมแรก/ไอเทมแนะนำ
+      const cheapestItem = productItems.reduce((min: any, item: any) => {
+        if (!min) return item;
+        return Number(item.price) < Number(min.price) ? item : min;
+      }, null as any);
+
       return {
         id: p.id,
         name: p.name,
@@ -322,7 +323,7 @@ const getProductsByType = cache(async (productType: 'gtopup' | 'cashcard', limit
               percent: p.badge_percent as number | null,
             }
           : null,
-        item: recommendedItem || null,
+        item: cheapestItem || null,
         totalSold: countByProduct.get(p.id) || 0,
       };
     }).filter((p: any) => p.item !== null);
