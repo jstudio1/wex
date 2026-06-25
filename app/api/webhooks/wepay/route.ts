@@ -46,10 +46,10 @@ export async function POST(req: Request) {
     const sb = createServiceClient();
     const { state, isTerminal } = toWepayState(statusCode);
     
-    // ดึงข้อมูล order เพื่อตรวจสอบ product_type
+    // ดึงข้อมูล order เพื่อตรวจสอบ product_type และข้อมูลสำหรับคืนเงินถ้าล้มเหลว
     const { data: existing } = await sb
       .from('orders')
-      .select('state, product_type')
+      .select('state, product_type, user_id, price')
       .eq('transaction_id', transactionId)
       .maybeSingle();
 
@@ -127,6 +127,19 @@ export async function POST(req: Request) {
         });
       } catch (logErr) {
         console.warn('Failed to insert order status log:', logErr);
+      }
+    }
+
+    // คืนเงินเข้า wallet ถ้าออเดอร์ล้มเหลว (เช็ค existing.state !== 'failed' กัน webhook ยิงซ้ำแล้วคืนเงินซ้ำ)
+    if (state === 'failed' && existing && existing.state !== 'failed' && existing.user_id && existing.price) {
+      const { error: refundError } = await sb.rpc('wallet_credit', {
+        u: existing.user_id,
+        amt: existing.price,
+      });
+      if (refundError) {
+        console.error('[WEBHOOK][WEPAY] Failed to refund wallet for', transactionId, refundError);
+      } else {
+        console.log('[WEBHOOK][WEPAY] Refunded', existing.price, 'to user', existing.user_id, 'for failed order', transactionId);
       }
     }
 
