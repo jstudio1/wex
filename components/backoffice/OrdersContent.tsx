@@ -17,14 +17,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 
 type OrderType = 'all' | 'gtopup' | 'mtopup' | 'cashcard' | 'app_premium' | 'social';
 
@@ -240,188 +233,112 @@ export default function OrdersContent() {
     return labels[type];
   };
 
-  const renderOrderRow = (order: Order) => {
+  const renderOrderCard = (order: Order) => {
     // Gtopup, Mtopup, Cashcard orders
+    let productLabel = 'ไม่พบข้อมูล';
+    let productImage: string | null = null;
+
     if (order.type === 'gtopup' || order.type === 'mtopup' || order.type === 'cashcard') {
       const productOrder = order as GtopupOrder | MtopupOrder | CashcardOrder;
-      const inputData = productOrder.input_json || {};
-      const inputEntries = Object.entries(inputData).filter(([_, v]) => v != null && v !== '');
-      
-      return (
-        <TableRow key={order.id}>
-          <TableCell className="font-medium text-white">{order.transaction_id || '-'}</TableCell>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              {productOrder.product?.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={productOrder.product.image_url}
-                  alt={productOrder.product.name}
-                  className="h-8 w-8 rounded object-cover"
-                />
-              )}
-              <span className="text-white">{productOrder.product?.name || 'ไม่พบข้อมูล'}</span>
-            </div>
-          </TableCell>
-          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
-          <TableCell className="text-gray-300">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedOrder(order);
-                setIsModalOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              ดูรายละเอียด
-            </Button>
-          </TableCell>
-          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
-          <TableCell>
-            <div className="flex flex-col gap-1">
-              <span className={`text-xs px-2 py-1 rounded border w-fit ${getStateColorClass(order.state)}`}>
-                {translateState(order.state)}
-              </span>
-              {productOrder.state === 'failed' && (
-                <span className={`text-xs px-2 py-1 rounded border w-fit ${productOrder.refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
-                  {productOrder.refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
-                </span>
-              )}
-              {productOrder.state === 'failed' && !productOrder.refunded && productOrder.transaction_id && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={refundingTx === productOrder.transaction_id}
-                  onClick={() => handleManualRefund(productOrder.transaction_id!)}
-                  className="h-6 px-2 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 w-fit"
-                >
-                  {refundingTx === productOrder.transaction_id ? 'กำลังคืนเงิน...' : 'คืนเงิน'}
-                </Button>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
-        </TableRow>
-      );
-    }
-
-    // App Premium orders
-    if (order.type === 'app_premium') {
+      productLabel = productOrder.product?.name || 'ไม่พบข้อมูล';
+      productImage = productOrder.product?.image_url || null;
+    } else if (order.type === 'app_premium') {
       const appOrder = order as AppPremiumOrder;
-      // Parse product_data from string to object
-      let productData: Record<string, any> = {};
-      try {
-        if (typeof appOrder.product_data === 'string') {
-          productData = JSON.parse(appOrder.product_data);
-        } else if (appOrder.product_data) {
-          productData = appOrder.product_data;
-        }
-      } catch (e) {
-        // If parsing fails, treat as empty object
-        productData = {};
-      }
-      const inputEntries = Object.entries(productData).filter(([_, v]) => v != null && v !== '');
-      const resultData = appOrder.raw_response || {};
-      
-      return (
-        <TableRow key={order.id}>
-          <TableCell className="font-medium text-white">{order.transaction_id || '-'}</TableCell>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              {(appOrder.product?.image_url || appOrder.product?.icon_url) && (
+      productLabel = appOrder.product?.display_name || appOrder.product?.name || 'ไม่พบข้อมูล';
+      productImage = appOrder.product?.image_url || appOrder.product?.icon_url || null;
+    } else if (order.type === 'social') {
+      const socialOrder = order as SocialOrder;
+      productLabel = socialOrder.social_service?.display_name || socialOrder.social_service?.name || 'ไม่พบข้อมูล';
+    }
+
+    const isRefundableType = order.type === 'gtopup' || order.type === 'mtopup' || order.type === 'cashcard';
+    const productOrder = isRefundableType ? (order as GtopupOrder | MtopupOrder | CashcardOrder) : null;
+
+    return (
+      <Card
+        key={order.id}
+        className="bg-card border border-emerald-500/20 hover:border-emerald-500/50 transition-colors"
+      >
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
+              {productImage && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={appOrder.product.image_url || appOrder.product.icon_url || ''}
-                  alt={appOrder.product.display_name || appOrder.product.name}
-                  className="h-8 w-8 rounded object-cover"
+                  src={productImage}
+                  alt={productLabel}
+                  className="h-10 w-10 rounded object-cover shrink-0"
                 />
               )}
-              <span className="text-white">{appOrder.product?.display_name || appOrder.product?.name || 'ไม่พบข้อมูล'}</span>
+              <div className="min-w-0">
+                <div className="text-white font-medium truncate">{productLabel}</div>
+                <div className="text-xs text-gray-400 font-mono">{order.transaction_id || `#${order.id}`}</div>
+              </div>
             </div>
-          </TableCell>
-          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
-          <TableCell className="text-gray-300">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedOrder(order);
-                setIsModalOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              ดูรายละเอียด
-            </Button>
-          </TableCell>
-          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
-          <TableCell>
-            <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
+            <div className="text-white font-semibold whitespace-nowrap">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-xs px-2 py-1 rounded border whitespace-nowrap ${getStateColorClass(order.state)}`}>
               {translateState(order.state)}
             </span>
-          </TableCell>
-          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
-        </TableRow>
-      );
-    }
+            {productOrder && productOrder.state === 'failed' && (
+              <span className={`text-xs px-2 py-1 rounded border whitespace-nowrap ${productOrder.refunded ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+                {productOrder.refunded ? 'คืนเงินแล้ว ✓' : 'ยังไม่คืนเงิน ✗'}
+              </span>
+            )}
+            {productOrder && productOrder.state === 'failed' && !productOrder.refunded && productOrder.transaction_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={refundingTx === productOrder.transaction_id}
+                onClick={() => handleManualRefund(productOrder.transaction_id!)}
+                className="h-7 px-3 text-xs border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+              >
+                {refundingTx === productOrder.transaction_id ? 'กำลังคืนเงิน...' : 'คืนเงิน'}
+              </Button>
+            )}
+          </div>
 
-    if (order.type === 'social') {
-      return (
-        <TableRow key={order.id}>
-          <TableCell className="font-medium text-white">{order.transaction_id || `SO-${order.id}`}</TableCell>
-          <TableCell>
-            <div>
-              <div className="font-medium text-white">{order.social_service?.display_name || order.social_service?.name || 'ไม่พบข้อมูล'}</div>
+          <div className="flex items-center justify-between gap-3 flex-wrap text-sm">
+            <div className="text-gray-400">
+              <span className="text-gray-500">ผู้ซื้อ:</span> <span className="text-gray-300">{order.user?.username || '-'}</span>
             </div>
-          </TableCell>
-          <TableCell className="text-gray-300">{order.user?.username || '-'}</TableCell>
-          <TableCell className="text-gray-300">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedOrder(order);
-                setIsModalOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              ดูรายละเอียด
-            </Button>
-          </TableCell>
-          <TableCell className="text-gray-300">{new Date(order.created_at).toLocaleString('th-TH')}</TableCell>
-          <TableCell>
-            <span className={`text-xs px-2 py-1 rounded border ${getStateColorClass(order.state)}`}>
-              {translateState(order.state)}
-            </span>
-          </TableCell>
-          <TableCell className="text-right text-white font-semibold">{Number(order.price ?? 0).toLocaleString('th-TH')} ฿</TableCell>
-        </TableRow>
-      );
-    }
+            <div className="text-gray-500 whitespace-nowrap">{new Date(order.created_at).toLocaleString('th-TH')}</div>
+          </div>
 
-    return null;
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedOrder(order);
+              setIsModalOpen(true);
+            }}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Eye className="h-4 w-4" />
+            ดูรายละเอียด
+          </Button>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-32" />
-        <div className="card p-4 overflow-x-auto">
-          <div className="min-w-[600px] space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-7 gap-2">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <Skeleton key={j} className="h-8 w-full" />
-                  ))}
-                </div>
-              ))}
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="card border border-emerald-500/20 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-9 w-32" />
             </div>
-          </div>
+          ))}
         </div>
       </div>
     );
@@ -470,309 +387,207 @@ export default function OrdersContent() {
         </div>
 
         <TabsContent value="all" active={activeTab === 'all'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                      {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อจะแสดงที่นี่เมื่อมีการสั่งซื้อ'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อจะแสดงที่นี่เมื่อมีการสั่งซื้อ'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
-                </div>
+              </Empty>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="app_premium" active={activeTab === 'app_premium'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                            {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ แอพพรีเมี่ยม'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อแอพพรีเมี่ยมจะแสดงที่นี่'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ แอพพรีเมี่ยม'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อแอพพรีเมี่ยมจะแสดงที่นี่'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </Empty>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="social" active={activeTab === 'social'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                            {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ ปั้มโซเชียล'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อปั้มโซเชียลจะแสดงที่นี่'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ ปั้มโซเชียล'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อปั้มโซเชียลจะแสดงที่นี่'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </Empty>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="gtopup" active={activeTab === 'gtopup'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                            {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ เติมเกม'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อเติมเกมจะแสดงที่นี่'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ เติมเกม'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อเติมเกมจะแสดงที่นี่'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
-                </div>
+              </Empty>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="mtopup" active={activeTab === 'mtopup'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                            {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ เติมเงินมือถือ'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อเติมเงินมือถือจะแสดงที่นี่'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ เติมเงินมือถือ'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อเติมเงินมือถือจะแสดงที่นี่'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
-              </div>
+              </Empty>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="cashcard" active={activeTab === 'cashcard'} className="mt-4">
-          <div className="card p-4 overflow-x-auto">
-            <Table className="min-w-[700px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>รหัสคำสั่งซื้อ</TableHead>
-                  <TableHead>สินค้า/บริการ</TableHead>
-                  <TableHead>ผู้ซื้อ</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead>วันที่สั่งซื้อ</TableHead>
-                  <TableHead>สถานะ</TableHead>
-                  <TableHead className="text-right">ราคา</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-8">
-                      <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <ShoppingCart className="size-6" />
-                          </EmptyMedia>
-                          <EmptyTitle className="text-white">
-                            {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ บัตรเติมเงิน'}
-                          </EmptyTitle>
-                          <EmptyDescription className="text-gray-400">
-                            {searchQuery 
-                              ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
-                              : 'คำสั่งซื้อบัตรเติมเงินจะแสดงที่นี่'}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                        {searchQuery && (
-                          <EmptyContent>
-                            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                              <RefreshCcw className="size-4" />
-                              รีเฟรช
-                            </Button>
-                          </EmptyContent>
-                        )}
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredOrders.map((order) => renderOrderRow(order))
+          {filteredOrders.length === 0 ? (
+            <div className="card p-4">
+              <Empty className="from-muted/50 to-background h-full bg-gradient-to-b from-30%">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="size-6" />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-white">
+                    {searchQuery ? 'ไม่พบคำสั่งซื้อที่ค้นหา' : 'ยังไม่มีคำสั่งซื้อ บัตรเติมเงิน'}
+                  </EmptyTitle>
+                  <EmptyDescription className="text-gray-400">
+                    {searchQuery
+                      ? 'ลองค้นหาด้วยคำอื่น หรือล้างเงื่อนไขการค้นหา'
+                      : 'คำสั่งซื้อบัตรเติมเงินจะแสดงที่นี่'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                {searchQuery && (
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      <RefreshCcw className="size-4" />
+                      รีเฟรช
+                    </Button>
+                  </EmptyContent>
                 )}
-              </TableBody>
-            </Table>
+              </Empty>
             </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredOrders.map((order) => renderOrderCard(order))}
+            </div>
+          )}
         </TabsContent>
 
       </Tabs>
