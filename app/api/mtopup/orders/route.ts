@@ -379,12 +379,14 @@ export async function POST(req: Request) {
       if (error.code === 'unauthorized') {
         return NextResponse.json({
           error: 'provider_auth_error',
-          detail: error.message || 'ไม่สามารถเชื่อมต่อ wePAY mtopup API ได้ กรุณาตรวจสอบสิทธิ์และ IP whitelist'
+          detail: error.message || 'ไม่สามารถเชื่อมต่อ wePAY mtopup API ได้ กรุณาตรวจสอบสิทธิ์และ IP whitelist',
+          wepay_diagnostic: error.diagnostic || null
         }, { status: 502 });
       }
       return NextResponse.json({
         error: 'provider_error',
-        detail: error.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง'
+        detail: error.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้งภายหลัง',
+        wepay_diagnostic: error.diagnostic || null
       }, { status: 502 });
     }
     if (error instanceof Error && error.message.includes('fetch')) {

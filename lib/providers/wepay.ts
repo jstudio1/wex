@@ -35,12 +35,27 @@ export class WepayError extends Error {
   public readonly code: string;
   public readonly status?: number;
   public readonly response?: WepayClientResponse;
+  public readonly diagnostic?: {
+    requestUrl: string;
+    requestParams: Record<string, string>;
+    httpStatus?: number;
+    httpStatusText?: string;
+    responseHeaders?: Record<string, string>;
+    rawResponseBody?: string;
+  };
 
-  constructor(code: string, message: string, response?: WepayClientResponse, status?: number) {
+  constructor(
+    code: string,
+    message: string,
+    response?: WepayClientResponse,
+    status?: number,
+    diagnostic?: WepayError['diagnostic']
+  ) {
     super(message);
     this.code = code;
     this.status = status;
     this.response = response;
+    this.diagnostic = diagnostic;
   }
 }
 
@@ -118,7 +133,10 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       console.error('[wePAY] Request timed out after 25s:', { url: `${BASE_URL}/client_api.json.php`, params: debugParams });
-      throw new WepayError('timeout', 'wePAY ไม่ตอบกลับภายในเวลาที่กำหนด กรุณาลองใหม่อีกครั้ง');
+      throw new WepayError('timeout', 'wePAY ไม่ตอบกลับภายในเวลาที่กำหนด กรุณาลองใหม่อีกครั้ง', undefined, undefined, {
+        requestUrl: `${BASE_URL}/client_api.json.php`,
+        requestParams: debugParams,
+      });
     }
     throw err;
   } finally {
@@ -126,25 +144,34 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
   }
 
   const text = await res.text();
-  
+
+  const buildDiagnostic = () => ({
+    requestUrl: `${BASE_URL}/client_api.json.php`,
+    requestParams: debugParams,
+    httpStatus: res.status,
+    httpStatusText: res.statusText,
+    responseHeaders: Object.fromEntries(res.headers.entries()),
+    rawResponseBody: text.substring(0, 3000),
+  });
+
   // ตรวจสอบกรณี Access Denied หรือ authentication error
   const textLower = text.toLowerCase();
   if (res.status === 401 || textLower.includes('access denied') || textLower.includes('unauthorized')) {
     console.error('[wePAY] Authentication failed - Status:', res.status, 'Response:', text.substring(0, 200));
-    throw new WepayError('unauthorized', 'ไม่สามารถเข้าถึง wePAY API ได้ กรุณาตรวจสอบ username/password หรือ IP whitelist', { raw: text }, res.status);
+    throw new WepayError('unauthorized', 'ไม่สามารถเข้าถึง wePAY API ได้ กรุณาตรวจสอบ username/password หรือ IP whitelist', { raw: text }, res.status, buildDiagnostic());
   }
-  
+
   let json: WepayClientResponse;
   try {
     json = text ? JSON.parse(text) : {};
   } catch (err) {
     console.error('[wePAY] JSON parse error - Response:', text.substring(0, 200));
-    throw new WepayError('invalid_response', `ไม่สามารถแปลงข้อมูลจาก wePAY ได้: ${text.substring(0, 100)}`, { raw: text }, res.status);
+    throw new WepayError('invalid_response', `ไม่สามารถแปลงข้อมูลจาก wePAY ได้ (HTTP ${res.status}): ${text.substring(0, 200)}`, { raw: text }, res.status, buildDiagnostic());
   }
 
   if (!res.ok) {
     console.error('[wePAY] HTTP error - Status:', res.status, 'Response:', text.substring(0, 200));
-    throw new WepayError('http_error', `ไม่สามารถเชื่อมต่อ wePAY ได้ (${res.status}): ${text.substring(0, 100)}`, json, res.status);
+    throw new WepayError('http_error', `ไม่สามารถเชื่อมต่อ wePAY ได้ (${res.status}): ${text.substring(0, 100)}`, json, res.status, buildDiagnostic());
   }
 
   console.log('[wePAY] Success - Response code:', json.code);
