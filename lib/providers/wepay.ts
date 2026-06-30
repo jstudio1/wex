@@ -1,4 +1,4 @@
-import { Agent } from 'undici';
+import https from 'node:https';
 import { getApiKey } from '@/lib/api-keys';
 
 const BASE_URL = (process.env.WEPAY_BASE_URL || 'https://www.wepay.in.th').replace(/\/$/, '');
@@ -72,14 +72,62 @@ async function getCredentials(): Promise<Credentials> {
   return { username, password };
 }
 
-const ipv4Agent = new Agent({
-  connect: {
-    // บังคับให้เลือก IPv4 เท่านั้น (กรณีปลายทาง whitelist ตาม IP)
-    family: 4,
-    // hints = 0 เพื่อปิดการพยายามเลือก IPv6
-    hints: 0,
-  },
-});
+type SimpleHttpResponse = {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  text: string;
+};
+
+// ส่ง POST แบบ x-www-form-urlencoded ด้วย node:https โดยตรง (ไม่ใช้ fetch + custom undici Agent/AbortSignal)
+// เพราะ fetch+dispatcher+signal เคยทำให้ Node process หลุดการเชื่อมต่อแบบที่ JS catch ไม่ได้
+// เวลา upstream (wePAY) ตอบกลับมาแบบผิดปกติ - node:https เป็น code path ที่มี error handling
+// ผ่าน event ('error') ที่ผูกกับ request/response object โดยตรง เสถียรกว่ามาก
+function httpsPostForm(url: string, body: string, timeoutMs: number): Promise<SimpleHttpResponse> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port || 443,
+        path: parsed.pathname + (parsed.search || ''),
+        method: 'POST',
+        family: 4, // บังคับ IPv4 (กรณีปลายทาง whitelist ตาม IP)
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(body),
+        },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const headers: Record<string, string> = {};
+          for (const [key, value] of Object.entries(res.headers)) {
+            if (typeof value === 'string') headers[key] = value;
+            else if (Array.isArray(value)) headers[key] = value.join(', ');
+          }
+          resolve({
+            status: res.statusCode || 0,
+            statusText: res.statusMessage || '',
+            headers,
+            text: Buffer.concat(chunks).toString('utf-8'),
+          });
+        });
+        res.on('error', (err) => reject(err));
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error('TIMEOUT'));
+    });
+    req.on('error', (err) => reject(err));
+
+    req.write(body);
+    req.end();
+  });
+}
 
 async function postClientApi(params: Record<string, string>): Promise<WepayClientResponse> {
   const creds = await getCredentials();
@@ -112,45 +160,33 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
     bodyPreview: bodyString.substring(0, 100) + (bodyString.length > 100 ? '...' : '')
   });
 
-  // ตั้ง timeout กันค้างไม่จำกัดเวลาถ้า wePAY ไม่ตอบกลับ (เคยทำให้ Apache/Cloudflare ตัดเป็น 502 ก่อนที่เราจะคืนเงินลูกค้าได้)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25_000);
-
-  const init: RequestInit & { dispatcher?: Agent } = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: bodyString,
-    cache: 'no-store',
-    dispatcher: ipv4Agent,
-    signal: controller.signal,
-  };
-
-  let res: Response;
+  // ตั้ง timeout กันค้างไม่จำกัดเวลาถ้า wePAY ไม่ตอบกลับ
+  let res: SimpleHttpResponse;
   try {
-    res = await fetch(`${BASE_URL}/client_api.json.php`, init as RequestInit);
+    res = await httpsPostForm(`${BASE_URL}/client_api.json.php`, bodyString, 25_000);
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
+    if (err instanceof Error && (err.message === 'TIMEOUT' || (err as any).code === 'ETIMEDOUT')) {
       console.error('[wePAY] Request timed out after 25s:', { url: `${BASE_URL}/client_api.json.php`, params: debugParams });
       throw new WepayError('timeout', 'wePAY ไม่ตอบกลับภายในเวลาที่กำหนด กรุณาลองใหม่อีกครั้ง', undefined, undefined, {
         requestUrl: `${BASE_URL}/client_api.json.php`,
         requestParams: debugParams,
       });
     }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
+    console.error('[wePAY] Network error:', err);
+    throw new WepayError('network_error', `ไม่สามารถเชื่อมต่อ wePAY ได้: ${err instanceof Error ? err.message : String(err)}`, undefined, undefined, {
+      requestUrl: `${BASE_URL}/client_api.json.php`,
+      requestParams: debugParams,
+    });
   }
 
-  const text = await res.text();
+  const text = res.text;
 
   const buildDiagnostic = () => ({
     requestUrl: `${BASE_URL}/client_api.json.php`,
     requestParams: debugParams,
     httpStatus: res.status,
     httpStatusText: res.statusText,
-    responseHeaders: Object.fromEntries(res.headers.entries()),
+    responseHeaders: res.headers,
     rawResponseBody: text.substring(0, 3000),
   });
 
@@ -169,7 +205,7 @@ async function postClientApi(params: Record<string, string>): Promise<WepayClien
     throw new WepayError('invalid_response', `ไม่สามารถแปลงข้อมูลจาก wePAY ได้ (HTTP ${res.status}): ${text.substring(0, 200)}`, { raw: text }, res.status, buildDiagnostic());
   }
 
-  if (!res.ok) {
+  if (res.status < 200 || res.status >= 300) {
     console.error('[wePAY] HTTP error - Status:', res.status, 'Response:', text.substring(0, 200));
     throw new WepayError('http_error', `ไม่สามารถเชื่อมต่อ wePAY ได้ (${res.status}): ${text.substring(0, 100)}`, json, res.status, buildDiagnostic());
   }
@@ -364,18 +400,10 @@ async function postMtopupRefundApi(params: Record<string, string>): Promise<stri
     ),
   });
 
-  const init: RequestInit & { dispatcher?: Agent } = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: search.toString(),
-    cache: 'no-store',
-    dispatcher: ipv4Agent,
-  };
+  const res = await httpsPostForm(`${BASE_URL}/mtopup_refund_api.php`, search.toString(), 25_000);
+  const text = res.text;
 
-  const res = await fetch(`${BASE_URL}/mtopup_refund_api.php`, init as RequestInit);
-  const text = await res.text();
-
-  if (!res.ok) {
+  if (res.status < 200 || res.status >= 300) {
     throw new WepayError('http_error', 'ไม่สามารถเชื่อมต่อ wePAY refund API ได้', { raw: text }, res.status);
   }
 
