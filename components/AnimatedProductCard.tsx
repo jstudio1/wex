@@ -102,12 +102,19 @@ export default function AnimatedProductCard({ product: p, isHighlight = false, i
         <div className={`relative ${isHighlight ? 'border-2 border-yellow-500 rounded-xl p-1' : ''}`}>
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img 
-              src={p.image_url} 
-              alt={p.name} 
+            <img
+              src={p.image_url}
+              alt={p.name}
               className={`rounded-xl object-cover transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg ${isHighlight ? 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}
-              loading="lazy"
+              loading="eager"
               key={`${p.id}-${p.image_url}`}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (!img.dataset.retried) {
+                  img.dataset.retried = '1';
+                  setTimeout(() => { img.src = p.image_url + '?r=' + Date.now(); }, 1500);
+                }
+              }}
             />
           ) : (
             <div className={`rounded-xl bg-gray-800 flex items-center justify-center ${isHighlight ? 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48' : 'h-24 w-24 sm:h-40 sm:w-40 md:h-44 md:w-44 lg:h-48 lg:w-48'}`}>
